@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/router/app_router.dart';
+import '../../core/widgets/app_text.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_button.dart';
 
 class SettleUpScreen extends StatelessWidget {
   final String groupId;
@@ -7,97 +13,191 @@ class SettleUpScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settle Up'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const AppText(
+            'Settle Up',
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+          backgroundColor: Colors.blue,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () =>
+                context.go('${AppRouter.groupDetail}?groupId=$groupId'),
+          ),
         ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Group ID: $groupId',
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
+        body: SingleChildScrollView(
+          padding: EdgeInsets.all(16.w),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppText(
+                'Group ID: $groupId',
+                fontSize: 14.sp,
+                color: Colors.grey[600],
               ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Settle Up Balances',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+              SizedBox(height: 24.h),
+              AppText(
+                'Settle Up Balances',
+                fontSize: 24.sp,
+                fontWeight: FontWeight.w600,
               ),
-            ),
-            const SizedBox(height: 20),
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
+              SizedBox(height: 16.h),
+              AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    AppText(
                       'Outstanding Balances',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w500,
                     ),
-                    SizedBox(height: 10),
-                    Text('Balance calculations will be shown here'),
+                    SizedBox(height: 16.h),
+                    _buildBalanceItem('John', 'You owe \$45.50', Colors.red),
+                    SizedBox(height: 12.h),
+                    _buildBalanceItem(
+                        'Sarah', 'Owes you \$32.00', Colors.green),
+                    SizedBox(height: 12.h),
+                    _buildBalanceItem('Mike', 'You owe \$12.75', Colors.red),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
+              SizedBox(height: 16.h),
+              AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    AppText(
                       'Settlement Suggestions',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w500,
                     ),
-                    SizedBox(height: 10),
-                    Text('Settlement suggestions will be displayed here'),
+                    SizedBox(height: 16.h),
+                    _buildSettlementItem('Pay John \$45.50'),
+                    SizedBox(height: 12.h),
+                    _buildSettlementItem('Collect \$32.00 from Sarah'),
+                    SizedBox(height: 12.h),
+                    _buildSettlementItem('Pay Mike \$12.75'),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
+              SizedBox(height: 16.h),
+              AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    AppText(
                       'Recent Settlements',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w500,
                     ),
-                    SizedBox(height: 10),
-                    Text('Recent settlements will be listed here'),
+                    SizedBox(height: 16.h),
+                    _buildRecentSettlement(
+                        'Dinner split', 'Settled with John', '\$25.50'),
+                    SizedBox(height: 12.h),
+                    _buildRecentSettlement(
+                        'Movie tickets', 'Settled with Sarah', '\$15.00'),
                   ],
                 ),
               ),
-            ),
-          ],
+              SizedBox(height: 32.h),
+              AppButton(
+                label: 'Mark All as Settled',
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Settlement completed!')),
+                  );
+                },
+              ),
+              SizedBox(height: 32.h),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildBalanceItem(String name, String amount, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        AppText(
+          name,
+          fontSize: 16.sp,
+          fontWeight: FontWeight.w500,
+        ),
+        AppText(
+          amount,
+          fontSize: 16.sp,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSettlementItem(String suggestion) {
+    return AppCard(
+      padding: EdgeInsets.all(12.w),
+      child: Row(
+        children: [
+          Icon(
+            Icons.lightbulb_outline,
+            color: Colors.amber[600],
+            size: 20.sp,
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: AppText(
+              suggestion,
+              fontSize: 14.sp,
+            ),
+          ),
+          AppButton(
+            label: 'Settle',
+            onTap: () {
+              // Handle settlement
+            },
+            isOutlined: true,
+            width: 80.w,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentSettlement(
+      String description, String settledWith, String amount) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppText(
+                description,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w500,
+              ),
+              SizedBox(height: 2.h),
+              AppText(
+                settledWith,
+                fontSize: 12.sp,
+                color: Colors.grey[600],
+              ),
+            ],
+          ),
+        ),
+        AppText(
+          amount,
+          fontSize: 14.sp,
+          fontWeight: FontWeight.w600,
+          color: Colors.green,
+        ),
+      ],
     );
   }
 }

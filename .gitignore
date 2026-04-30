@@ -44,5 +44,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Android native build files (CXX/CMake)
+/android/app/.cxx/
+/android/app/build/
+/android/.gradle/
+
 # FVM Version Cache
 .fvm/
