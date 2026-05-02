@@ -8,6 +8,7 @@ class AppText extends StatelessWidget {
   final Color? color;
   final TextAlign? align;
   final int? maxLines;
+  final TextOverflow? overflow;
 
   const AppText(
     this.text, {
@@ -17,18 +18,18 @@ class AppText extends StatelessWidget {
     this.color,
     this.align,
     this.maxLines,
+    this.overflow,
   });
 
   @override
   Widget build(BuildContext context) {
-    final textScaleFactor = MediaQuery.of(context).textScaleFactor;
-    
     return Text(
       text,
       textAlign: align,
       maxLines: maxLines,
+      overflow: overflow,
       style: TextStyle(
-        fontSize: fontSize != null ? (fontSize! * textScaleFactor).sp : null,
+        fontSize: fontSize?.sp,
         fontWeight: fontWeight,
         color: color,
       ),

@@ -1,32 +1,81 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/router/app_router.dart';
+import '../../core/constants/app_colors.dart';
+import '../../core/utils/debt_calculator.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/settlement_card.dart';
 import '../../core/widgets/app_button.dart';
+import '../../core/utils/app_snackbar.dart';
 
 class SettleUpScreen extends StatelessWidget {
   final String groupId;
 
-  const SettleUpScreen({super.key, required this.groupId});
+  SettleUpScreen({super.key, required this.groupId});
+
+  // Mock data for demonstration
+  final List<Member> _mockMembers = [
+    Member(name: 'John', totalPaid: 200.0, totalShare: 100.0), // +100
+    Member(name: 'Sarah', totalPaid: 50.0, totalShare: 100.0), // -50
+    Member(name: 'Mike', totalPaid: 25.0, totalShare: 100.0), // -75
+    Member(name: 'You', totalPaid: 125.0, totalShare: 100.0), // +25
+  ];
+
+  // Mock recent settlements
+  final List<Map<String, dynamic>> _mockRecentSettlements = [
+    {
+      'description': 'Dinner split',
+      'from': 'Mike',
+      'to': 'John',
+      'amount': 25.50,
+      'isPaid': true,
+    },
+    {
+      'description': 'Movie tickets',
+      'from': 'Sarah',
+      'to': 'You',
+      'amount': 15.00,
+      'isPaid': true,
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final settlements = DebtCalculator.calculate(_mockMembers);
+    final allSettled = settlements.every((s) => s.isPaid);
+
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
-          title: const AppText(
-            'Settle Up',
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primaryDark, AppColors.primary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
           ),
-          backgroundColor: Colors.blue,
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AppText(
+                'Settle Up',
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textOnPrimary,
+              ),
+              AppText(
+                groupId,
+                fontSize: 14,
+                color: AppColors.textOnPrimary.withValues(alpha: 0.7),
+              ),
+            ],
+          ),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () =>
-                context.go('${AppRouter.groupDetail}?groupId=$groupId'),
+            icon: const Icon(Icons.arrow_back, color: AppColors.textOnPrimary),
+            onPressed: () => context.go('/'),
           ),
         ),
         body: SingleChildScrollView(
@@ -34,170 +83,152 @@ class SettleUpScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AppText(
-                'Group ID: $groupId',
-                fontSize: 14.sp,
-                color: Colors.grey[600],
-              ),
-              SizedBox(height: 24.h),
-              AppText(
-                'Settle Up Balances',
-                fontSize: 24.sp,
-                fontWeight: FontWeight.w600,
-              ),
-              SizedBox(height: 16.h),
+              // Top summary card
               AppCard(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     AppText(
-                      'Outstanding Balances',
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w500,
+                      'Minimum transactions to clear all debts',
+                      fontSize: 16,
+                      color: AppColors.textSecondary,
                     ),
-                    SizedBox(height: 16.h),
-                    _buildBalanceItem('John', 'You owe \$45.50', Colors.red),
-                    SizedBox(height: 12.h),
-                    _buildBalanceItem(
-                        'Sarah', 'Owes you \$32.00', Colors.green),
-                    SizedBox(height: 12.h),
-                    _buildBalanceItem('Mike', 'You owe \$12.75', Colors.red),
+                    SizedBox(height: 8.h),
+                    AppText(
+                      '${settlements.length} transactions needed',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
                   ],
                 ),
               ),
               SizedBox(height: 16.h),
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+
+              // Settlement cards or all settled message
+              if (allSettled)
+                AppCard(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.celebration,
+                        size: 80.sp,
+                        color: AppColors.accent,
+                      ),
+                      SizedBox(height: 16.h),
+                      const AppText(
+                        'All Settled Up! 🎉',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      SizedBox(height: 8.h),
+                      const AppText(
+                        'Everyone is even',
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                      SizedBox(height: 16.h),
+                      AppButton(
+                        label: 'Back to Group',
+                        onTap: () => context.pop(),
+                        color: AppColors.success,
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Column(
                   children: [
-                    AppText(
-                      'Settlement Suggestions',
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w500,
+                    const AppText(
+                      'Settlements',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
                     ),
                     SizedBox(height: 16.h),
-                    _buildSettlementItem('Pay John \$45.50'),
-                    SizedBox(height: 12.h),
-                    _buildSettlementItem('Collect \$32.00 from Sarah'),
-                    SizedBox(height: 12.h),
-                    _buildSettlementItem('Pay Mike \$12.75'),
+                    ...settlements.map((settlement) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 12.h),
+                        child: SettlementCard(
+                          fromMember: settlement.fromMember,
+                          toMember: settlement.toMember,
+                          amount: settlement.amount,
+                          isPaid: settlement.isPaid,
+                          onMarkAsPaid: () {
+                            // TODO: Update settlement isPaid = true in provider
+                            AppSnackBar.showSuccess(
+                                context, 'Payment recorded');
+                          },
+                        ),
+                      );
+                    }),
                   ],
                 ),
-              ),
-              SizedBox(height: 16.h),
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AppText(
-                      'Recent Settlements',
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    SizedBox(height: 16.h),
-                    _buildRecentSettlement(
-                        'Dinner split', 'Settled with John', '\$25.50'),
-                    SizedBox(height: 12.h),
-                    _buildRecentSettlement(
-                        'Movie tickets', 'Settled with Sarah', '\$15.00'),
-                  ],
+
+              if (!allSettled) SizedBox(height: 16.h),
+
+              // Recent settlements
+              if (_mockRecentSettlements.isNotEmpty) ...[
+                const AppText(
+                  'Recent Settlements',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
                 ),
-              ),
-              SizedBox(height: 32.h),
-              AppButton(
-                label: 'Mark All as Settled',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Settlement completed!')),
-                  );
-                },
-              ),
+                SizedBox(height: 16.h),
+                AppCard(
+                  child: Column(
+                    children: _mockRecentSettlements.map((settlement) {
+                      return Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8.h),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  AppText(
+                                    settlement['description'] as String,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  SizedBox(height: 2.h),
+                                  AppText(
+                                    '${settlement['from']} → ${settlement['to']}',
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                AppText(
+                                  '\$${(settlement['amount'] as double).toStringAsFixed(2)}',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.success,
+                                ),
+                                if (settlement['isPaid'] as bool) ...[
+                                  SizedBox(width: 8.w),
+                                  Icon(
+                                    Icons.check_circle,
+                                    color: AppColors.success,
+                                    size: 16.sp,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+
               SizedBox(height: 32.h),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildBalanceItem(String name, String amount, Color color) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        AppText(
-          name,
-          fontSize: 16.sp,
-          fontWeight: FontWeight.w500,
-        ),
-        AppText(
-          amount,
-          fontSize: 16.sp,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSettlementItem(String suggestion) {
-    return AppCard(
-      padding: EdgeInsets.all(12.w),
-      child: Row(
-        children: [
-          Icon(
-            Icons.lightbulb_outline,
-            color: Colors.amber[600],
-            size: 20.sp,
-          ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: AppText(
-              suggestion,
-              fontSize: 14.sp,
-            ),
-          ),
-          AppButton(
-            label: 'Settle',
-            onTap: () {
-              // Handle settlement
-            },
-            isOutlined: true,
-            width: 80.w,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecentSettlement(
-      String description, String settledWith, String amount) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AppText(
-                description,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w500,
-              ),
-              SizedBox(height: 2.h),
-              AppText(
-                settledWith,
-                fontSize: 12.sp,
-                color: Colors.grey[600],
-              ),
-            ],
-          ),
-        ),
-        AppText(
-          amount,
-          fontSize: 14.sp,
-          fontWeight: FontWeight.w600,
-          color: Colors.green,
-        ),
-      ],
     );
   }
 }

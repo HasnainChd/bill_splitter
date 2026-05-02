@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/router/app_router.dart';
+import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/group_card.dart';
-import '../../core/theme/app_theme.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -35,26 +35,34 @@ class HomeScreen extends StatelessWidget {
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primaryDark, AppColors.primary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
           title: const AppText(
             'Bill Splitter',
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: AppColors.white,
           ),
-          backgroundColor: AppTheme.primaryColor,
           elevation: 0,
           actions: [
             IconButton(
-              icon: const Icon(Icons.settings, color: Colors.white),
+              icon: const Icon(Icons.settings, color: AppColors.white),
               onPressed: () => context.go(AppRouter.settings),
             ),
           ],
         ),
         body: hasGroups ? _buildGroupList() : _buildEmptyState(),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => context.go(AppRouter.createGroup),
-          backgroundColor: AppTheme.primaryColor,
-          child: const Icon(Icons.add, color: Colors.white),
+          onPressed: () => context.push('/createGroup'),
+          backgroundColor: AppColors.accent,
+          child: const Icon(Icons.add, color: AppColors.textOnAccent),
         ),
       ),
     );
@@ -68,7 +76,7 @@ class HomeScreen extends StatelessWidget {
           Icon(
             Icons.account_balance_wallet,
             size: 80.sp,
-            color: AppTheme.primaryColor,
+            color: AppColors.accent,
           ),
           SizedBox(height: 24.h),
           const AppText(
@@ -80,7 +88,7 @@ class HomeScreen extends StatelessWidget {
           const AppText(
             'Tap + to create your first group',
             fontSize: 14,
-            color: Colors.grey,
+            color: AppColors.textSecondary,
           ),
         ],
       ),
@@ -97,6 +105,7 @@ class HomeScreen extends StatelessWidget {
             'Your Groups',
             fontSize: 24,
             fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
           ),
           SizedBox(height: 16.h),
           Expanded(

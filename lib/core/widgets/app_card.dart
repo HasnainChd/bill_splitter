@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../constants/app_colors.dart';
 
 class AppCard extends StatelessWidget {
   final Widget child;
@@ -7,6 +8,8 @@ class AppCard extends StatelessWidget {
   final EdgeInsets? padding;
   final Color? color;
   final double? borderRadius;
+  final bool highlighted;
+  final bool gradient;
 
   const AppCard({
     super.key,
@@ -15,32 +18,37 @@ class AppCard extends StatelessWidget {
     this.padding,
     this.color,
     this.borderRadius,
+    this.highlighted = false,
+    this.gradient = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: color ?? Colors.white,
-        borderRadius: BorderRadius.circular(borderRadius ?? 12.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10.r,
-            offset: Offset(0, 2.h),
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 20.r,
-            offset: Offset(0, 4.h),
-          ),
-        ],
+        color: highlighted
+            ? AppColors.accentLight
+            : (gradient ? null : (color ?? AppColors.surface)),
+        gradient: gradient
+            ? const LinearGradient(
+                colors: [AppColors.surface, AppColors.surfaceVariant],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+        borderRadius: BorderRadius.circular(borderRadius ?? 16.r),
+        border: Border.all(
+          color: highlighted ? AppColors.accent : AppColors.divider,
+          width: highlighted ? 3 : 1,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(borderRadius ?? 12.r),
+          borderRadius: BorderRadius.circular(borderRadius ?? 16.r),
+          splashColor: AppColors.primary.withValues(alpha: 0.04),
+          highlightColor: AppColors.primary.withValues(alpha: 0.04),
           child: Padding(
             padding: padding ?? EdgeInsets.all(16.w),
             child: child,

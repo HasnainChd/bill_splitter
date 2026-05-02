@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/router/app_router.dart';
+import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/app_button.dart';
-import '../../core/widgets/app_avatar.dart';
-import '../../core/widgets/app_card.dart';
+import '../../core/utils/app_snackbar.dart';
 
 class CreateGroupScreen extends StatefulWidget {
   const CreateGroupScreen({super.key});
@@ -48,16 +48,12 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
   Future<void> _createGroup() async {
     if (_groupNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a group name')),
-      );
+      AppSnackBar.showError(context, 'Please enter a group name');
       return;
     }
 
     if (_members.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add at least one member')),
-      );
+      AppSnackBar.showError(context, 'Please add at least one member');
       return;
     }
 
@@ -73,10 +69,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     });
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Group created successfully!')),
-      );
-      context.go(AppRouter.home);
+      AppSnackBar.showSuccess(context, 'Group created successfully');
+      context.pop();
     }
   }
 
@@ -85,15 +79,23 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primaryDark, AppColors.primary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
           title: const AppText(
             'Create Group',
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: AppColors.white,
           ),
-          backgroundColor: Colors.blue,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: const Icon(Icons.arrow_back, color: AppColors.white),
             onPressed: () => context.go(AppRouter.home),
           ),
         ),
@@ -102,9 +104,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AppText(
+              const AppText(
                 'Create New Group',
-                fontSize: 24.sp,
+                fontSize: 24,
                 fontWeight: FontWeight.w600,
               ),
               SizedBox(height: 24.h),
@@ -122,9 +124,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 maxLines: 3,
               ),
               SizedBox(height: 24.h),
-              AppText(
+              const AppText(
                 'Add Members',
-                fontSize: 18.sp,
+                fontSize: 18,
                 fontWeight: FontWeight.w500,
               ),
               SizedBox(height: 16.h),
@@ -155,11 +157,12 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                     return Chip(
                       label: AppText(
                         member,
-                        fontSize: 14.sp,
+                        fontSize: 14,
                       ),
                       onDeleted: () => _removeMember(member),
                       deleteIcon: const Icon(Icons.close, size: 16),
-                      backgroundColor: Colors.grey[200],
+                      backgroundColor: AppColors.surfaceVariant,
+                      side: BorderSide(color: AppColors.border),
                     );
                   }).toList(),
                 ),

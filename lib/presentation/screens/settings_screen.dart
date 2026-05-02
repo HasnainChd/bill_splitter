@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:go_router/go_router.dart';
-import '../../core/router/app_router.dart';
+import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_avatar.dart';
+import '../../core/widgets/app_button.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -13,29 +14,129 @@ class SettingsScreen extends StatelessWidget {
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primaryDark, AppColors.primary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
           title: const AppText(
             'Settings',
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-          backgroundColor: Colors.blue,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => context.go(AppRouter.home),
+            color: AppColors.white,
           ),
         ),
         body: ListView(
           padding: EdgeInsets.all(16.w),
           children: [
+            // Profile Card
+            Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.primaryAccent],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16.r),
+              ),
+              padding: EdgeInsets.all(20.w),
+              child: Column(
+                children: [
+                  AppAvatar(
+                    name: 'John Doe',
+                    size: 56.sp,
+                  ),
+                  SizedBox(height: 12.h),
+                  const AppText(
+                    'John Doe',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white,
+                  ),
+                  SizedBox(height: 4.h),
+                  const AppText(
+                    'john.doe@example.com',
+                    fontSize: 14,
+                    color: AppColors.white,
+                  ),
+                  SizedBox(height: 16.h),
+                  AppButton(
+                    label: 'Edit',
+                    onTap: () {},
+                    isOutlined: true,
+                    color: AppColors.white,
+                    textColor: AppColors.white,
+                    height: 40.h,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 16.h),
+
+            // Premium Card
+            AppCard(
+              gradient: true,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.accent, AppColors.accentDark],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16.r),
+                ),
+                padding: EdgeInsets.all(16.w),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.workspace_premium,
+                          color: AppColors.textOnAccent,
+                          size: 24.sp,
+                        ),
+                        SizedBox(width: 8.w),
+                        const AppText(
+                          'Upgrade to Premium',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textOnAccent,
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8.h),
+                    const AppText(
+                      'Get unlimited groups, advanced analytics, and more',
+                      fontSize: 13,
+                      color: AppColors.textOnAccent,
+                    ),
+                    SizedBox(height: 12.h),
+                    AppButton(
+                      label: 'Learn More',
+                      onTap: () {},
+                      isAccent: true,
+                      height: 40.h,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 16.h),
+
+            // Account Settings
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppText(
-                    'Account Settings',
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w500,
+                    'ACCOUNT SETTINGS',
+                    fontSize: 11,
+                    color: AppColors.textHint,
                   ),
                   SizedBox(height: 16.h),
                   _buildListTile(
@@ -52,14 +153,16 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             SizedBox(height: 12.h),
+
+            // App Settings
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppText(
-                    'App Settings',
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w500,
+                    'APP SETTINGS',
+                    fontSize: 11,
+                    color: AppColors.textHint,
                   ),
                   SizedBox(height: 16.h),
                   _buildListTile(
@@ -81,14 +184,16 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             SizedBox(height: 12.h),
+
+            // Data & Storage
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppText(
-                    'Data & Storage',
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w500,
+                    'DATA & STORAGE',
+                    fontSize: 11,
+                    color: AppColors.textHint,
                   ),
                   SizedBox(height: 16.h),
                   _buildListTile(
@@ -110,14 +215,16 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             SizedBox(height: 12.h),
+
+            // About
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppText(
-                    'About',
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w500,
+                    'ABOUT',
+                    fontSize: 11,
+                    color: AppColors.textHint,
                   ),
                   SizedBox(height: 16.h),
                   _buildListTile(
@@ -152,20 +259,20 @@ class SettingsScreen extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4.h),
       child: ListTile(
-        leading: Icon(icon, size: 24.sp),
+        leading: Icon(icon, size: 24.sp, color: AppColors.primary),
         title: AppText(
           title,
-          fontSize: 16.sp,
+          fontSize: 16,
         ),
         subtitle: AppText(
           subtitle,
-          fontSize: 13.sp,
-          color: Colors.grey[600],
+          fontSize: 13,
+          color: AppColors.textSecondary,
         ),
         trailing: Icon(
           Icons.arrow_forward_ios,
           size: 16.sp,
-          color: Colors.grey[400],
+          color: AppColors.textHint,
         ),
         contentPadding: EdgeInsets.zero,
       ),

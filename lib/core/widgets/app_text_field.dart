@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../theme/app_theme.dart';
+import '../constants/app_colors.dart';
 
 class AppTextField extends StatelessWidget {
   final String hint;
@@ -11,6 +11,8 @@ class AppTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
   final int? maxLines;
+  final String? suffixText;
+  final bool showCounter;
 
   const AppTextField({
     super.key,
@@ -22,12 +24,12 @@ class AppTextField extends StatelessWidget {
     this.keyboardType,
     this.validator,
     this.maxLines = 1,
+    this.suffixText,
+    this.showCounter = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final textScaleFactor = MediaQuery.of(context).textScaleFactor;
-    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -35,9 +37,10 @@ class AppTextField extends StatelessWidget {
           Text(
             label!,
             style: TextStyle(
-              fontSize: (14 * textScaleFactor).sp,
+              fontSize: 12.sp,
               fontWeight: FontWeight.w500,
-              color: Colors.grey[700],
+              color: AppColors.textSecondary,
+              letterSpacing: 0.4,
             ),
           ),
           SizedBox(height: 8.h),
@@ -48,47 +51,69 @@ class AppTextField extends StatelessWidget {
           keyboardType: keyboardType,
           validator: validator,
           maxLines: maxLines,
+          buildCounter: showCounter
+              ? null
+              : (context,
+                      {required currentLength,
+                      required isFocused,
+                      maxLength}) =>
+                  null,
           style: TextStyle(
-            fontSize: (16 * textScaleFactor).sp,
+            fontSize: 16.sp,
+            color: AppColors.textPrimary,
           ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(
-              fontSize: (14 * textScaleFactor).sp,
-              color: Colors.grey[400],
+              fontSize: 14.sp,
+              color: AppColors.textHint,
+            ),
+            suffixText: suffixText,
+            suffixStyle: TextStyle(
+              fontSize: 14.sp,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
             ),
             prefixIcon: prefixIcon != null
-                ? Icon(
-                    prefixIcon,
-                    color: AppTheme.primaryColor,
-                    size: 20.sp,
+                ? Container(
+                    padding: EdgeInsets.all(12.w),
+                    child: Icon(
+                      prefixIcon,
+                      color: AppColors.primaryAccent,
+                      size: 20.sp,
+                    ),
                   )
                 : null,
+            floatingLabelBehavior: FloatingLabelBehavior.always,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.r),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(color: AppColors.divider),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.r),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(color: AppColors.divider),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.r),
-              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+              borderSide: BorderSide(color: AppColors.primary, width: 2),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.r),
-              borderSide: const BorderSide(color: Colors.red, width: 1.5),
+              borderSide: BorderSide(color: AppColors.error, width: 1.5),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.r),
-              borderSide: const BorderSide(color: Colors.red, width: 2),
+              borderSide: BorderSide(color: AppColors.error, width: 2),
+            ),
+            errorStyle: TextStyle(
+              fontSize: 12.sp,
+              color: AppColors.error,
             ),
             filled: true,
-            fillColor: Colors.grey[50],
+            fillColor: AppColors.surfaceVariant,
             contentPadding: EdgeInsets.symmetric(
               horizontal: 16.w,
-              vertical: maxLines! > 1 ? 16.h : 12.h,
+              vertical: maxLines! > 1 ? 16.h : 14.h,
             ),
           ),
         ),

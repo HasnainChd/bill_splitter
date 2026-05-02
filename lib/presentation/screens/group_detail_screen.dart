@@ -1,183 +1,332 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/router/app_router.dart';
+import '../../core/constants/app_colors.dart';
+import '../../core/models/group.dart';
+import '../../core/models/expense.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_button.dart';
-import '../../core/widgets/app_avatar.dart';
+import '../../core/widgets/expense_tile.dart';
+import '../../core/widgets/balance_row.dart';
 
 class GroupDetailScreen extends StatelessWidget {
   final String groupId;
 
   const GroupDetailScreen({super.key, required this.groupId});
 
+  // Mock data for demonstration
+  final List<Map<String, dynamic>> _mockExpenses = const [
+    {
+      'name': 'Dinner at Restaurant',
+      'paidBy': 'John',
+      'amount': 45.50,
+      'date': 'Oct 28',
+      'category': Icons.restaurant,
+    },
+    {
+      'name': 'Movie Tickets',
+      'paidBy': 'Sarah',
+      'amount': 32.00,
+      'date': 'Oct 27',
+      'category': Icons.movie,
+    },
+    {
+      'name': 'Gas Station',
+      'paidBy': 'Mike',
+      'amount': 25.00,
+      'date': 'Oct 26',
+      'category': Icons.local_gas_station,
+    },
+  ];
+
+  final List<Map<String, dynamic>> _mockMembers = const [
+    {'name': 'John', 'balance': 125.50},
+    {'name': 'Sarah', 'balance': -45.75},
+    {'name': 'Mike', 'balance': -79.75},
+    {'name': 'You', 'balance': 0.00},
+  ];
+
+  // Move calculations outside build method to reduce main thread work
+  double get _totalExpenses => _mockExpenses.fold<double>(
+        0,
+        (sum, expense) => sum + expense['amount'],
+      );
+  double get _yourBalance => 0.00; // Mock balance
+
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        appBar: AppBar(
-          title: const AppText(
-            'Group Details',
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+    return DefaultTabController(
+      length: 2,
+      child: SafeArea(
+        child: Scaffold(
+          appBar: AppBar(
+            flexibleSpace: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.primaryDark, AppColors.primary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppText(
+                  groupId,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textOnPrimary,
+                ),
+                AppText(
+                  '4 members',
+                  fontSize: 14,
+                  color: AppColors.textOnPrimary.withValues(alpha: 0.7),
+                ),
+              ],
+            ),
+            leading: IconButton(
+              icon:
+                  const Icon(Icons.arrow_back, color: AppColors.textOnPrimary),
+              onPressed: () => context.go('/'),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.person_add,
+                    color: AppColors.textOnPrimary),
+                onPressed: () {
+                  // Add member functionality
+                },
+              ),
+              PopupMenuButton<String>(
+                icon:
+                    const Icon(Icons.more_vert, color: AppColors.textOnPrimary),
+                onSelected: (value) {
+                  if (value == 'delete') {
+                    // Delete group functionality
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text('Delete Group'),
+                  ),
+                ],
+              ),
+            ],
+            bottom: TabBar(
+              tabs: const [
+                Tab(text: 'Expenses'),
+                Tab(text: 'Balances'),
+              ],
+              labelColor: AppColors.accent,
+              unselectedLabelColor: AppColors.white.withValues(alpha: 0.6),
+              indicatorColor: AppColors.accent,
+            ),
           ),
-          backgroundColor: Colors.blue,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => context.go(AppRouter.home),
-          ),
-        ),
-        body: SingleChildScrollView(
-          padding: EdgeInsets.all(16.w),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          body: Column(
             children: [
-              AppText(
-                'Group ID: $groupId',
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey[600],
-              ),
-              SizedBox(height: 24.h),
-              AppText(
-                'Group Details',
-                fontSize: 24.sp,
-                fontWeight: FontWeight.w600,
-              ),
-              SizedBox(height: 16.h),
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AppText(
-                      'Group Information',
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w500,
+              // Summary Card
+              Padding(
+                padding: EdgeInsets.all(16.w),
+                child: AppCard(
+                  gradient: true,
+                  padding: EdgeInsets.all(16.w),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppColors.primary, AppColors.primaryAccent],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.all(Radius.circular(16)),
                     ),
-                    SizedBox(height: 16.h),
-                    Row(
+                    padding: EdgeInsets.all(16.w),
+                    child: Row(
                       children: [
-                        AppAvatar(
-                          name: groupId,
-                          size: 48.sp,
-                        ),
-                        SizedBox(width: 16.w),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              AppText(
-                                groupId,
-                                fontSize: 18.sp,
-                                fontWeight: FontWeight.w600,
+                              const AppText(
+                                'Total Expenses',
+                                fontSize: 14,
+                                color: AppColors.white,
                               ),
                               SizedBox(height: 4.h),
                               AppText(
-                                '4 members',
-                                fontSize: 14.sp,
-                                color: Colors.grey[600],
+                                '\$${_totalExpenses.toStringAsFixed(2)}',
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.white,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 40.h,
+                          color: AppColors.white.withValues(alpha: 0.3),
+                          margin: EdgeInsets.symmetric(horizontal: 16.w),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const AppText(
+                                'Your Balance',
+                                fontSize: 14,
+                                color: AppColors.white,
+                              ),
+                              SizedBox(height: 4.h),
+                              AppText(
+                                '\$${_yourBalance.abs().toStringAsFixed(2)}',
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.accent,
                               ),
                             ],
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 16.h),
-                    AppText(
-                      'Group details and member information will be displayed here',
-                      fontSize: 14.sp,
-                      color: Colors.grey[600],
-                    ),
-                  ],
+                  ),
                 ),
               ),
-              SizedBox(height: 16.h),
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              // Tab Content
+              Expanded(
+                child: TabBarView(
                   children: [
-                    AppText(
-                      'Recent Expenses',
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    SizedBox(height: 16.h),
-                    AppText(
-                      'Recent expenses will be listed here',
-                      fontSize: 14.sp,
-                      color: Colors.grey[600],
-                    ),
-                    SizedBox(height: 12.h),
-                    _buildExpensePlaceholder(
-                        'Dinner at Restaurant', '\$45.50', 'John'),
-                    SizedBox(height: 8.h),
-                    _buildExpensePlaceholder(
-                        'Movie Tickets', '\$32.00', 'Sarah'),
+                    _buildExpensesTab(context),
+                    _buildBalancesTab(context),
                   ],
                 ),
               ),
             ],
           ),
-        ),
-        floatingActionButton: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            FloatingActionButton(
-              heroTag: "add_expense",
-              onPressed: () {
-                context.go('${AppRouter.addExpense}?groupId=$groupId');
-              },
-              backgroundColor: Colors.blue,
-              child: const Icon(Icons.add, color: Colors.white),
-            ),
-            SizedBox(height: 12.h),
-            FloatingActionButton(
-              heroTag: "settle_up",
-              onPressed: () {
-                context.go('${AppRouter.settleUp}?groupId=$groupId');
-              },
-              backgroundColor: Colors.green,
-              child: const Icon(Icons.account_balance, color: Colors.white),
-            ),
-          ],
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              // Create Group object from groupId for navigation
+              final group = Group(
+                groupId: groupId,
+                name: groupId, // Using groupId as name for now
+                members: const ['You', 'John', 'Sarah', 'Mike'],
+                currency: 'USD',
+                createdAt: DateTime.now(),
+              );
+              context.push('/addExpense', extra: group);
+            },
+            backgroundColor: AppColors.accent,
+            child: const Icon(Icons.add, color: AppColors.textOnAccent),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildExpensePlaceholder(String title, String amount, String paidBy) {
-    return AppCard(
-      padding: EdgeInsets.all(12.w),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AppText(
-                  title,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w500,
+  Widget _buildExpensesTab(BuildContext context) {
+    if (_mockExpenses.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_long,
+              size: 60.sp,
+              color: AppColors.textHint,
+            ),
+            SizedBox(height: 16.h),
+            const AppText(
+              'No expenses yet',
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+            SizedBox(height: 8.h),
+            const AppText(
+              'Add your first expense to get started',
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      itemCount: _mockExpenses.length,
+      itemBuilder: (context, index) {
+        final expense = _mockExpenses[index];
+        return Padding(
+          padding: EdgeInsets.only(bottom: 12.h),
+          child: ExpenseTile(
+            key: ValueKey('expense_$index'),
+            expenseName: expense['name'] as String,
+            paidByName: expense['paidBy'] as String,
+            amount: expense['amount'] as double,
+            date: expense['date'] as String,
+            categoryIcon: expense['category'] as IconData,
+            onTap: () {
+              // Create proper Expense object from mock data
+              final expenseObj = Expense(
+                expenseId: 'expense_$index',
+                title: expense['name'] as String,
+                amount: expense['amount'] as double,
+                currency: 'USD',
+                paidBy: expense['paidBy'] as String,
+                splitAmong: {
+                  'You': (expense['amount'] as double) / 4,
+                  'John': (expense['amount'] as double) / 4,
+                  'Sarah': (expense['amount'] as double) / 4,
+                  'Mike': (expense['amount'] as double) / 4,
+                },
+                date: DateTime.now(),
+                notes: null,
+                groupId: groupId,
+                categoryIcon: expense['category'] as IconData,
+              );
+              context.push('/expenseDetail', extra: expenseObj);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBalancesTab(BuildContext context) {
+    final hasUnsettledBalances =
+        _mockMembers.any((member) => (member['balance'] as double) != 0);
+
+    return Column(
+      children: [
+        Expanded(
+          child: ListView.builder(
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            itemCount: _mockMembers.length,
+            itemBuilder: (context, index) {
+              final member = _mockMembers[index];
+              return Padding(
+                padding: EdgeInsets.only(bottom: 12.h),
+                child: BalanceRow(
+                  memberName: member['name'] as String,
+                  balance: member['balance'] as double,
                 ),
-                SizedBox(height: 4.h),
-                AppText(
-                  'Paid by $paidBy',
-                  fontSize: 12.sp,
-                  color: Colors.grey[600],
-                ),
-              ],
+              );
+            },
+          ),
+        ),
+        if (hasUnsettledBalances)
+          Padding(
+            padding: EdgeInsets.all(16.w),
+            child: AppButton(
+              label: 'Settle Up',
+              onTap: () => context.push('/settleUp', extra: groupId),
+              color: AppColors.primary,
             ),
           ),
-          AppText(
-            amount,
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w600,
-            color: Colors.blue,
-          ),
-        ],
-      ),
+        SizedBox(height: 80.h), // Space for FAB
+      ],
     );
   }
 }
