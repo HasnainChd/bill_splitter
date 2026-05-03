@@ -22,28 +22,11 @@ class SettleUpScreen extends StatelessWidget {
     Member(name: 'You', totalPaid: 125.0, totalShare: 100.0), // +25
   ];
 
-  // Mock recent settlements
-  final List<Map<String, dynamic>> _mockRecentSettlements = [
-    {
-      'description': 'Dinner split',
-      'from': 'Mike',
-      'to': 'John',
-      'amount': 25.50,
-      'isPaid': true,
-    },
-    {
-      'description': 'Movie tickets',
-      'from': 'Sarah',
-      'to': 'You',
-      'amount': 15.00,
-      'isPaid': true,
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
     final settlements = DebtCalculator.calculate(_mockMembers);
     final allSettled = settlements.every((s) => s.isPaid);
+    final paidSettlements = settlements.where((s) => s.isPaid).toList();
 
     return SafeArea(
       child: Scaffold(
@@ -165,63 +148,29 @@ class SettleUpScreen extends StatelessWidget {
 
               if (!allSettled) SizedBox(height: 16.h),
 
-              // Recent settlements
-              if (_mockRecentSettlements.isNotEmpty) ...[
+              // Recent settlements - only show if there are paid settlements
+              if (paidSettlements.isNotEmpty) ...[
+                SizedBox(height: 24.h),
                 const AppText(
                   'Recent Settlements',
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                 ),
-                SizedBox(height: 16.h),
-                AppCard(
-                  child: Column(
-                    children: _mockRecentSettlements.map((settlement) {
-                      return Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.h),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  AppText(
-                                    settlement['description'] as String,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  SizedBox(height: 2.h),
-                                  AppText(
-                                    '${settlement['from']} → ${settlement['to']}',
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                AppText(
-                                  '\$${(settlement['amount'] as double).toStringAsFixed(2)}',
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.success,
-                                ),
-                                if (settlement['isPaid'] as bool) ...[
-                                  SizedBox(width: 8.w),
-                                  Icon(
-                                    Icons.check_circle,
-                                    color: AppColors.success,
-                                    size: 16.sp,
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
+                SizedBox(height: 12.h),
+                ...paidSettlements.map((settlement) {
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: 12.h),
+                    child: SettlementCard(
+                      fromMember: settlement.fromMember,
+                      toMember: settlement.toMember,
+                      amount: settlement.amount,
+                      isPaid: settlement.isPaid,
+                      onMarkAsPaid: () {
+                        // Already paid, no action needed
+                      },
+                    ),
+                  );
+                }),
               ],
 
               SizedBox(height: 32.h),

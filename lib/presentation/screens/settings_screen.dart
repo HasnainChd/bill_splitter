@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_avatar.dart';
-import '../../core/widgets/app_button.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -29,6 +29,11 @@ class SettingsScreen extends StatelessWidget {
             fontWeight: FontWeight.w600,
             color: AppColors.white,
           ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.white),
+            onPressed: () => context.pop(),
+          ),
+          backgroundColor: AppColors.primary,
         ),
         body: ListView(
           padding: EdgeInsets.all(16.w),
@@ -64,13 +69,26 @@ class SettingsScreen extends StatelessWidget {
                     color: AppColors.white,
                   ),
                   SizedBox(height: 16.h),
-                  AppButton(
-                    label: 'Edit',
-                    onTap: () {},
-                    isOutlined: true,
-                    color: AppColors.white,
-                    textColor: AppColors.white,
-                    height: 40.h,
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {},
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: AppColors.white, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                      ),
+                      child: Text(
+                        'Edit Profile',
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -116,11 +134,29 @@ class SettingsScreen extends StatelessWidget {
                       color: AppColors.textOnAccent,
                     ),
                     SizedBox(height: 12.h),
-                    AppButton(
-                      label: 'Learn More',
-                      onTap: () {},
-                      isAccent: true,
-                      height: 40.h,
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {},
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accentDark,
+                          foregroundColor: AppColors.textOnAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'Upgrade Now',
+                          style: TextStyle(
+                            color: AppColors.textOnAccent,
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

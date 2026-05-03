@@ -40,12 +40,6 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     }
   }
 
-  void _removeMember(String member) {
-    setState(() {
-      _members.remove(member);
-    });
-  }
-
   Future<void> _createGroup() async {
     if (_groupNameController.text.trim().isEmpty) {
       AppSnackBar.showError(context, 'Please enter a group name');
@@ -155,14 +149,28 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                   runSpacing: 8.h,
                   children: _members.map((member) {
                     return Chip(
-                      label: AppText(
+                      label: Text(
                         member,
-                        fontSize: 14,
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13.sp,
+                        ),
                       ),
-                      onDeleted: () => _removeMember(member),
-                      deleteIcon: const Icon(Icons.close, size: 16),
-                      backgroundColor: AppColors.surfaceVariant,
-                      side: BorderSide(color: AppColors.border),
+                      backgroundColor: AppColors.primaryLight,
+                      side: BorderSide(color: AppColors.primary, width: 1),
+                      deleteIcon: Icon(
+                        Icons.close,
+                        size: 16.sp,
+                        color: AppColors.textSecondary,
+                      ),
+                      onDeleted: () {
+                        setState(() {
+                          _members.remove(member);
+                        });
+                      },
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
                     );
                   }).toList(),
                 ),

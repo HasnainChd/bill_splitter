@@ -4,7 +4,6 @@ import '../constants/app_colors.dart';
 import 'app_text.dart';
 import 'app_avatar.dart';
 import 'app_button.dart';
-import 'app_card.dart';
 
 class SettlementCard extends StatelessWidget {
   final String fromMember;
@@ -24,10 +23,16 @@ class SettlementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
+    return Container(
+      decoration: BoxDecoration(
+        color: isPaid ? AppColors.successLight : AppColors.surface,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: isPaid ? AppColors.success : AppColors.accent,
+          width: 1.5,
+        ),
+      ),
       padding: EdgeInsets.all(16.w),
-      highlighted: !isPaid,
-      color: isPaid ? AppColors.successLight : null,
       child: Column(
         children: [
           Row(
@@ -42,15 +47,20 @@ class SettlementCard extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.arrow_forward,
-                      color: AppColors.primary,
+                      color: isPaid ? AppColors.textHint : AppColors.accent,
                       size: 24.sp,
                     ),
                     SizedBox(height: 4.h),
-                    AppText(
+                    Text(
                       '\$${amount.toStringAsFixed(2)}',
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+                      style: TextStyle(
+                        fontSize: isPaid ? 18.sp : 20.sp,
+                        fontWeight: FontWeight.w700,
+                        color: isPaid ? AppColors.textHint : AppColors.primary,
+                        decoration: isPaid
+                            ? TextDecoration.lineThrough
+                            : TextDecoration.none,
+                      ),
                     ),
                   ],
                 ),
@@ -65,36 +75,30 @@ class SettlementCard extends StatelessWidget {
           SizedBox(height: 12.h),
           AppText(
             '$fromMember pays $toMember',
-            fontSize: 14,
+            fontSize: 13,
             color: AppColors.textSecondary,
             align: TextAlign.center,
           ),
           SizedBox(height: 16.h),
           if (isPaid)
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-              decoration: BoxDecoration(
-                color: AppColors.successLight,
-                borderRadius: BorderRadius.circular(8.r),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.check_circle,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.success,
+                  size: 18.sp,
+                ),
+                SizedBox(width: 6.w),
+                Text(
+                  'Paid',
+                  style: TextStyle(
                     color: AppColors.success,
-                    size: 20.sp,
-                  ),
-                  SizedBox(width: 8.w),
-                  AppText(
-                    'Paid',
-                    fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.success,
+                    fontSize: 14.sp,
                   ),
-                ],
-              ),
+                ),
+              ],
             )
           else
             AppButton(

@@ -300,33 +300,62 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         color: AppColors.textSecondary,
                       ),
                       SizedBox(height: 8.h),
-                      Wrap(
-                        spacing: 8.w,
-                        runSpacing: 8.h,
-                        children: widget.group.members.map((member) {
-                          final isSelected = _selectedMembers.contains(member);
-                          return FilterChip(
-                            label: Text(member),
-                            selected: isSelected,
-                            onSelected: (selected) {
-                              setState(() {
-                                if (selected) {
-                                  _selectedMembers.add(member);
-                                } else {
-                                  _selectedMembers.remove(member);
-                                }
-                              });
-                            },
-                            backgroundColor: AppColors.white,
+                      Theme(
+                        data: Theme.of(context).copyWith(
+                          chipTheme: ChipThemeData(
+                            backgroundColor: AppColors.surface,
                             selectedColor: AppColors.primary,
-                            labelStyle: TextStyle(
-                              color: isSelected
-                                  ? AppColors.white
-                                  : AppColors.textPrimary,
-                            ),
+                            checkmarkColor: AppColors.white,
                             side: BorderSide(color: AppColors.border),
-                          );
-                        }).toList(),
+                            labelStyle: TextStyle(
+                              fontSize: 13.sp,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                        child: Wrap(
+                          spacing: 8.w,
+                          runSpacing: 8.h,
+                          children: widget.group.members.map((member) {
+                            final isSelected =
+                                _selectedMembers.contains(member);
+                            return FilterChip(
+                              label: Text(member),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setState(() {
+                                  if (selected) {
+                                    _selectedMembers.add(member);
+                                  } else {
+                                    _selectedMembers.remove(member);
+                                  }
+                                });
+                              },
+                              backgroundColor: AppColors.surface,
+                              selectedColor: AppColors.primary,
+                              checkmarkColor: AppColors.white,
+                              showCheckmark: true,
+                              labelStyle: TextStyle(
+                                color: isSelected
+                                    ? AppColors.white
+                                    : AppColors.textSecondary,
+                                fontSize: 13.sp,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                              ),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.border,
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                            );
+                          }).toList(),
+                        ),
                       ),
                       SizedBox(height: 16.h),
 

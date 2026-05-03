@@ -44,6 +44,7 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
+          backgroundColor: AppColors.primary,
           title: const AppText(
             'Bill Splitter',
             fontSize: 20,
@@ -54,7 +55,7 @@ class HomeScreen extends StatelessWidget {
           actions: [
             IconButton(
               icon: const Icon(Icons.settings, color: AppColors.white),
-              onPressed: () => context.go(AppRouter.settings),
+              onPressed: () => context.push(AppRouter.settings),
             ),
           ],
         ),

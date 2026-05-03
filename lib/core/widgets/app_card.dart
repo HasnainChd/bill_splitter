@@ -24,11 +24,66 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final radius = borderRadius ?? 16.r;
+
+    // For highlighted cards, we need to use a custom painter or stack
+    // because borderRadius + non-uniform border colors don't work together
+    if (highlighted) {
+      return Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+        child: Stack(
+          children: [
+            // Gold left border
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(
+                width: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(radius),
+                    bottomLeft: Radius.circular(radius),
+                  ),
+                ),
+              ),
+            ),
+            // Subtle border around the card
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: AppColors.divider,
+                  width: 1,
+                ),
+                borderRadius: BorderRadius.circular(radius),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(radius),
+                  splashColor: AppColors.primary.withValues(alpha: 0.04),
+                  highlightColor: AppColors.primary.withValues(alpha: 0.04),
+                  child: Padding(
+                    padding: padding ?? EdgeInsets.all(16.w),
+                    child: child,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Normal card (not highlighted)
     return Container(
       decoration: BoxDecoration(
-        color: highlighted
-            ? AppColors.accentLight
-            : (gradient ? null : (color ?? AppColors.surface)),
+        color: gradient ? null : (color ?? AppColors.surface),
         gradient: gradient
             ? const LinearGradient(
                 colors: [AppColors.surface, AppColors.surfaceVariant],
@@ -36,17 +91,17 @@ class AppCard extends StatelessWidget {
                 end: Alignment.bottomRight,
               )
             : null,
-        borderRadius: BorderRadius.circular(borderRadius ?? 16.r),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(
-          color: highlighted ? AppColors.accent : AppColors.divider,
-          width: highlighted ? 3 : 1,
+          color: AppColors.divider,
+          width: 1,
         ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(borderRadius ?? 16.r),
+          borderRadius: BorderRadius.circular(radius),
           splashColor: AppColors.primary.withValues(alpha: 0.04),
           highlightColor: AppColors.primary.withValues(alpha: 0.04),
           child: Padding(

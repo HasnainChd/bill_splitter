@@ -298,35 +298,36 @@ class GroupDetailScreen extends StatelessWidget {
     final hasUnsettledBalances =
         _mockMembers.any((member) => (member['balance'] as double) != 0);
 
-    return Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
-            itemCount: _mockMembers.length,
-            itemBuilder: (context, index) {
-              final member = _mockMembers[index];
-              return Padding(
-                padding: EdgeInsets.only(bottom: 12.h),
-                child: BalanceRow(
-                  memberName: member['name'] as String,
-                  balance: member['balance'] as double,
-                ),
-              );
-            },
-          ),
-        ),
-        if (hasUnsettledBalances)
-          Padding(
-            padding: EdgeInsets.all(16.w),
+    return ListView.builder(
+      padding: EdgeInsets.only(
+        left: 16.w,
+        right: 16.w,
+        top: 16.h,
+        bottom: 100.h, // Space for FAB
+      ),
+      itemCount: _mockMembers.length + (hasUnsettledBalances ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index < _mockMembers.length) {
+          final member = _mockMembers[index];
+          return Padding(
+            padding: EdgeInsets.only(bottom: 12.h),
+            child: BalanceRow(
+              memberName: member['name'] as String,
+              balance: member['balance'] as double,
+            ),
+          );
+        } else {
+          // Settle Up button at the end
+          return Padding(
+            padding: EdgeInsets.only(top: 4.h),
             child: AppButton(
               label: 'Settle Up',
               onTap: () => context.push('/settleUp', extra: groupId),
               color: AppColors.primary,
             ),
-          ),
-        SizedBox(height: 80.h), // Space for FAB
-      ],
+          );
+        }
+      },
     );
   }
 }
