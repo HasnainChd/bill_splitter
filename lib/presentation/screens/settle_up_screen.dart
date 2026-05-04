@@ -69,18 +69,31 @@ class SettleUpScreen extends StatelessWidget {
               // Top summary card
               AppCard(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     AppText(
-                      'Minimum transactions to clear all debts',
-                      fontSize: 16,
+                      "Minimum transactions to clear all debts",
+                      fontSize: 13,
                       color: AppColors.textSecondary,
+                      align: TextAlign.center,
                     ),
                     SizedBox(height: 8.h),
-                    AppText(
-                      '${settlements.length} transactions needed',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.swap_horiz_rounded,
+                          color: AppColors.accent,
+                          size: 20.sp,
+                        ),
+                        SizedBox(width: 6.w),
+                        AppText(
+                          "${settlements.length} transactions needed",
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -121,10 +134,11 @@ class SettleUpScreen extends StatelessWidget {
               else
                 Column(
                   children: [
-                    const AppText(
-                      'Settlements',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                    AppText(
+                      "Settlements",
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
                     ),
                     SizedBox(height: 16.h),
                     ...settlements.map((settlement) {

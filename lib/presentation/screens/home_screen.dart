@@ -35,27 +35,42 @@ class HomeScreen extends StatelessWidget {
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
+          automaticallyImplyLeading: false,
+          elevation: 0,
+          backgroundColor: AppColors.primaryDark,
           flexibleSpace: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.primaryDark, AppColors.primary],
+                colors: [
+                  AppColors.primaryDark,
+                  AppColors.primaryMid,
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
           ),
-          backgroundColor: AppColors.primary,
-          title: const AppText(
-            'Bill Splitter',
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: AppColors.white,
+          title: Text(
+            "Bill Splitter",
+            style: TextStyle(
+              color: AppColors.white,
+              fontSize: 20.sp,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
           ),
-          elevation: 0,
+          centerTitle: true,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.settings, color: AppColors.white),
-              onPressed: () => context.push(AppRouter.settings),
+            Padding(
+              padding: EdgeInsets.only(right: 8.w),
+              child: IconButton(
+                icon: Icon(
+                  Icons.settings_outlined,
+                  color: AppColors.white,
+                  size: 22.sp,
+                ),
+                onPressed: () => context.push('/settings'),
+              ),
             ),
           ],
         ),

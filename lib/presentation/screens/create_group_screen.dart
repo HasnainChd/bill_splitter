@@ -148,28 +148,40 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                   spacing: 8.w,
                   runSpacing: 8.h,
                   children: _members.map((member) {
-                    return Chip(
-                      label: Text(
-                        member,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 13.sp,
+                    return Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                          width: 1,
                         ),
                       ),
-                      backgroundColor: AppColors.primaryLight,
-                      side: BorderSide(color: AppColors.primary, width: 1),
-                      deleteIcon: Icon(
-                        Icons.close,
-                        size: 16.sp,
-                        color: AppColors.textSecondary,
-                      ),
-                      onDeleted: () {
-                        setState(() {
-                          _members.remove(member);
-                        });
-                      },
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            member,
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(width: 6.w),
+                          GestureDetector(
+                            onTap: () => setState(() {
+                              _members.remove(member);
+                            }),
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 15.sp,
+                              color: AppColors.primaryAccent,
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   }).toList(),

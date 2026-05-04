@@ -6,7 +6,6 @@ import '../../core/models/group.dart';
 import '../../core/models/expense.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/app_button.dart';
 import '../../core/widgets/expense_tile.dart';
 import '../../core/widgets/balance_row.dart';
 
@@ -303,7 +302,7 @@ class GroupDetailScreen extends StatelessWidget {
         left: 16.w,
         right: 16.w,
         top: 16.h,
-        bottom: 100.h, // Space for FAB
+        bottom: 16.h,
       ),
       itemCount: _mockMembers.length + (hasUnsettledBalances ? 1 : 0),
       itemBuilder: (context, index) {
@@ -319,11 +318,38 @@ class GroupDetailScreen extends StatelessWidget {
         } else {
           // Settle Up button at the end
           return Padding(
-            padding: EdgeInsets.only(top: 4.h),
-            child: AppButton(
-              label: 'Settle Up',
-              onTap: () => context.push('/settleUp', extra: groupId),
-              color: AppColors.primary,
+            padding: EdgeInsets.only(
+              left: 0,
+              right: 0,
+              top: 16.h,
+              bottom: 90.h,
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 52.h,
+              child: ElevatedButton.icon(
+                onPressed: () => context.push('/settleUp', extra: groupId),
+                icon: Icon(
+                  Icons.handshake_outlined,
+                  size: 20.sp,
+                  color: AppColors.white,
+                ),
+                label: Text(
+                  "Settle Up",
+                  style: TextStyle(
+                    color: AppColors.white,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                ),
+              ),
             ),
           );
         }

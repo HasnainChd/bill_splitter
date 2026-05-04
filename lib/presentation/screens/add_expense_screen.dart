@@ -299,63 +299,67 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         fontWeight: FontWeight.w600,
                         color: AppColors.textSecondary,
                       ),
-                      SizedBox(height: 8.h),
-                      Theme(
-                        data: Theme.of(context).copyWith(
-                          chipTheme: ChipThemeData(
-                            backgroundColor: AppColors.surface,
-                            selectedColor: AppColors.primary,
-                            checkmarkColor: AppColors.white,
-                            side: BorderSide(color: AppColors.border),
-                            labelStyle: TextStyle(
-                              fontSize: 13.sp,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                        child: Wrap(
-                          spacing: 8.w,
-                          runSpacing: 8.h,
-                          children: widget.group.members.map((member) {
-                            final isSelected =
-                                _selectedMembers.contains(member);
-                            return FilterChip(
-                              label: Text(member),
-                              selected: isSelected,
-                              onSelected: (selected) {
-                                setState(() {
-                                  if (selected) {
-                                    _selectedMembers.add(member);
-                                  } else {
-                                    _selectedMembers.remove(member);
-                                  }
-                                });
-                              },
-                              backgroundColor: AppColors.surface,
-                              selectedColor: AppColors.primary,
-                              checkmarkColor: AppColors.white,
-                              showCheckmark: true,
-                              labelStyle: TextStyle(
-                                color: isSelected
-                                    ? AppColors.white
-                                    : AppColors.textSecondary,
-                                fontSize: 13.sp,
-                                fontWeight: isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
+                      SizedBox(height: 10.h),
+                      Wrap(
+                        spacing: 8.w,
+                        runSpacing: 8.h,
+                        children: widget.group.members.map((member) {
+                          final isSelected = _selectedMembers.contains(member);
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                if (isSelected) {
+                                  _selectedMembers.remove(member);
+                                } else {
+                                  _selectedMembers.add(member);
+                                }
+                              });
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 14.w,
+                                vertical: 8.h,
                               ),
-                              side: BorderSide(
+                              decoration: BoxDecoration(
                                 color: isSelected
                                     ? AppColors.primary
-                                    : AppColors.border,
-                                width: 1.5,
-                              ),
-                              shape: RoundedRectangleBorder(
+                                    : AppColors.white,
                                 borderRadius: BorderRadius.circular(8.r),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.border,
+                                  width: 1.5,
+                                ),
                               ),
-                            );
-                          }).toList(),
-                        ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isSelected) ...[
+                                    Icon(
+                                      Icons.check_rounded,
+                                      color: AppColors.white,
+                                      size: 13.sp,
+                                    ),
+                                    SizedBox(width: 5.w),
+                                  ],
+                                  Text(
+                                    member,
+                                    style: TextStyle(
+                                      color: isSelected
+                                          ? AppColors.white
+                                          : AppColors.textSecondary,
+                                      fontSize: 13.sp,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
                       SizedBox(height: 16.h),
 

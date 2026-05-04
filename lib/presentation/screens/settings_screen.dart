@@ -134,26 +134,28 @@ class SettingsScreen extends StatelessWidget {
                       color: AppColors.textOnAccent,
                     ),
                     SizedBox(height: 12.h),
-                    SizedBox(
+                    Container(
                       width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accentDark,
-                          foregroundColor: AppColors.textOnAccent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          padding: EdgeInsets.symmetric(vertical: 14.h),
-                          elevation: 0,
-                        ),
-                        child: Text(
-                          'Upgrade Now',
-                          style: TextStyle(
-                            color: AppColors.textOnAccent,
-                            fontSize: 15.sp,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.3,
+                      height: 48.h,
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {},
+                          borderRadius: BorderRadius.circular(12.r),
+                          child: Center(
+                            child: Text(
+                              "Upgrade Now",
+                              style: TextStyle(
+                                color: AppColors.accentDark,
+                                fontSize: 15.sp,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
                           ),
                         ),
                       ),
