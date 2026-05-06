@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/models/group.dart';
 import '../../core/models/expense.dart';
 import '../../presentation/screens/home_screen.dart';
 import '../../presentation/screens/create_group_screen.dart';
@@ -47,16 +46,41 @@ class AppRouter {
         path: addExpense,
         name: 'addExpense',
         builder: (context, state) {
-          // Accept Group object via extra parameter
-          final group = state.extra as Group;
-          return AddExpenseScreen(group: group);
+          // Get groupId from query parameter
+          final groupId = state.uri.queryParameters['groupId'];
+
+          if (groupId == null || groupId.isEmpty) {
+            // If no groupId provided, show error
+            return Scaffold(
+              appBar: AppBar(
+                title: const Text('Error'),
+              ),
+              body: const Center(
+                child: Text('Invalid navigation: Group ID not provided'),
+              ),
+            );
+          }
+
+          // We'll need to get the group from provider in the screen itself
+          return AddExpenseScreen(groupId: groupId);
         },
       ),
       GoRoute(
         path: expenseDetail,
         name: 'expenseDetail',
         builder: (context, state) {
-          final expense = state.extra as Expense;
+          final expense = state.extra as Expense?;
+          if (expense == null) {
+            // If no expense provided, redirect to home
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              context.go('/');
+            });
+            return const Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
           return ExpenseDetailScreen(expense: expense);
         },
       ),

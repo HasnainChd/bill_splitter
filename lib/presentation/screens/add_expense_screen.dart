@@ -1,48 +1,62 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/models/group.dart';
 import '../../core/models/expense.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../providers/expense_provider.dart';
+import '../../providers/group_provider.dart';
 
-class AddExpenseScreen extends StatefulWidget {
-  final Group group;
+class AddExpenseScreen extends ConsumerStatefulWidget {
+  final String groupId;
 
-  const AddExpenseScreen({super.key, required this.group});
+  const AddExpenseScreen({super.key, required this.groupId});
 
   @override
-  State<AddExpenseScreen> createState() => _AddExpenseScreenState();
+  ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
 }
 
-class _AddExpenseScreenState extends State<AddExpenseScreen> {
+class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   bool _isLoading = false;
   bool _equalSplit = true;
-  String _selectedPaidBy = '';
+  String? _selectedPaidBy;
   String _selectedCurrency = 'PKR';
   List<String> _selectedMembers = [];
   final Map<String, TextEditingController> _customAmountControllers = {};
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _selectedPaidBy = widget.group.members.first;
-    _selectedCurrency = widget.group.currency;
-    _selectedMembers = List.from(widget.group.members);
+    // Initialize after first frame to access ref
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final groupNotifier = ref.read(groupProvider.notifier);
+      final group = groupNotifier.getGroupById(widget.groupId);
 
-    // Initialize custom amount controllers
-    for (final member in widget.group.members) {
-      _customAmountControllers[member] = TextEditingController();
-    }
+      if (group != null && !_isInitialized) {
+        setState(() {
+          _selectedPaidBy = group.members.first;
+          _selectedCurrency = group.currency;
+          _selectedMembers = List.from(group.members);
+          _isInitialized = true;
+        });
+
+        // Initialize custom amount controllers
+        for (final member in group.members) {
+          _customAmountControllers[member] = TextEditingController();
+        }
+      }
+    });
   }
 
   @override
@@ -86,26 +100,26 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
 
     // Create expense object
-    // ignore: unused_local_variable
     final expense = Expense(
       expenseId: const Uuid().v4(),
       title: _titleController.text.trim(),
       amount: totalAmount,
       currency: _selectedCurrency,
-      paidBy: _selectedPaidBy,
+      paidBy: _selectedPaidBy!,
       splitAmong: splitAmong,
       date: DateTime.now(),
       notes: _notesController.text.trim().isEmpty
           ? null
           : _notesController.text.trim(),
-      groupId: widget.group.groupId,
+      groupId: widget.groupId,
       categoryIcon: Icons.receipt_outlined,
     );
 
-    // TODO: Save to provider - expensesProvider.addExpense(expense)
+    // Save to provider
+    ref.read(expenseProvider.notifier).addExpense(expense);
 
     // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(milliseconds: 500));
 
     setState(() {
       _isLoading = false;
@@ -119,6 +133,46 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final groupNotifier = ref.read(groupProvider.notifier);
+    final group = groupNotifier.getGroupById(widget.groupId);
+
+    if (group == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const AppText('Error', color: AppColors.white),
+        ),
+        body: const Center(
+          child: AppText('Group not found'),
+        ),
+      );
+    }
+
+    // Show loading until initialized
+    if (!_isInitialized) {
+      return Scaffold(
+        appBar: AppBar(
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primaryDark, AppColors.primary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          title: const AppText(
+            'Add Expense',
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textOnPrimary,
+          ),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
@@ -169,6 +223,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
                       // Amount and Currency row
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             flex: 2,
@@ -194,49 +249,62 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           ),
                           SizedBox(width: 8.w),
                           Expanded(
-                            flex: 1,
-                            child: DropdownButtonFormField<String>(
-                              value: _selectedCurrency,
-                              decoration: InputDecoration(
-                                labelText: 'Currency',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  borderSide:
-                                      BorderSide(color: AppColors.divider),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Currency',
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textSecondary,
+                                    letterSpacing: 0.4,
+                                  ),
                                 ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  borderSide:
-                                      BorderSide(color: AppColors.divider),
+                                SizedBox(height: 8.h),
+                                DropdownButtonFormField<String>(
+                                  value: _selectedCurrency,
+                                  decoration: InputDecoration(
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.r),
+                                      borderSide:
+                                          BorderSide(color: AppColors.divider),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.r),
+                                      borderSide:
+                                          BorderSide(color: AppColors.divider),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.r),
+                                      borderSide: BorderSide(
+                                          color: AppColors.primary, width: 2),
+                                    ),
+                                    filled: true,
+                                    fillColor: AppColors.surfaceVariant,
+                                    contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 16.w, vertical: 12.h),
+                                  ),
+                                  items: const [
+                                    'PKR',
+                                    'USD',
+                                    'EUR',
+                                    'GBP',
+                                    'AED',
+                                    'SAR'
+                                  ].map((currency) {
+                                    return DropdownMenuItem(
+                                      value: currency,
+                                      child: Text(currency),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedCurrency = value!;
+                                    });
+                                  },
                                 ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  borderSide: BorderSide(
-                                      color: AppColors.primary, width: 2),
-                                ),
-                                filled: true,
-                                fillColor: AppColors.surfaceVariant,
-                                contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 16.w, vertical: 12.h),
-                              ),
-                              items: const [
-                                'PKR',
-                                'USD',
-                                'EUR',
-                                'GBP',
-                                'AED',
-                                'SAR'
-                              ].map((currency) {
-                                return DropdownMenuItem(
-                                  value: currency,
-                                  child: Text(currency),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedCurrency = value!;
-                                });
-                              },
+                              ],
                             ),
                           ),
                         ],
@@ -278,7 +346,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           }
                           return null;
                         },
-                        items: widget.group.members.map((member) {
+                        items: group.members.map((member) {
                           return DropdownMenuItem(
                             value: member,
                             child: Text(member),
@@ -303,7 +371,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       Wrap(
                         spacing: 8.w,
                         runSpacing: 8.h,
-                        children: widget.group.members.map((member) {
+                        children: group.members.map((member) {
                           final isSelected = _selectedMembers.contains(member);
                           return GestureDetector(
                             onTap: () {

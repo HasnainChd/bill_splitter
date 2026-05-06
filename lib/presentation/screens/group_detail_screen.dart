@@ -1,130 +1,114 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/models/group.dart';
 import '../../core/models/expense.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/expense_tile.dart';
 import '../../core/widgets/balance_row.dart';
+import '../../providers/group_provider.dart';
+import '../../providers/expense_provider.dart';
+import 'package:intl/intl.dart';
 
-class GroupDetailScreen extends StatelessWidget {
+class GroupDetailScreen extends ConsumerWidget {
   final String groupId;
 
   const GroupDetailScreen({super.key, required this.groupId});
 
-  // Mock data for demonstration
-  final List<Map<String, dynamic>> _mockExpenses = const [
-    {
-      'name': 'Dinner at Restaurant',
-      'paidBy': 'John',
-      'amount': 45.50,
-      'date': 'Oct 28',
-      'category': Icons.restaurant,
-    },
-    {
-      'name': 'Movie Tickets',
-      'paidBy': 'Sarah',
-      'amount': 32.00,
-      'date': 'Oct 27',
-      'category': Icons.movie,
-    },
-    {
-      'name': 'Gas Station',
-      'paidBy': 'Mike',
-      'amount': 25.00,
-      'date': 'Oct 26',
-      'category': Icons.local_gas_station,
-    },
-  ];
-
-  final List<Map<String, dynamic>> _mockMembers = const [
-    {'name': 'John', 'balance': 125.50},
-    {'name': 'Sarah', 'balance': -45.75},
-    {'name': 'Mike', 'balance': -79.75},
-    {'name': 'You', 'balance': 0.00},
-  ];
-
-  // Move calculations outside build method to reduce main thread work
-  double get _totalExpenses => _mockExpenses.fold<double>(
-        0,
-        (sum, expense) => sum + expense['amount'],
-      );
-  double get _yourBalance => 0.00; // Mock balance
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groupNotifier = ref.read(groupProvider.notifier);
+    final group = groupNotifier.getGroupById(groupId);
+    final expenses = ref.watch(expensesForGroupProvider(groupId));
+    final balances = ref.watch(balancesForGroupProvider(groupId));
+
+    if (group == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const AppText('Group Not Found', color: AppColors.white),
+        ),
+        body: const Center(
+          child: AppText('Group not found'),
+        ),
+      );
+    }
+
+    final totalExpenses = expenses.fold<double>(
+      0,
+      (sum, expense) => sum + expense.amount,
+    );
+    final yourBalance = balances['You'] ?? 0.0;
+
     return DefaultTabController(
       length: 2,
-      child: SafeArea(
-        child: Scaffold(
-          appBar: AppBar(
-            flexibleSpace: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.primaryDark, AppColors.primary],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+      child: Scaffold(
+        appBar: AppBar(
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primaryDark, AppColors.primary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-            ),
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AppText(
-                  groupId,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textOnPrimary,
-                ),
-                AppText(
-                  '4 members',
-                  fontSize: 14,
-                  color: AppColors.textOnPrimary.withValues(alpha: 0.7),
-                ),
-              ],
-            ),
-            leading: IconButton(
-              icon:
-                  const Icon(Icons.arrow_back, color: AppColors.textOnPrimary),
-              onPressed: () => context.go('/'),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.person_add,
-                    color: AppColors.textOnPrimary),
-                onPressed: () {
-                  // Add member functionality
-                },
-              ),
-              PopupMenuButton<String>(
-                icon:
-                    const Icon(Icons.more_vert, color: AppColors.textOnPrimary),
-                onSelected: (value) {
-                  if (value == 'delete') {
-                    // Delete group functionality
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Delete Group'),
-                  ),
-                ],
-              ),
-            ],
-            bottom: TabBar(
-              tabs: const [
-                Tab(text: 'Expenses'),
-                Tab(text: 'Balances'),
-              ],
-              labelColor: AppColors.accent,
-              unselectedLabelColor: AppColors.white.withValues(alpha: 0.6),
-              indicatorColor: AppColors.accent,
             ),
           ),
-          body: Column(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppText(
+                group.name,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textOnPrimary,
+              ),
+              AppText(
+                '${group.members.length} members',
+                fontSize: 14,
+                color: AppColors.textOnPrimary.withValues(alpha: 0.7),
+              ),
+            ],
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.textOnPrimary),
+            onPressed: () => context.go('/'),
+          ),
+          actions: [
+            IconButton(
+              icon:
+                  const Icon(Icons.person_add, color: AppColors.textOnPrimary),
+              onPressed: () {
+                // Add member functionality
+              },
+            ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: AppColors.textOnPrimary),
+              onSelected: (value) {
+                if (value == 'delete') {
+                  // Delete group functionality
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Text('Delete Group'),
+                ),
+              ],
+            ),
+          ],
+          bottom: TabBar(
+            tabs: const [
+              Tab(text: 'Expenses'),
+              Tab(text: 'Balances'),
+            ],
+            labelColor: AppColors.accent,
+            unselectedLabelColor: AppColors.white.withValues(alpha: 0.6),
+            indicatorColor: AppColors.accent,
+          ),
+        ),
+        body: SafeArea(
+          child: Column(
             children: [
               // Summary Card
               Padding(
@@ -155,7 +139,7 @@ class GroupDetailScreen extends StatelessWidget {
                               ),
                               SizedBox(height: 4.h),
                               AppText(
-                                '\$${_totalExpenses.toStringAsFixed(2)}',
+                                '\$${totalExpenses.toStringAsFixed(2)}',
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.white,
@@ -180,7 +164,7 @@ class GroupDetailScreen extends StatelessWidget {
                               ),
                               SizedBox(height: 4.h),
                               AppText(
-                                '\$${_yourBalance.abs().toStringAsFixed(2)}',
+                                '\$${yourBalance.abs().toStringAsFixed(2)}',
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.accent,
@@ -197,35 +181,28 @@ class GroupDetailScreen extends StatelessWidget {
               Expanded(
                 child: TabBarView(
                   children: [
-                    _buildExpensesTab(context),
-                    _buildBalancesTab(context),
+                    _buildExpensesTab(context, expenses, group.name),
+                    _buildBalancesTab(context, balances),
                   ],
                 ),
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () {
-              // Create Group object from groupId for navigation
-              final group = Group(
-                groupId: groupId,
-                name: groupId, // Using groupId as name for now
-                members: const ['You', 'John', 'Sarah', 'Mike'],
-                currency: 'USD',
-                createdAt: DateTime.now(),
-              );
-              context.push('/addExpense', extra: group);
-            },
-            backgroundColor: AppColors.accent,
-            child: const Icon(Icons.add, color: AppColors.textOnAccent),
-          ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            context.push('/addExpense?groupId=${group.groupId}');
+          },
+          backgroundColor: AppColors.accent,
+          child: const Icon(Icons.add, color: AppColors.textOnAccent),
         ),
       ),
     );
   }
 
-  Widget _buildExpensesTab(BuildContext context) {
-    if (_mockExpenses.isEmpty) {
+  Widget _buildExpensesTab(
+      BuildContext context, List<Expense> expenses, String groupName) {
+    if (expenses.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -254,38 +231,22 @@ class GroupDetailScreen extends StatelessWidget {
 
     return ListView.builder(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
-      itemCount: _mockExpenses.length,
+      itemCount: expenses.length,
       itemBuilder: (context, index) {
-        final expense = _mockExpenses[index];
+        final expense = expenses[index];
+        final dateStr = DateFormat('MMM dd').format(expense.date);
+
         return Padding(
           padding: EdgeInsets.only(bottom: 12.h),
           child: ExpenseTile(
-            key: ValueKey('expense_$index'),
-            expenseName: expense['name'] as String,
-            paidByName: expense['paidBy'] as String,
-            amount: expense['amount'] as double,
-            date: expense['date'] as String,
-            categoryIcon: expense['category'] as IconData,
+            key: ValueKey(expense.expenseId),
+            expenseName: expense.title,
+            paidByName: expense.paidBy,
+            amount: expense.amount,
+            date: dateStr,
+            categoryIcon: expense.categoryIcon,
             onTap: () {
-              // Create proper Expense object from mock data
-              final expenseObj = Expense(
-                expenseId: 'expense_$index',
-                title: expense['name'] as String,
-                amount: expense['amount'] as double,
-                currency: 'USD',
-                paidBy: expense['paidBy'] as String,
-                splitAmong: {
-                  'You': (expense['amount'] as double) / 4,
-                  'John': (expense['amount'] as double) / 4,
-                  'Sarah': (expense['amount'] as double) / 4,
-                  'Mike': (expense['amount'] as double) / 4,
-                },
-                date: DateTime.now(),
-                notes: null,
-                groupId: groupId,
-                categoryIcon: expense['category'] as IconData,
-              );
-              context.push('/expenseDetail', extra: expenseObj);
+              context.push('/expenseDetail', extra: expense);
             },
           ),
         );
@@ -293,9 +254,11 @@ class GroupDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBalancesTab(BuildContext context) {
+  Widget _buildBalancesTab(BuildContext context, Map<String, double> balances) {
     final hasUnsettledBalances =
-        _mockMembers.any((member) => (member['balance'] as double) != 0);
+        balances.values.any((balance) => balance.abs() > 0.01);
+
+    final balanceEntries = balances.entries.toList();
 
     return ListView.builder(
       padding: EdgeInsets.only(
@@ -304,15 +267,15 @@ class GroupDetailScreen extends StatelessWidget {
         top: 16.h,
         bottom: 16.h,
       ),
-      itemCount: _mockMembers.length + (hasUnsettledBalances ? 1 : 0),
+      itemCount: balanceEntries.length + (hasUnsettledBalances ? 1 : 0),
       itemBuilder: (context, index) {
-        if (index < _mockMembers.length) {
-          final member = _mockMembers[index];
+        if (index < balanceEntries.length) {
+          final entry = balanceEntries[index];
           return Padding(
             padding: EdgeInsets.only(bottom: 12.h),
             child: BalanceRow(
-              memberName: member['name'] as String,
-              balance: member['balance'] as double,
+              memberName: entry.key,
+              balance: entry.value,
             ),
           );
         } else {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
@@ -8,23 +9,42 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/settlement_card.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../providers/group_provider.dart';
+import '../../providers/expense_provider.dart';
 
-class SettleUpScreen extends StatelessWidget {
+class SettleUpScreen extends ConsumerWidget {
   final String groupId;
 
-  SettleUpScreen({super.key, required this.groupId});
-
-  // Mock data for demonstration
-  final List<Member> _mockMembers = [
-    Member(name: 'John', totalPaid: 200.0, totalShare: 100.0), // +100
-    Member(name: 'Sarah', totalPaid: 50.0, totalShare: 100.0), // -50
-    Member(name: 'Mike', totalPaid: 25.0, totalShare: 100.0), // -75
-    Member(name: 'You', totalPaid: 125.0, totalShare: 100.0), // +25
-  ];
+  const SettleUpScreen({super.key, required this.groupId});
 
   @override
-  Widget build(BuildContext context) {
-    final settlements = DebtCalculator.calculate(_mockMembers);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groupNotifier = ref.read(groupProvider.notifier);
+    final group = groupNotifier.getGroupById(groupId);
+    final balances = ref.watch(balancesForGroupProvider(groupId));
+
+    if (group == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const AppText('Group Not Found', color: AppColors.white),
+        ),
+        body: const Center(
+          child: AppText('Group not found'),
+        ),
+      );
+    }
+
+    // Convert balances to Member list for debt calculator
+    final members = balances.entries.map((entry) {
+      final balance = entry.value;
+      return Member(
+        name: entry.key,
+        totalPaid: balance > 0 ? balance : 0,
+        totalShare: balance < 0 ? balance.abs() : 0,
+      );
+    }).toList();
+
+    final settlements = DebtCalculator.calculate(members);
     final allSettled = settlements.every((s) => s.isPaid);
     final paidSettlements = settlements.where((s) => s.isPaid).toList();
 
@@ -50,7 +70,7 @@ class SettleUpScreen extends StatelessWidget {
                 color: AppColors.textOnPrimary,
               ),
               AppText(
-                groupId,
+                group.name,
                 fontSize: 14,
                 color: AppColors.textOnPrimary.withValues(alpha: 0.7),
               ),
@@ -150,7 +170,7 @@ class SettleUpScreen extends StatelessWidget {
                           amount: settlement.amount,
                           isPaid: settlement.isPaid,
                           onMarkAsPaid: () {
-                            // TODO: Update settlement isPaid = true in provider
+                            // TODo: Update settlement isPaid = true in provider
                             AppSnackBar.showSuccess(
                                 context, 'Payment recorded');
                           },

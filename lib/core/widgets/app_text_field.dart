@@ -74,16 +74,6 @@ class AppTextField extends StatelessWidget {
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w500,
             ),
-            prefixIcon: prefixIcon != null
-                ? Container(
-                    padding: EdgeInsets.all(12.w),
-                    child: Icon(
-                      prefixIcon,
-                      color: AppColors.primaryAccent,
-                      size: 20.sp,
-                    ),
-                  )
-                : null,
             floatingLabelBehavior: FloatingLabelBehavior.always,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.r),

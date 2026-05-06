@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/router/app_router.dart';
@@ -7,15 +8,16 @@ import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../providers/group_provider.dart';
 
-class CreateGroupScreen extends StatefulWidget {
+class CreateGroupScreen extends ConsumerStatefulWidget {
   const CreateGroupScreen({super.key});
 
   @override
-  State<CreateGroupScreen> createState() => _CreateGroupScreenState();
+  ConsumerState<CreateGroupScreen> createState() => _CreateGroupScreenState();
 }
 
-class _CreateGroupScreenState extends State<CreateGroupScreen> {
+class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   final TextEditingController _groupNameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _memberController = TextEditingController();
@@ -55,8 +57,15 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       _isLoading = true;
     });
 
+    // Add group to provider
+    ref.read(groupProvider.notifier).addGroup(
+          name: _groupNameController.text.trim(),
+          members: _members,
+          currency: 'PKR',
+        );
+
     // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(milliseconds: 500));
 
     setState(() {
       _isLoading = false;
