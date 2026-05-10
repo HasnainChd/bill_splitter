@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../core/models/expense.dart';
 
 // Expense State
@@ -40,13 +41,40 @@ class ExpenseState {
 
 // Expense Notifier
 class ExpenseNotifier extends StateNotifier<ExpenseState> {
-  ExpenseNotifier() : super(const ExpenseState(expenses: []));
+  ExpenseNotifier() : super(const ExpenseState(expenses: [])) {
+    _loadExpenses();
+  }
+
+  // Load expenses from Hive
+  Future<void> _loadExpenses() async {
+    try {
+      final box = await Hive.openBox<Expense>('expenses');
+      final expenses = box.values.toList();
+      state = state.copyWith(expenses: expenses);
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to load expenses: $e');
+    }
+  }
+
+  // Save expenses to Hive
+  Future<void> _saveExpenses() async {
+    try {
+      final box = await Hive.openBox<Expense>('expenses');
+      await box.clear();
+      for (final expense in state.expenses) {
+        await box.put(expense.expenseId, expense);
+      }
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to save expenses: $e');
+    }
+  }
 
   // Add a new expense
-  void addExpense(Expense expense) {
+  Future<void> addExpense(Expense expense) async {
     state = state.copyWith(
       expenses: [...state.expenses, expense],
     );
+    await _saveExpenses();
   }
 
   // Get expenses for a specific group
@@ -57,7 +85,7 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
   }
 
   // Update an expense
-  void updateExpense(Expense updatedExpense) {
+  Future<void> updateExpense(Expense updatedExpense) async {
     final updatedExpenses = state.expenses.map((expense) {
       return expense.expenseId == updatedExpense.expenseId
           ? updatedExpense
@@ -65,14 +93,16 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
     }).toList();
 
     state = state.copyWith(expenses: updatedExpenses);
+    await _saveExpenses();
   }
 
   // Delete an expense
-  void deleteExpense(String expenseId) {
+  Future<void> deleteExpense(String expenseId) async {
     final updatedExpenses = state.expenses
         .where((expense) => expense.expenseId != expenseId)
         .toList();
     state = state.copyWith(expenses: updatedExpenses);
+    await _saveExpenses();
   }
 
   // Calculate per-person balances for a group

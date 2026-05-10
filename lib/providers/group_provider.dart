@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../core/models/group.dart';
 import 'expense_provider.dart';
 
@@ -42,14 +43,40 @@ class GroupState {
 
 // Group Notifier
 class GroupNotifier extends StateNotifier<GroupState> {
-  GroupNotifier() : super(const GroupState(groups: [], isLoading: false));
+  GroupNotifier() : super(const GroupState(groups: [], isLoading: false)) {
+    _loadGroups();
+  }
+
+  // Load groups from Hive
+  Future<void> _loadGroups() async {
+    try {
+      final box = await Hive.openBox<Group>('groups');
+      final groups = box.values.toList();
+      state = state.copyWith(groups: groups);
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to load groups: $e');
+    }
+  }
+
+  // Save groups to Hive
+  Future<void> _saveGroups() async {
+    try {
+      final box = await Hive.openBox<Group>('groups');
+      await box.clear();
+      for (final group in state.groups) {
+        await box.put(group.groupId, group);
+      }
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to save groups: $e');
+    }
+  }
 
   // Add a new group
-  void addGroup({
+  Future<void> addGroup({
     required String name,
     required List<String> members,
     String currency = 'PKR',
-  }) {
+  }) async {
     final newGroup = Group(
       groupId: const Uuid().v4(),
       name: name,
@@ -61,6 +88,8 @@ class GroupNotifier extends StateNotifier<GroupState> {
     state = state.copyWith(
       groups: [...state.groups, newGroup],
     );
+
+    await _saveGroups();
   }
 
   // Get a single group by ID
@@ -73,19 +102,21 @@ class GroupNotifier extends StateNotifier<GroupState> {
   }
 
   // Update a group
-  void updateGroup(Group updatedGroup) {
+  Future<void> updateGroup(Group updatedGroup) async {
     final updatedGroups = state.groups.map((group) {
       return group.groupId == updatedGroup.groupId ? updatedGroup : group;
     }).toList();
 
     state = state.copyWith(groups: updatedGroups);
+    await _saveGroups();
   }
 
   // Delete a group
-  void deleteGroup(String groupId) {
+  Future<void> deleteGroup(String groupId) async {
     final updatedGroups =
         state.groups.where((group) => group.groupId != groupId).toList();
     state = state.copyWith(groups: updatedGroups);
+    await _saveGroups();
   }
 }
 
