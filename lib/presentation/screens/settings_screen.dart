@@ -6,37 +6,38 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_avatar.dart';
+import '../../core/widgets/app_button.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return SafeArea(
-      child: Scaffold(
-        appBar: AppBar(
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primaryDark, AppColors.primary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+    return Scaffold(
+      appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primaryMid, AppColors.primaryAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
-          title: const AppText(
-            'Settings',
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: AppColors.white,
-          ),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.white),
-            onPressed: () => context.pop(),
-          ),
-          backgroundColor: AppColors.primary,
         ),
-        body: ListView(
+        title: const AppText(
+          'Settings',
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: AppColors.white,
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.white),
+          onPressed: () => context.pop(),
+        ),
+        backgroundColor: AppColors.primary,
+      ),
+      body: SafeArea(
+        child: ListView(
           padding: EdgeInsets.all(16.w),
           children: [
             // Profile Card
@@ -70,26 +71,12 @@ class SettingsScreen extends ConsumerWidget {
                     color: AppColors.white,
                   ),
                   SizedBox(height: 16.h),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: AppColors.white, width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                      ),
-                      child: Text(
-                        'Edit Profile',
-                        style: TextStyle(
-                          color: AppColors.white,
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
+                  AppButton(
+                    label: 'Edit Profile',
+                    onTap: () {},
+                    isOutlined: true,
+                    color: AppColors.white,
+                    textColor: AppColors.white,
                   ),
                 ],
               ),

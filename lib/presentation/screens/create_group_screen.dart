@@ -79,30 +79,30 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        appBar: AppBar(
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primaryDark, AppColors.primary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+    return Scaffold(
+      appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primaryMid, AppColors.primaryAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
-          title: const AppText(
-            'Create Group',
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: AppColors.white,
-          ),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.white),
-            onPressed: () => context.go(AppRouter.home),
-          ),
         ),
-        body: SingleChildScrollView(
+        title: const AppText(
+          'Create Group',
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: AppColors.white,
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.white),
+          onPressed: () => context.go(AppRouter.home),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
           padding: EdgeInsets.all(16.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

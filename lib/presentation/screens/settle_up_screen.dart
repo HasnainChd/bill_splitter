@@ -48,40 +48,40 @@ class SettleUpScreen extends ConsumerWidget {
     final allSettled = settlements.every((s) => s.isPaid);
     final paidSettlements = settlements.where((s) => s.isPaid).toList();
 
-    return SafeArea(
-      child: Scaffold(
-        appBar: AppBar(
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primaryDark, AppColors.primary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+    return Scaffold(
+      appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primaryMid, AppColors.primaryAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const AppText(
-                'Settle Up',
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textOnPrimary,
-              ),
-              AppText(
-                group.name,
-                fontSize: 14,
-                color: AppColors.textOnPrimary.withValues(alpha: 0.7),
-              ),
-            ],
-          ),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.textOnPrimary),
-            onPressed: () => context.go('/'),
-          ),
         ),
-        body: SingleChildScrollView(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const AppText(
+              'Settle Up',
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textOnPrimary,
+            ),
+            AppText(
+              group.name,
+              fontSize: 14,
+              color: AppColors.textOnPrimary.withValues(alpha: 0.7),
+            ),
+          ],
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textOnPrimary),
+          onPressed: () => context.go('/'),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
           padding: EdgeInsets.all(16.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

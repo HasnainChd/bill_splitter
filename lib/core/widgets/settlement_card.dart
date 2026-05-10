@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../constants/app_colors.dart';
 import 'app_text.dart';
 import 'app_avatar.dart';
+import 'app_button.dart';
 
 class SettlementCard extends StatelessWidget {
   final String fromMember;
@@ -124,30 +125,12 @@ class SettlementCard extends StatelessWidget {
               ],
             )
           else
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: onMarkAsPaid,
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(
-                    color: AppColors.success,
-                    width: 1.5,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                  padding: EdgeInsets.symmetric(vertical: 12.h),
-                  foregroundColor: AppColors.success,
-                ),
-                child: Text(
-                  "Mark as Paid",
-                  style: TextStyle(
-                    color: AppColors.success,
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+            AppButton(
+              label: 'Mark as Paid',
+              onTap: onMarkAsPaid,
+              isOutlined: true,
+              color: AppColors.success,
+              textColor: AppColors.success,
             ),
         ],
       ),

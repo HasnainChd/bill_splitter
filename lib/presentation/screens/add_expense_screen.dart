@@ -100,7 +100,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     }
 
     // Create expense object
-    final expense = Expense(
+    final expense = Expense.withIcon(
       expenseId: const Uuid().v4(),
       title: _titleController.text.trim(),
       amount: totalAmount,
@@ -173,30 +173,30 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       );
     }
 
-    return SafeArea(
-      child: Scaffold(
-        appBar: AppBar(
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primaryDark, AppColors.primary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+    return Scaffold(
+      appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primaryMid, AppColors.primaryAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
-          title: const AppText(
-            'Add Expense',
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textOnPrimary,
-          ),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.textOnPrimary),
-            onPressed: () => context.pop(),
-          ),
         ),
-        body: Form(
+        title: const AppText(
+          'Add Expense',
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textOnPrimary,
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textOnPrimary),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: SafeArea(
+        child: Form(
           key: _formKey,
           child: Column(
             children: [

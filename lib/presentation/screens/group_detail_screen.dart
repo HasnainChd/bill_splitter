@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/models/expense.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_button.dart';
 import '../../core/widgets/expense_tile.dart';
 import '../../core/widgets/balance_row.dart';
 import '../../providers/group_provider.dart';
@@ -287,32 +288,11 @@ class GroupDetailScreen extends ConsumerWidget {
               top: 16.h,
               bottom: 90.h,
             ),
-            child: SizedBox(
-              width: double.infinity,
-              height: 52.h,
-              child: ElevatedButton.icon(
-                onPressed: () => context.push('/settleUp', extra: groupId),
-                icon: Icon(
-                  Icons.handshake_outlined,
-                  size: 20.sp,
-                  color: AppColors.white,
-                ),
-                label: Text(
-                  "Settle Up",
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14.r),
-                  ),
-                ),
-              ),
+            child: AppButton(
+              label: 'Settle Up',
+              icon: Icons.handshake_outlined,
+              onTap: () => context.push('/settleUp', extra: groupId),
+              color: AppColors.success,
             ),
           );
         }
