@@ -71,10 +71,17 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
 
   // Add a new expense
   Future<void> addExpense(Expense expense) async {
+    print('💰 Adding expense: ${expense.title} (\$${expense.amount})');
+    print('👤 Paid by: ${expense.paidBy}');
+    print('👥 Split among: ${expense.splitAmong.keys.join(', ')}');
+
     state = state.copyWith(
       expenses: [...state.expenses, expense],
     );
     await _saveExpenses();
+
+    print(
+        '✅ Expense added successfully. Total expenses: ${state.expenses.length}');
   }
 
   // Get expenses for a specific group

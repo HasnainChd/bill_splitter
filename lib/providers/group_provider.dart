@@ -77,6 +77,10 @@ class GroupNotifier extends StateNotifier<GroupState> {
     required List<String> members,
     String currency = 'PKR',
   }) async {
+    print('👥 Adding group: $name');
+    print('👨‍👩‍👧‍👦 Members: ${members.join(', ')}');
+    print('💵 Currency: $currency');
+
     final newGroup = Group(
       groupId: const Uuid().v4(),
       name: name,
@@ -90,6 +94,8 @@ class GroupNotifier extends StateNotifier<GroupState> {
     );
 
     await _saveGroups();
+
+    print('✅ Group added successfully. Total groups: ${state.groups.length}');
   }
 
   // Get a single group by ID

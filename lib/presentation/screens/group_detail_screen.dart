@@ -20,10 +20,17 @@ class GroupDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    print('🔍 GroupDetailScreen: Building for groupId: $groupId');
+
     final groupNotifier = ref.read(groupProvider.notifier);
     final group = groupNotifier.getGroupById(groupId);
+    print('📊 Group found: ${group?.name ?? "NULL"}');
+
     final expenses = ref.watch(expensesForGroupProvider(groupId));
+    print('💰 Expenses count: ${expenses.length}');
+
     final balances = ref.watch(balancesForGroupProvider(groupId));
+    print('⚖️ Balances: $balances');
 
     if (group == null) {
       return Scaffold(
@@ -40,7 +47,10 @@ class GroupDetailScreen extends ConsumerWidget {
       0,
       (sum, expense) => sum + expense.amount,
     );
+    print('📈 Total Expenses: \$$totalExpenses');
+
     final yourBalance = balances['You'] ?? 0.0;
+    print('👤 Your Balance: \$$yourBalance');
 
     return DefaultTabController(
       length: 2,
@@ -192,10 +202,12 @@ class GroupDetailScreen extends ConsumerWidget {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
-            context.push('/addExpense?groupId=${group.groupId}');
+            print('➕ FAB tapped: Adding expense to group ${group.name}');
+            print('📦 Passing group object: ${group.groupId}');
+            context.push('/addExpense', extra: group);
           },
-          backgroundColor: AppColors.accent,
-          child: const Icon(Icons.add, color: AppColors.textOnAccent),
+          backgroundColor: AppColors.primary,
+          child: const Icon(Icons.add, color: AppColors.textOnPrimary),
         ),
       ),
     );
@@ -203,7 +215,11 @@ class GroupDetailScreen extends ConsumerWidget {
 
   Widget _buildExpensesTab(
       BuildContext context, List<Expense> expenses, String groupName) {
+    print('📋 Building expenses tab for group: $groupName');
+    print('📊 Expenses to display: ${expenses.length}');
+
     if (expenses.isEmpty) {
+      print('📭 No expenses found - showing empty state');
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -237,6 +253,9 @@ class GroupDetailScreen extends ConsumerWidget {
         final expense = expenses[index];
         final dateStr = DateFormat('MMM dd').format(expense.date);
 
+        print(
+            '📝 Building expense tile: ${expense.title} (\$${expense.amount})');
+
         return Padding(
           padding: EdgeInsets.only(bottom: 12.h),
           child: ExpenseTile(
@@ -247,6 +266,8 @@ class GroupDetailScreen extends ConsumerWidget {
             date: dateStr,
             categoryIcon: expense.categoryIcon,
             onTap: () {
+              print('👆 Expense tapped: ${expense.title}');
+              print('🔗 Navigating to expense detail');
               context.push('/expenseDetail', extra: expense);
             },
           ),
@@ -256,8 +277,12 @@ class GroupDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildBalancesTab(BuildContext context, Map<String, double> balances) {
+    print('⚖️ Building balances tab');
+    print('💵 Balance entries: ${balances.entries.length}');
+
     final hasUnsettledBalances =
         balances.values.any((balance) => balance.abs() > 0.01);
+    print('🔄 Has unsettled balances: $hasUnsettledBalances');
 
     final balanceEntries = balances.entries.toList();
 

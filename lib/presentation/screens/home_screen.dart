@@ -101,8 +101,44 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  Map<String, double> _calculateBalanceSummary(
+      List<Group> groups, WidgetRef ref) {
+    double totalOwed = 0.0; // You owe others (negative)
+    double totalToReceive = 0.0; // Others owe you (positive)
+
+    print('🏠 HomeScreen: Calculating balance for ${groups.length} groups');
+
+    for (final group in groups) {
+      final balance = ref.watch(groupBalanceProvider(group.groupId));
+      print('🏠 HomeScreen: Group ${group.name} balance: $balance');
+
+      if (balance < 0) {
+        totalOwed += balance.abs();
+        print(
+            '🏠 HomeScreen: Added ${balance.abs()} to totalOwed (now $totalOwed)');
+      } else {
+        totalToReceive += balance;
+        print(
+            '🏠 HomeScreen: Added $balance to totalToReceive (now $totalToReceive)');
+      }
+    }
+
+    final result = {
+      'totalOwed': totalOwed,
+      'totalToReceive': totalToReceive,
+    };
+
+    print(
+        '🏠 HomeScreen: Final calculation - Owed: $totalOwed, To Receive: $totalToReceive');
+    return result;
+  }
+
   Widget _buildGroupList(
       BuildContext context, List<Group> groups, WidgetRef ref) {
+    final balanceSummary = _calculateBalanceSummary(groups, ref);
+    final totalOwed = balanceSummary['totalOwed'] ?? 0.0;
+    final totalToReceive = balanceSummary['totalToReceive'] ?? 0.0;
+
     return Padding(
       padding: EdgeInsets.all(16.w),
       child: Column(
@@ -113,6 +149,68 @@ class HomeScreen extends ConsumerWidget {
             fontSize: 24,
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
+          ),
+          SizedBox(height: 16.h),
+
+          // Overall Balance Summary
+          Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const AppText(
+                        'You Owe',
+                        fontSize: 14,
+                        color: AppColors.white,
+                      ),
+                      SizedBox(height: 4.h),
+                      AppText(
+                        '\$${totalOwed.toStringAsFixed(2)}',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.white,
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 40.h,
+                  color: AppColors.white.withOpacity(0.3),
+                  margin: EdgeInsets.symmetric(horizontal: 16.w),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const AppText(
+                        'You\'re Owed',
+                        fontSize: 14,
+                        color: AppColors.white,
+                      ),
+                      SizedBox(height: 4.h),
+                      AppText(
+                        '\$${totalToReceive.toStringAsFixed(2)}',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.white,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
           SizedBox(height: 16.h),
           Expanded(

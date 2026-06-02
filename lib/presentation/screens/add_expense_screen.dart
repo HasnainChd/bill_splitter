@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/models/group.dart';
 import '../../core/models/expense.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_text_field.dart';
@@ -11,12 +12,11 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../providers/expense_provider.dart';
-import '../../providers/group_provider.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
-  final String groupId;
+  final Group group;
 
-  const AddExpenseScreen({super.key, required this.groupId});
+  const AddExpenseScreen({super.key, required this.group});
 
   @override
   ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -40,19 +40,19 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     super.initState();
     // Initialize after first frame to access ref
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final groupNotifier = ref.read(groupProvider.notifier);
-      final group = groupNotifier.getGroupById(widget.groupId);
+      print('🔧 AddExpenseScreen: Initializing for group ${widget.group.name}');
 
-      if (group != null && !_isInitialized) {
+      if (!_isInitialized) {
         setState(() {
-          _selectedPaidBy = group.members.first;
-          _selectedCurrency = group.currency;
-          _selectedMembers = List.from(group.members);
+          _selectedPaidBy = widget.group.members.first;
+          _selectedCurrency = widget.group.currency;
+          _selectedMembers = List.from(widget.group.members);
           _isInitialized = true;
         });
+        print('✅ Initialized with ${widget.group.members.length} members');
 
         // Initialize custom amount controllers
-        for (final member in group.members) {
+        for (final member in widget.group.members) {
           _customAmountControllers[member] = TextEditingController();
         }
       }
@@ -71,14 +71,14 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   }
 
   Future<void> _saveExpense() async {
-    if (!_formKey.currentState!.validate()) return;
+    print(' Save expense button tapped');
 
-    if (_selectedMembers.isEmpty) {
-      AppSnackBar.showError(
-          context, 'Please select at least one member to split with');
+    if (!_formKey.currentState!.validate()) {
+      print(' Form validation failed');
       return;
     }
 
+    print(' Form validation passed');
     setState(() {
       _isLoading = true;
     });
@@ -111,7 +111,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       notes: _notesController.text.trim().isEmpty
           ? null
           : _notesController.text.trim(),
-      groupId: widget.groupId,
+      groupId: widget.group.groupId,
       categoryIcon: Icons.receipt_outlined,
     );
 
@@ -133,19 +133,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final groupNotifier = ref.read(groupProvider.notifier);
-    final group = groupNotifier.getGroupById(widget.groupId);
-
-    if (group == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const AppText('Error', color: AppColors.white),
-        ),
-        body: const Center(
-          child: AppText('Group not found'),
-        ),
-      );
-    }
+    print('🏗️ AddExpenseScreen: Building for group ${widget.group.name}');
 
     // Show loading until initialized
     if (!_isInitialized) {
@@ -346,7 +334,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                           }
                           return null;
                         },
-                        items: group.members.map((member) {
+                        items: widget.group.members.map((member) {
                           return DropdownMenuItem(
                             value: member,
                             child: Text(member),
@@ -371,7 +359,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       Wrap(
                         spacing: 8.w,
                         runSpacing: 8.h,
-                        children: group.members.map((member) {
+                        children: widget.group.members.map((member) {
                           final isSelected = _selectedMembers.contains(member);
                           return GestureDetector(
                             onTap: () {
