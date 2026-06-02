@@ -56,6 +56,12 @@ dependencies:
   
   # Responsive Design
   flutter_screenutil: ^5.9.3
+  
+  # Firebase
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  firebase_analytics: ^11.3.3
 
 dev_dependencies:
   flutter_test:

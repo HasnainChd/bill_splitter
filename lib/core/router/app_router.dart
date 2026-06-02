@@ -1,5 +1,8 @@
+// ignore_for_file: avoid_print
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/models/group.dart';
 import '../../core/models/expense.dart';
 import '../../presentation/screens/home_screen.dart';
 import '../../presentation/screens/create_group_screen.dart';
@@ -46,23 +49,26 @@ class AppRouter {
         path: addExpense,
         name: 'addExpense',
         builder: (context, state) {
-          // Get groupId from query parameter
-          final groupId = state.uri.queryParameters['groupId'];
+          print(' Router: Building AddExpenseScreen');
+          print(' Router: state.extra type: ${state.extra.runtimeType}');
 
-          if (groupId == null || groupId.isEmpty) {
-            // If no groupId provided, show error
+          // Accept Group object via extra parameter
+          if (state.extra == null) {
+            print(' Router: No group object provided');
             return Scaffold(
               appBar: AppBar(
                 title: const Text('Error'),
               ),
               body: const Center(
-                child: Text('Invalid navigation: Group ID not provided'),
+                child: Text('Invalid navigation: Group object not provided'),
               ),
             );
           }
 
-          // We'll need to get the group from provider in the screen itself
-          return AddExpenseScreen(groupId: groupId);
+          final group = state.extra as Group;
+          print('👥 Router: Group received: ${group.name} (${group.groupId})');
+
+          return AddExpenseScreen(group: group);
         },
       ),
       GoRoute(
