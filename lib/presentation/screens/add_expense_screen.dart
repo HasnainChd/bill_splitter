@@ -2,16 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:uuid/uuid.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/group.dart';
-import '../../core/models/expense.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/utils/app_snackbar.dart';
-import '../../providers/expense_provider.dart';
+import '../../providers/firebase_expense_provider.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
   final Group group;
@@ -99,27 +97,18 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       }
     }
 
-    // Create expense object
-    final expense = Expense.withIcon(
-      expenseId: const Uuid().v4(),
-      title: _titleController.text.trim(),
-      amount: totalAmount,
-      currency: _selectedCurrency,
-      paidBy: _selectedPaidBy!,
-      splitAmong: splitAmong,
-      date: DateTime.now(),
-      notes: _notesController.text.trim().isEmpty
-          ? null
-          : _notesController.text.trim(),
-      groupId: widget.group.groupId,
-      categoryIcon: Icons.receipt_outlined,
-    );
-
-    // Save to provider
-    ref.read(expenseProvider.notifier).addExpense(expense);
-
-    // Simulate API call
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Save to Firebase provider
+    await ref.read(firebaseExpenseProvider.notifier).addExpense(
+          groupId: widget.group.groupId,
+          title: _titleController.text.trim(),
+          amount: totalAmount,
+          currency: _selectedCurrency,
+          paidBy: _selectedPaidBy!,
+          splitAmong: splitAmong,
+          notes: _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
+        );
 
     setState(() {
       _isLoading = false;

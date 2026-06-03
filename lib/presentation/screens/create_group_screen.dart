@@ -7,78 +7,17 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/app_button.dart';
-import '../../core/utils/app_snackbar.dart';
-import '../../providers/group_provider.dart';
+import '../../providers/create_group_provider.dart';
 
-class CreateGroupScreen extends ConsumerStatefulWidget {
+class CreateGroupScreen extends ConsumerWidget {
   const CreateGroupScreen({super.key});
 
   @override
-  ConsumerState<CreateGroupScreen> createState() => _CreateGroupScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groupState = ref.watch(createGroupProvider);
+    final groupNotifier = ref.watch(createGroupProvider.notifier);
+    final controllers = ref.watch(createGroupFormControllersProvider);
 
-class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
-  final TextEditingController _groupNameController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _memberController = TextEditingController();
-  final List<String> _members = [];
-  bool _isLoading = false;
-
-  @override
-  void dispose() {
-    _groupNameController.dispose();
-    _descriptionController.dispose();
-    _memberController.dispose();
-    super.dispose();
-  }
-
-  void _addMember() {
-    final memberName = _memberController.text.trim();
-    if (memberName.isNotEmpty && !_members.contains(memberName)) {
-      setState(() {
-        _members.add(memberName);
-        _memberController.clear();
-      });
-    }
-  }
-
-  Future<void> _createGroup() async {
-    if (_groupNameController.text.trim().isEmpty) {
-      AppSnackBar.showError(context, 'Please enter a group name');
-      return;
-    }
-
-    if (_members.isEmpty) {
-      AppSnackBar.showError(context, 'Please add at least one member');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    // Add group to provider
-    ref.read(groupProvider.notifier).addGroup(
-          name: _groupNameController.text.trim(),
-          members: _members,
-          currency: 'PKR',
-        );
-
-    // Simulate API call
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (mounted) {
-      AppSnackBar.showSuccess(context, 'Group created successfully');
-      context.pop();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: Container(
@@ -116,14 +55,14 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
               AppTextField(
                 label: 'Group Name',
                 hint: 'Enter group name',
-                controller: _groupNameController,
+                controller: controllers.groupName,
                 prefixIcon: Icons.group,
               ),
               SizedBox(height: 16.h),
               AppTextField(
                 label: 'Description',
                 hint: 'Enter group description',
-                controller: _descriptionController,
+                controller: controllers.description,
                 maxLines: 3,
               ),
               SizedBox(height: 24.h),
@@ -138,25 +77,28 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                   Expanded(
                     child: AppTextField(
                       hint: 'Enter member name',
-                      controller: _memberController,
+                      controller: controllers.member,
                       prefixIcon: Icons.person,
                     ),
                   ),
                   SizedBox(width: 12.w),
                   AppButton(
                     label: 'Add',
-                    onTap: _addMember,
+                    onTap: () {
+                      groupNotifier.addMember(controllers.member.text.trim());
+                      controllers.member.clear();
+                    },
                     isOutlined: true,
                     width: 80.w,
                   ),
                 ],
               ),
               SizedBox(height: 16.h),
-              if (_members.isNotEmpty) ...[
+              if (groupState.members.isNotEmpty) ...[
                 Wrap(
                   spacing: 8.w,
                   runSpacing: 8.h,
-                  children: _members.map((member) {
+                  children: groupState.members.map((member) {
                     return Container(
                       padding:
                           EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
@@ -181,9 +123,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                           ),
                           SizedBox(width: 6.w),
                           GestureDetector(
-                            onTap: () => setState(() {
-                              _members.remove(member);
-                            }),
+                            onTap: () => groupNotifier.removeMember(member),
                             child: Icon(
                               Icons.close_rounded,
                               size: 15.sp,
@@ -200,8 +140,15 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
               SizedBox(height: 32.h),
               AppButton(
                 label: 'Create Group',
-                onTap: _createGroup,
-                isLoading: _isLoading,
+                onTap: () {
+                  groupNotifier.createGroup(
+                    controllers.groupName.text,
+                    groupState.members,
+                    ref,
+                    context,
+                  );
+                },
+                isLoading: groupState.isLoading,
               ),
               SizedBox(height: 32.h),
             ],

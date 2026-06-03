@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/models/group.dart';
 import '../../core/models/expense.dart';
 import '../../presentation/screens/home_screen.dart';
@@ -11,8 +12,10 @@ import '../../presentation/screens/add_expense_screen.dart';
 import '../../presentation/screens/expense_detail_screen.dart';
 import '../../presentation/screens/settle_up_screen.dart';
 import '../../presentation/screens/settings_screen.dart';
+import '../../presentation/screens/login_screen.dart';
 
 class AppRouter {
+  static const String login = '/login';
   static const String home = '/';
   static const String createGroup = '/createGroup';
   static const String groupDetail = '/groupDetail';
@@ -22,8 +25,27 @@ class AppRouter {
   static const String settings = '/settings';
 
   static final GoRouter router = GoRouter(
-    initialLocation: home,
+    initialLocation: login,
+    redirect: (context, state) {
+      final auth = FirebaseAuth.instance.currentUser;
+      final isLoggingIn = state.matchedLocation == login;
+
+      if (auth == null && !isLoggingIn) {
+        return login;
+      }
+
+      if (auth != null && isLoggingIn) {
+        return home;
+      }
+
+      return null;
+    },
     routes: [
+      GoRoute(
+        path: login,
+        name: 'login',
+        builder: (context, state) => const LoginScreen(),
+      ),
       GoRoute(
         path: home,
         name: 'home',

@@ -9,8 +9,8 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/expense_tile.dart';
 import '../../core/widgets/balance_row.dart';
-import '../../providers/group_provider.dart';
-import '../../providers/expense_provider.dart';
+import '../../providers/firebase_group_provider.dart';
+import '../../providers/firebase_expense_provider.dart';
 import 'package:intl/intl.dart';
 
 class GroupDetailScreen extends ConsumerWidget {
@@ -20,28 +20,18 @@ class GroupDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    print('🔍 GroupDetailScreen: Building for groupId: $groupId');
+    final groupState = ref.watch(firebaseGroupProvider);
+    final group = groupState.groups.firstWhere(
+      (g) => g.groupId == groupId,
+      orElse: () => groupState.groups.isEmpty
+          ? throw Exception('Group not found')
+          : groupState.groups.first,
+    );
 
-    final groupNotifier = ref.read(groupProvider.notifier);
-    final group = groupNotifier.getGroupById(groupId);
-    print('📊 Group found: ${group?.name ?? "NULL"}');
-
-    final expenses = ref.watch(expensesForGroupProvider(groupId));
-    print('💰 Expenses count: ${expenses.length}');
+    final expensesAsync = ref.watch(expensesForGroupProvider(groupId));
+    final expenses = expensesAsync.value ?? [];
 
     final balances = ref.watch(balancesForGroupProvider(groupId));
-    print('⚖️ Balances: $balances');
-
-    if (group == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const AppText('Group Not Found', color: AppColors.white),
-        ),
-        body: const Center(
-          child: AppText('Group not found'),
-        ),
-      );
-    }
 
     final totalExpenses = expenses.fold<double>(
       0,

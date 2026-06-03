@@ -7,14 +7,15 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/group_card.dart';
 import '../../core/models/group.dart';
-import '../../providers/group_provider.dart';
+import '../../providers/firebase_group_provider.dart';
+import '../../providers/firebase_expense_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final groupState = ref.watch(groupProvider);
+    final groupState = ref.watch(firebaseGroupProvider);
     final groups = groupState.groups;
     final isLoading = groupState.isLoading;
 
@@ -106,31 +107,22 @@ class HomeScreen extends ConsumerWidget {
     double totalOwed = 0.0; // You owe others (negative)
     double totalToReceive = 0.0; // Others owe you (positive)
 
-    print('🏠 HomeScreen: Calculating balance for ${groups.length} groups');
-
     for (final group in groups) {
-      final balance = ref.watch(groupBalanceProvider(group.groupId));
-      print('🏠 HomeScreen: Group ${group.name} balance: $balance');
+      final balances = ref.watch(balancesForGroupProvider(group.groupId));
+      // Calculate net balance for "You" (assuming current user is "You")
+      final yourBalance = balances['You'] ?? 0.0;
 
-      if (balance < 0) {
-        totalOwed += balance.abs();
-        print(
-            '🏠 HomeScreen: Added ${balance.abs()} to totalOwed (now $totalOwed)');
+      if (yourBalance < 0) {
+        totalOwed += yourBalance.abs();
       } else {
-        totalToReceive += balance;
-        print(
-            '🏠 HomeScreen: Added $balance to totalToReceive (now $totalToReceive)');
+        totalToReceive += yourBalance;
       }
     }
 
-    final result = {
+    return {
       'totalOwed': totalOwed,
       'totalToReceive': totalToReceive,
     };
-
-    print(
-        '🏠 HomeScreen: Final calculation - Owed: $totalOwed, To Receive: $totalToReceive');
-    return result;
   }
 
   Widget _buildGroupList(
@@ -218,7 +210,9 @@ class HomeScreen extends ConsumerWidget {
               itemCount: groups.length,
               itemBuilder: (context, index) {
                 final group = groups[index];
-                final balance = ref.watch(groupBalanceProvider(group.groupId));
+                final balances =
+                    ref.watch(balancesForGroupProvider(group.groupId));
+                final balance = balances['You'] ?? 0.0;
 
                 return Padding(
                   padding: EdgeInsets.only(bottom: 12.h),
