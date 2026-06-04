@@ -117,8 +117,12 @@ class FormControllers {
 }
 
 final formControllersProvider = Provider<FormControllers>((ref) {
-  return FormControllers(
+  final controllers = FormControllers(
     email: TextEditingController(),
     password: TextEditingController(),
   );
+  ref.onDispose(() {
+    controllers.dispose();
+  });
+  return controllers;
 });

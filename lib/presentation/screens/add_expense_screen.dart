@@ -36,25 +36,19 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize after first frame to access ref
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('🔧 AddExpenseScreen: Initializing for group ${widget.group.name}');
+    print('🔧 AddExpenseScreen: Initializing synchronously for group ${widget.group.name}');
 
-      if (!_isInitialized) {
-        setState(() {
-          _selectedPaidBy = widget.group.members.first;
-          _selectedCurrency = widget.group.currency;
-          _selectedMembers = List.from(widget.group.members);
-          _isInitialized = true;
-        });
-        print('✅ Initialized with ${widget.group.members.length} members');
+    if (widget.group.members.isNotEmpty) {
+      _selectedPaidBy = widget.group.members.first;
+    }
+    _selectedCurrency = widget.group.currency;
+    _selectedMembers = List.from(widget.group.members);
+    _isInitialized = true;
 
-        // Initialize custom amount controllers
-        for (final member in widget.group.members) {
-          _customAmountControllers[member] = TextEditingController();
-        }
-      }
-    });
+    // Initialize custom amount controllers
+    for (final member in widget.group.members) {
+      _customAmountControllers[member] = TextEditingController();
+    }
   }
 
   @override
@@ -76,6 +70,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       return;
     }
 
+    if (_selectedMembers.isEmpty) {
+      AppSnackBar.showError(context, 'Please select at least one member to split with.');
+      return;
+    }
+
     print(' Form validation passed');
     setState(() {
       _isLoading = true;
@@ -86,7 +85,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final totalAmount = double.tryParse(_amountController.text) ?? 0;
 
     if (_equalSplit) {
-      final perPerson = totalAmount / _selectedMembers.length;
+      final perPerson = _selectedMembers.isEmpty ? 0.0 : total_selectedMembers.isEmpty ? 0.0 : amount / _selectedMembers.length;
       for (final member in _selectedMembers) {
         splitAmong[member] = perPerson;
       }
@@ -458,7 +457,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                                       double.tryParse(_amountController.text) ??
                                           0;
                                   final perPerson =
-                                      amount / _selectedMembers.length;
+                                      _selectedMembers.isEmpty ? 0.0 : amount / _selectedMembers.length;
                                   return Padding(
                                     padding:
                                         EdgeInsets.symmetric(vertical: 2.h),

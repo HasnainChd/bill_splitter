@@ -106,9 +106,13 @@ class CreateGroupFormControllers {
 
 final createGroupFormControllersProvider =
     Provider<CreateGroupFormControllers>((ref) {
-  return CreateGroupFormControllers(
+  final controllers = CreateGroupFormControllers(
     groupName: TextEditingController(),
     description: TextEditingController(),
     member: TextEditingController(),
   );
+  ref.onDispose(() {
+    controllers.dispose();
+  });
+  return controllers;
 });

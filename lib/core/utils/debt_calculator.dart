@@ -51,38 +51,50 @@ class DebtCalculator {
     debtors.sort((a, b) => a.value.compareTo(b.value));
 
     // 4. Greedy algorithm to find minimum transactions
+    final Map<String, double> activeBalances = Map.from(balances);
+    final List<String> sortedCreditors = creditors.map((e) => e.key).toList();
+    final List<String> sortedDebtors = debtors.map((e) => e.key).toList();
     final List<Settlement> settlements = [];
+    
     int debtorIndex = 0;
     int creditorIndex = 0;
 
-    while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
-      final debtor = debtors[debtorIndex];
-      final creditor = creditors[creditorIndex];
+    while (debtorIndex < sortedDebtors.length && creditorIndex < sortedCreditors.length) {
+      final String debtorKey = sortedDebtors[debtorIndex];
+      final String creditorKey = sortedCreditors[creditorIndex];
       
-      final double debtorAmount = -debtor.value; // Convert to positive
-      final double creditorAmount = creditor.value;
+      final double debtorAmount = -activeBalances[debtorKey]!;
+      final double creditorAmount = activeBalances[creditorKey]!;
+      
+      // Skip settled members to handle precision variations
+      if (debtorAmount <= 0.001) {
+        debtorIndex++;
+        continue;
+      }
+      if (creditorAmount <= 0.001) {
+        creditorIndex++;
+        continue;
+      }
       
       final double amount = debtorAmount < creditorAmount 
           ? debtorAmount 
           : creditorAmount;
       
       settlements.add(Settlement(
-        fromMember: debtor.key,
-        toMember: creditor.key,
+        fromMember: debtorKey,
+        toMember: creditorKey,
         amount: amount,
       ));
       
-      // Update balances
+      // Update running balances
+      activeBalances[debtorKey] = -(debtorAmount - amount);
+      activeBalances[creditorKey] = creditorAmount - amount;
+      
       if (debtorAmount < creditorAmount) {
-        // Debtor is fully settled, creditor has remaining
-        balances[creditor.key] = creditorAmount - amount;
         debtorIndex++;
       } else if (debtorAmount > creditorAmount) {
-        // Creditor is fully settled, debtor has remaining
-        balances[debtor.key] = -(debtorAmount - amount);
         creditorIndex++;
       } else {
-        // Both are fully settled
         debtorIndex++;
         creditorIndex++;
       }
