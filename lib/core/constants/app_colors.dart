@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Primary — Deep Navy
+  // Primary — Deep Navy (Legacy - kept for compatibility)
   static const Color primary = Color(0xFF0A1628);
   static const Color primaryDark = Color(0xFF060D1A);
   static const Color primaryMid = Color(0xFF112240);
   static const Color primaryLight = Color(0xFFE8EDF5);
   static const Color primaryAccent = Color(0xFF1A3A6B);
 
-  // Accent — Gold
+  // Primary — Purple (New Theme)
+  static const Color primaryPurple = Color(0xFF8B5CF6);
+  static const Color primaryPurpleLight = Color(0xFFA78BFA);
+  static const Color primaryPurpleDark = Color(0xFF7C3AED);
+  static const Color primaryPurpleDarker = Color(0xFF6D28D9);
+
+  // Accent — Gold (Legacy - kept for compatibility)
   static const Color accent = Color(0xFFD4AF37);
   static const Color accentLight = Color(0xFFFFF8E1);
   static const Color accentDark = Color(0xFFB8960C);
@@ -21,12 +27,35 @@ class AppColors {
   static const Color warning = Color(0xFFFFB300);
   static const Color warningLight = Color(0xFFFFF8E1);
 
+  // Group indicator colors
+  static const Color orange = Color(0xFFFF9F43);
+  static const Color pink = Color(0xFFFF6B9D);
+  static const Color green = Color(0xFF00C896);
+
+  // Onboarding & Theme Specific Colors
+  static const Color onboardingViolet = Color(0xFF7F77FE);
+  static const Color onboardingCyan = Color(0xFF1EA6E9);
+  static const Color onboardingGreen = Color(0xFF109E68);
+  static const Color mintGreen = Color(0xFF00FFC2);
+  static const Color coralRed = Color(0xFFFF6B6B);
+  
+  // Onboarding Avatar Colors
+  static const Color avatarRose = Color(0xFFF43F5E);
+  static const Color avatarAmber = Color(0xFFF59E0B);
+  static const Color avatarEmerald = Color(0xFF10B981);
+
   // Neutral
   static const Color white = Color(0xFFFFFFFF);
   static const Color black = Color(0xFF000000);
   static const Color background = Color(0xFFF0F4F8);
+  static const Color backgroundDark = Color(0xFF0F0F13);
+  static const Color backgroundGradientStart = Color(0xFF1A1A2E);
+  static const Color backgroundGradientEnd = Color(0xFF16213E);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceVariant = Color(0xFFF8FAFC);
+  static const Color cardDark = Color(0xFF1A1A1F);
+  static const Color cardDarkSecondary = Color(0xFF252535);
+  static const Color cardBorder = Color(0xFF3A3A4A);
   static const Color divider = Color(0xFFE2E8F0);
   static const Color border = Color(0xFFCBD5E1);
 
@@ -34,6 +63,7 @@ class AppColors {
   static const Color textPrimary = Color(0xFF0A1628);
   static const Color textSecondary = Color(0xFF64748B);
   static const Color textHint = Color(0xFF94A3B8);
+  static const Color textGrey = Color(0xFF9CA3AF);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
   static const Color textOnAccent = Color(0xFF0A1628);
 

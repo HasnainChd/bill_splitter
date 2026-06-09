@@ -9,16 +9,20 @@ class AppText extends StatelessWidget {
   final TextAlign? align;
   final int? maxLines;
   final TextOverflow? overflow;
+  final double? height;
+  final double? letterSpacing;
 
   const AppText(
     this.text, {
-    super.key,
-    this.fontSize,
-    this.fontWeight,
-    this.color,
-    this.align,
-    this.maxLines,
-    this.overflow,
+      super.key,
+      this.fontSize,
+      this.fontWeight,
+      this.color,
+      this.align,
+      this.maxLines,
+      this.overflow,
+      this.height,
+      this.letterSpacing,
   });
 
   @override
@@ -32,6 +36,8 @@ class AppText extends StatelessWidget {
         fontSize: fontSize?.sp,
         fontWeight: fontWeight,
         color: color,
+        height: height,
+        letterSpacing: letterSpacing,
       ),
     );
   }

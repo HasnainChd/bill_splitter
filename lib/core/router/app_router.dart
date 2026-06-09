@@ -13,9 +13,15 @@ import '../../presentation/screens/expense_detail_screen.dart';
 import '../../presentation/screens/settle_up_screen.dart';
 import '../../presentation/screens/settings_screen.dart';
 import '../../presentation/screens/login_screen.dart';
+import '../../presentation/screens/register_screen.dart';
+import '../../presentation/onboarding/onboarding_screen.dart';
+import '../../presentation/onboarding/onboarding_walkthrough_screen.dart';
 
 class AppRouter {
+  static const String onboarding = '/onboarding';
+  static const String walkthrough = '/walkthrough';
   static const String login = '/login';
+  static const String register = '/register';
   static const String home = '/';
   static const String createGroup = '/createGroup';
   static const String groupDetail = '/groupDetail';
@@ -25,10 +31,18 @@ class AppRouter {
   static const String settings = '/settings';
 
   static final GoRouter router = GoRouter(
-    initialLocation: login,
+    initialLocation: onboarding,
     redirect: (context, state) {
       final auth = FirebaseAuth.instance.currentUser;
       final isLoggingIn = state.matchedLocation == login;
+      final isRegistering = state.matchedLocation == register;
+      final isOnboarding = state.matchedLocation == onboarding ||
+          state.matchedLocation == walkthrough;
+
+      // Allow onboarding & auth pages without auth
+      if (isOnboarding || isRegistering) {
+        return null;
+      }
 
       if (auth == null && !isLoggingIn) {
         return login;
@@ -42,9 +56,24 @@ class AppRouter {
     },
     routes: [
       GoRoute(
+        path: onboarding,
+        name: 'onboarding',
+        builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: walkthrough,
+        name: 'walkthrough',
+        builder: (context, state) => const OnboardingWalkthroughScreen(),
+      ),
+      GoRoute(
         path: login,
         name: 'login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: register,
+        name: 'register',
+        builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
         path: home,

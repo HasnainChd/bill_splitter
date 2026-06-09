@@ -127,33 +127,33 @@ class AppTheme {
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
-      scaffoldBackgroundColor: AppColors.primaryDark,
+      scaffoldBackgroundColor: AppColors.backgroundDark,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryColor,
+        seedColor: AppColors.primaryPurple,
         brightness: Brightness.dark,
-        primary: primaryColor,
-        secondary: secondaryColor,
-        tertiary: tertiaryColor,
+        primary: AppColors.primaryPurple,
+        secondary: AppColors.primaryPurpleLight,
+        tertiary: AppColors.primaryPurpleDark,
       ),
       appBarTheme: AppBarTheme(
         centerTitle: true,
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.textOnPrimary,
+        backgroundColor: AppColors.backgroundDark,
+        foregroundColor: AppColors.white,
         elevation: 0,
         titleTextStyle: TextStyle(
           fontSize: 18.sp,
           fontWeight: FontWeight.w600,
-          color: AppColors.textOnPrimary,
+          color: AppColors.white,
         ),
         systemOverlayStyle: const SystemUiOverlayStyle(
-          statusBarColor: AppColors.primaryDark,
+          statusBarColor: AppColors.backgroundDark,
           statusBarIconBrightness: Brightness.light,
         ),
       ),
       tabBarTheme: TabBarTheme(
-        indicatorColor: AppColors.accent,
-        labelColor: AppColors.accent,
-        unselectedLabelColor: AppColors.white.withValues(alpha: 0.6),
+        indicatorColor: AppColors.primaryPurple,
+        labelColor: AppColors.primaryPurple,
+        unselectedLabelColor: AppColors.textGrey,
         labelStyle: TextStyle(
           fontSize: 14.sp,
           fontWeight: FontWeight.w600,
@@ -165,28 +165,31 @@ class AppTheme {
       ),
       cardTheme: CardTheme(
         elevation: 0,
-        color: AppColors.primaryMid,
+        color: AppColors.cardDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
-          side: BorderSide(color: AppColors.primaryAccent, width: 1),
+          side: BorderSide(
+              color: AppColors.primaryPurple.withValues(alpha: 0.2), width: 1),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.primaryMid,
+        fillColor: AppColors.cardDark,
         floatingLabelBehavior: FloatingLabelBehavior.always,
         contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide(color: AppColors.primaryAccent),
+          borderSide:
+              BorderSide(color: AppColors.primaryPurple.withValues(alpha: 0.3)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide(color: AppColors.primaryAccent),
+          borderSide:
+              BorderSide(color: AppColors.primaryPurple.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide(color: AppColors.accent, width: 2),
+          borderSide: BorderSide(color: AppColors.primaryPurple, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
@@ -196,17 +199,17 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12.r),
           borderSide: BorderSide(color: AppColors.error, width: 2),
         ),
-        prefixIconColor: AppColors.accent,
+        prefixIconColor: AppColors.primaryPurple,
         labelStyle: TextStyle(
           fontSize: 12.sp,
           fontWeight: FontWeight.w500,
-          color: AppColors.textSecondary,
+          color: AppColors.textGrey,
           letterSpacing: 0.4,
         ),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: AppColors.primaryMid,
-        selectedColor: AppColors.accent,
+        backgroundColor: AppColors.cardDark,
+        selectedColor: AppColors.primaryPurple,
         labelStyle: TextStyle(
           fontSize: 14.sp,
           color: AppColors.white,
@@ -214,25 +217,25 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8.r),
         ),
-        side: BorderSide(color: AppColors.primaryAccent),
+        side: BorderSide(color: AppColors.primaryPurple.withValues(alpha: 0.3)),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return AppColors.accent;
+            return AppColors.primaryPurple;
           }
-          return AppColors.textHint;
+          return AppColors.textGrey;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return AppColors.primary;
+            return AppColors.primaryPurpleDark;
           }
-          return AppColors.primaryAccent;
+          return AppColors.cardDark;
         }),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: AppColors.accent,
-        foregroundColor: AppColors.textOnAccent,
+        backgroundColor: AppColors.primaryPurple,
+        foregroundColor: AppColors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
         ),
