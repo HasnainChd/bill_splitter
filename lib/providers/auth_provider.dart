@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../core/router/app_router.dart';
 
 // Auth State
 class AuthState {
@@ -96,12 +97,56 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(isLoading: false);
     }
   }
+
+  Future<void> sendPasswordReset(
+    String email,
+    BuildContext context,
+  ) async {
+    if (email.trim().isEmpty) {
+      AppSnackBar.showError(context, 'Please enter your email address');
+      return;
+    }
+
+    state = state.copyWith(isLoading: true);
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: email.trim(),
+      );
+      AppSnackBar.showSuccess(
+        context,
+        'Password reset email sent successfully. Please check your inbox.',
+      );
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(AppRouter.login);
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Password reset failed';
+      if (e.code == 'user-not-found') {
+        errorMessage = 'No user found with this email';
+      } else if (e.code == 'invalid-email') {
+        errorMessage = 'Invalid email address';
+      }
+      state = state.copyWith(error: errorMessage);
+      AppSnackBar.showError(context, errorMessage);
+    } catch (e) {
+      state = state.copyWith(error: 'An error occurred: $e');
+      AppSnackBar.showError(context, 'An error occurred: $e');
+    } finally {
+      state = state.copyWith(isLoading: false);
+    }
+  }
 }
 
 // Auth Provider
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier();
 });
+
+// Login password visibility toggle
+final loginObscureProvider = StateProvider<bool>((ref) => true);
 
 // Form Controllers Provider
 class FormControllers {
@@ -120,6 +165,26 @@ final formControllersProvider = Provider<FormControllers>((ref) {
   final controllers = FormControllers(
     email: TextEditingController(),
     password: TextEditingController(),
+  );
+  ref.onDispose(() {
+    controllers.dispose();
+  });
+  return controllers;
+});
+
+class ForgotPasswordControllers {
+  final TextEditingController email;
+
+  ForgotPasswordControllers({required this.email});
+
+  void dispose() {
+    email.dispose();
+  }
+}
+
+final forgotPasswordControllersProvider = Provider<ForgotPasswordControllers>((ref) {
+  final controllers = ForgotPasswordControllers(
+    email: TextEditingController(),
   );
   ref.onDispose(() {
     controllers.dispose();

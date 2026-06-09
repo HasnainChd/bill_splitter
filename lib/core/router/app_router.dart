@@ -14,6 +14,7 @@ import '../../presentation/screens/settle_up_screen.dart';
 import '../../presentation/screens/settings_screen.dart';
 import '../../presentation/screens/login_screen.dart';
 import '../../presentation/screens/register_screen.dart';
+import '../../presentation/screens/forgot_password_screen.dart';
 import '../../presentation/onboarding/onboarding_screen.dart';
 import '../../presentation/onboarding/onboarding_walkthrough_screen.dart';
 
@@ -22,6 +23,7 @@ class AppRouter {
   static const String walkthrough = '/walkthrough';
   static const String login = '/login';
   static const String register = '/register';
+  static const String forgotPassword = '/forgotPassword';
   static const String home = '/';
   static const String createGroup = '/createGroup';
   static const String groupDetail = '/groupDetail';
@@ -36,20 +38,18 @@ class AppRouter {
       final auth = FirebaseAuth.instance.currentUser;
       final isLoggingIn = state.matchedLocation == login;
       final isRegistering = state.matchedLocation == register;
+      final isForgotPassword = state.matchedLocation == forgotPassword;
       final isOnboarding = state.matchedLocation == onboarding ||
           state.matchedLocation == walkthrough;
 
-      // Allow onboarding & auth pages without auth
-      if (isOnboarding || isRegistering) {
+      // Always allow onboarding and auth screens
+      if (isOnboarding || isLoggingIn || isRegistering || isForgotPassword) {
         return null;
       }
 
-      if (auth == null && !isLoggingIn) {
+      // Redirect unauthenticated users away from protected screens
+      if (auth == null) {
         return login;
-      }
-
-      if (auth != null && isLoggingIn) {
-        return home;
       }
 
       return null;
@@ -74,6 +74,11 @@ class AppRouter {
         path: register,
         name: 'register',
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: forgotPassword,
+        name: 'forgotPassword',
+        builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(
         path: home,

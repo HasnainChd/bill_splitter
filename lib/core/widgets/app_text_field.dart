@@ -7,12 +7,16 @@ class AppTextField extends StatelessWidget {
   final String hint;
   final TextEditingController controller;
   final String? label;
+  // New: full Widget (used by login/register)
   final Widget? prefix;
   final Widget? suffix;
+  // Legacy: IconData (used by add_expense, create_group, etc.)
+  final IconData? prefixIcon;
   final bool obscureText;
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
   final int? maxLines;
+  final String? suffixText;
   final void Function(String)? onChanged;
 
   const AppTextField({
@@ -22,15 +26,27 @@ class AppTextField extends StatelessWidget {
     this.label,
     this.prefix,
     this.suffix,
+    this.prefixIcon,
     this.obscureText = false,
     this.keyboardType,
     this.validator,
     this.maxLines = 1,
+    this.suffixText,
     this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Prefer explicit Widget prefix; fall back to wrapping the IconData
+    final resolvedPrefix = prefix ??
+        (prefixIcon != null
+            ? Icon(
+                prefixIcon,
+                color: AppColors.textGrey.withValues(alpha: 0.5),
+                size: 18,
+              )
+            : null);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -51,6 +67,7 @@ class AppTextField extends StatelessWidget {
           validator: validator,
           maxLines: maxLines,
           onChanged: onChanged,
+          cursorColor: Colors.white,
           style: TextStyle(
             fontSize: 15.sp,
             fontWeight: FontWeight.w500,
@@ -62,13 +79,19 @@ class AppTextField extends StatelessWidget {
               fontSize: 14.sp,
               color: AppColors.textGrey.withValues(alpha: 0.4),
             ),
-            prefixIcon: prefix,
+            prefixIcon: resolvedPrefix,
             suffixIcon: suffix,
+            suffixText: suffixText,
+            suffixStyle: TextStyle(
+              fontSize: 14.sp,
+              color: AppColors.textGrey,
+              fontWeight: FontWeight.w500,
+            ),
             filled: true,
             fillColor: AppColors.cardDarkSecondary.withValues(alpha: 0.4),
             contentPadding: EdgeInsets.symmetric(
               horizontal: 16.w,
-              vertical: 16.h,
+              vertical: 12.h,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.r),
