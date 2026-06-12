@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/utils/app_snackbar.dart';
-import 'firebase_group_provider.dart';
+import 'group_provider.dart';
 
 // Create Group State
 class CreateGroupState {
@@ -63,7 +63,7 @@ class CreateGroupNotifier extends StateNotifier<CreateGroupState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      await ref.read(firebaseGroupProvider.notifier).addGroup(
+      await ref.read(groupProvider.notifier).addGroup(
             name: name.trim(),
             members: members,
             currency: 'PKR',

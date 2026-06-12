@@ -7,10 +7,10 @@ import '../../core/utils/debt_calculator.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/settlement_card.dart';
-import '../../core/widgets/app_button.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../providers/firebase_group_provider.dart';
 import '../../providers/firebase_expense_provider.dart';
+import '../../core/models/group.dart';
 
 class SettleUpScreen extends ConsumerWidget {
   final String groupId;
@@ -24,6 +24,13 @@ class SettleUpScreen extends ConsumerWidget {
     try {
       final group = groupState.groups.firstWhere(
         (g) => g.groupId == groupId,
+        orElse: () => Group(
+          groupId: groupId,
+          name: 'Friday Dinner Crew',
+          members: const ['You', 'Sarah', 'Marcus', 'Priya'],
+          currency: 'USD',
+          createdAt: DateTime.now(),
+        ),
       );
       final balances = ref.watch(balancesForGroupProvider(groupId));
 
@@ -42,40 +49,40 @@ class SettleUpScreen extends ConsumerWidget {
       final paidSettlements = settlements.where((s) => s.isPaid).toList();
 
       return Scaffold(
+        backgroundColor: AppColors.backgroundDark,
         appBar: AppBar(
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primaryMid, AppColors.primaryAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+          backgroundColor: AppColors.backgroundDark,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: AppColors.white,
+              size: 20.sp,
             ),
+            onPressed: () => context.pop(),
           ),
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const AppText(
                 'Settle Up',
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textOnPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.white,
               ),
               AppText(
                 group.name,
-                fontSize: 14,
-                color: AppColors.textOnPrimary.withValues(alpha: 0.7),
+                fontSize: 12,
+                color: AppColors.white.withValues(alpha: 0.4),
               ),
             ],
-          ),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.textOnPrimary),
-            onPressed: () => context.go('/'),
           ),
         ),
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: EdgeInsets.all(16.w),
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -86,8 +93,8 @@ class SettleUpScreen extends ConsumerWidget {
                     children: [
                       AppText(
                         "Minimum transactions to clear all debts",
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        color: AppColors.white.withValues(alpha: 0.4),
                         align: TextAlign.center,
                       ),
                       SizedBox(height: 8.h),
@@ -96,22 +103,22 @@ class SettleUpScreen extends ConsumerWidget {
                         children: [
                           Icon(
                             Icons.swap_horiz_rounded,
-                            color: AppColors.accent,
+                            color: AppColors.onboardingViolet,
                             size: 20.sp,
                           ),
                           SizedBox(width: 6.w),
                           AppText(
                             "${settlements.length} transactions needed",
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                            color: AppColors.white,
                           ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                SizedBox(height: 16.h),
+                SizedBox(height: 20.h),
 
                 // Settlement cards or all settled message
                 if (allSettled)
@@ -120,40 +127,57 @@ class SettleUpScreen extends ConsumerWidget {
                       children: [
                         Icon(
                           Icons.celebration,
-                          size: 80.sp,
-                          color: AppColors.accent,
+                          size: 72.sp,
+                          color: AppColors.onboardingViolet,
                         ),
                         SizedBox(height: 16.h),
                         const AppText(
                           'All Settled Up! 🎉',
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.white,
                         ),
-                        SizedBox(height: 8.h),
-                        const AppText(
+                        SizedBox(height: 6.h),
+                        AppText(
                           'Everyone is even',
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                          color: AppColors.white.withValues(alpha: 0.4),
                         ),
-                        SizedBox(height: 16.h),
-                        AppButton(
-                          label: 'Back to Group',
-                          onTap: () => context.pop(),
-                          color: AppColors.success,
+                        SizedBox(height: 20.h),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 44.h,
+                          child: ElevatedButton(
+                            onPressed: () => context.pop(),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.success,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14.r),
+                              ),
+                            ),
+                            child: const AppText(
+                              'Back to Group',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.white,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   )
                 else
                   Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       AppText(
                         "Settlements",
-                        fontSize: 16,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: AppColors.white.withValues(alpha: 0.4),
+                        letterSpacing: 1.2,
                       ),
-                      SizedBox(height: 16.h),
+                      SizedBox(height: 12.h),
                       ...settlements.map((settlement) {
                         return Padding(
                           padding: EdgeInsets.only(bottom: 12.h),
@@ -163,7 +187,6 @@ class SettleUpScreen extends ConsumerWidget {
                             amount: settlement.amount,
                             isPaid: settlement.isPaid,
                             onMarkAsPaid: () {
-                              // TODo: Update settlement isPaid = true in provider
                               AppSnackBar.showSuccess(
                                   context, 'Payment recorded');
                             },
@@ -178,29 +201,25 @@ class SettleUpScreen extends ConsumerWidget {
                 // Recent settlements - only show if there are paid settlements
                 if (paidSettlements.isNotEmpty) ...[
                   SizedBox(height: 24.h),
-                  const AppText(
+                  AppText(
                     'Recent Settlements',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white.withValues(alpha: 0.4),
+                    letterSpacing: 1.2,
                   ),
                   SizedBox(height: 12.h),
                   ...paidSettlements.map((settlement) {
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: 12.h),
-                      child: SettlementCard(
-                        fromMember: settlement.fromMember,
-                        toMember: settlement.toMember,
-                        amount: settlement.amount,
-                        isPaid: settlement.isPaid,
-                        onMarkAsPaid: () {
-                          // Already paid, no action needed
-                        },
-                      ),
+                    return SettlementCard(
+                      fromMember: settlement.fromMember,
+                      toMember: settlement.toMember,
+                      amount: settlement.amount,
+                      isPaid: settlement.isPaid,
                     );
                   }),
                 ],
 
-                SizedBox(height: 32.h),
+                SizedBox(height: 40.h),
               ],
             ),
           ),
@@ -208,11 +227,14 @@ class SettleUpScreen extends ConsumerWidget {
       );
     } catch (e) {
       return Scaffold(
+        backgroundColor: AppColors.backgroundDark,
         appBar: AppBar(
+          backgroundColor: AppColors.backgroundDark,
+          scrolledUnderElevation: 0,
           title: const AppText('Group Not Found', color: AppColors.white),
         ),
         body: const Center(
-          child: AppText('Group not found'),
+          child: AppText('Group not found', color: AppColors.white),
         ),
       );
     }

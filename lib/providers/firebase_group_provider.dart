@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/models/group.dart';
 
 // Firebase Group State
@@ -40,41 +39,40 @@ class FirebaseGroupState {
   int get hashCode => groups.hashCode ^ isLoading.hashCode ^ error.hashCode;
 }
 
-// Firebase Group Notifier
+// Firebase Group Notifier (now backed by Supabase!)
 class FirebaseGroupNotifier extends StateNotifier<FirebaseGroupState> {
-  final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
+  final SupabaseClient _supabase;
 
-  FirebaseGroupNotifier(this._firestore, this._auth)
+  FirebaseGroupNotifier(this._supabase)
       : super(const FirebaseGroupState(groups: [], isLoading: false)) {
     _loadGroups();
   }
 
-  // Load groups from Firestore
+  // Load groups from Supabase
   Future<void> _loadGroups() async {
     try {
       state = state.copyWith(isLoading: true);
 
-      final user = _auth.currentUser;
+      final user = _supabase.auth.currentUser;
       if (user == null) {
         state = state.copyWith(isLoading: false, groups: []);
         return;
       }
 
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('groups')
-          .get();
+      final data = await _supabase
+          .from('groups')
+          .select()
+          .eq('userId', user.id);
 
-      final groups = snapshot.docs.map((doc) {
-        final data = doc.data();
+      final groups = (data as List).map((row) {
         return Group(
-          groupId: doc.id,
-          name: data['name'] as String,
-          members: List<String>.from(data['members']),
-          currency: data['currency'] as String? ?? 'USD',
-          createdAt: (data['createdAt'] as Timestamp).toDate(),
+          groupId: row['id']?.toString() ?? '',
+          name: row['name'] as String,
+          members: List<String>.from(row['members'] ?? []),
+          currency: row['currency'] as String? ?? 'USD',
+          createdAt: row['createdAt'] != null
+              ? DateTime.parse(row['createdAt'] as String)
+              : DateTime.now(),
         );
       }).toList();
 
@@ -87,27 +85,24 @@ class FirebaseGroupNotifier extends StateNotifier<FirebaseGroupState> {
     }
   }
 
-  // Add a new group to Firestore
+  // Add a new group to Supabase
   Future<void> addGroup({
     required String name,
     required List<String> members,
     String currency = 'USD',
   }) async {
     try {
-      final user = _auth.currentUser;
+      final user = _supabase.auth.currentUser;
       if (user == null) {
         throw Exception('No user logged in');
       }
 
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('groups')
-          .add({
+      await _supabase.from('groups').insert({
         'name': name,
         'members': members,
         'currency': currency,
-        'createdAt': FieldValue.serverTimestamp(),
+        'userId': user.id,
+        'createdAt': DateTime.now().toIso8601String(),
       });
 
       // Reload groups to get the updated list
@@ -127,24 +122,19 @@ class FirebaseGroupNotifier extends StateNotifier<FirebaseGroupState> {
     }
   }
 
-  // Update a group in Firestore
+  // Update a group in Supabase
   Future<void> updateGroup(Group updatedGroup) async {
     try {
-      final user = _auth.currentUser;
+      final user = _supabase.auth.currentUser;
       if (user == null) {
         throw Exception('No user logged in');
       }
 
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('groups')
-          .doc(updatedGroup.groupId)
-          .update({
+      await _supabase.from('groups').update({
         'name': updatedGroup.name,
         'members': updatedGroup.members,
         'currency': updatedGroup.currency,
-      });
+      }).eq('id', updatedGroup.groupId);
 
       await _loadGroups();
     } catch (e) {
@@ -153,20 +143,18 @@ class FirebaseGroupNotifier extends StateNotifier<FirebaseGroupState> {
     }
   }
 
-  // Delete a group from Firestore
+  // Delete a group from Supabase
   Future<void> deleteGroup(String groupId) async {
     try {
-      final user = _auth.currentUser;
+      final user = _supabase.auth.currentUser;
       if (user == null) {
         throw Exception('No user logged in');
       }
 
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('groups')
-          .doc(groupId)
-          .delete();
+      await _supabase
+          .from('groups')
+          .delete()
+          .eq('id', groupId);
 
       await _loadGroups();
     } catch (e) {
@@ -176,19 +164,14 @@ class FirebaseGroupNotifier extends StateNotifier<FirebaseGroupState> {
   }
 }
 
-// Firebase Providers
-final firebaseFirestoreProvider = Provider<FirebaseFirestore>((ref) {
-  return FirebaseFirestore.instance;
-});
-
-final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
-  return FirebaseAuth.instance;
+// Supabase Client Provider
+final supabaseClientProvider = Provider<SupabaseClient>((ref) {
+  return Supabase.instance.client;
 });
 
 final firebaseGroupProvider =
     StateNotifierProvider<FirebaseGroupNotifier, FirebaseGroupState>((ref) {
   return FirebaseGroupNotifier(
-    ref.watch(firebaseFirestoreProvider),
-    ref.watch(firebaseAuthProvider),
+    ref.watch(supabaseClientProvider),
   );
 });

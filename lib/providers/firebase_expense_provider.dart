@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/models/expense.dart';
 import 'firebase_group_provider.dart';
 
@@ -42,47 +41,44 @@ class FirebaseExpenseState {
   int get hashCode => expenses.hashCode ^ isLoading.hashCode ^ error.hashCode;
 }
 
-// Firebase Expense Notifier
+// Firebase Expense Notifier (backed by Supabase!)
 class FirebaseExpenseNotifier extends StateNotifier<FirebaseExpenseState> {
-  final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
+  final SupabaseClient _supabase;
 
-  FirebaseExpenseNotifier(this._firestore, this._auth)
+  FirebaseExpenseNotifier(this._supabase)
       : super(const FirebaseExpenseState(expenses: [], isLoading: false));
 
-  // Load expenses for a specific group from Firestore
+  // Load expenses for a specific group from Supabase
   Future<void> loadExpensesForGroup(String groupId) async {
     try {
       state = state.copyWith(isLoading: true);
 
-      final user = _auth.currentUser;
+      final user = _supabase.auth.currentUser;
       if (user == null) {
         state = state.copyWith(isLoading: false, expenses: []);
         return;
       }
 
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('groups')
-          .doc(groupId)
-          .collection('expenses')
-          .orderBy('date', descending: true)
-          .get();
+      final data = await _supabase
+          .from('expenses')
+          .select()
+          .eq('groupId', groupId)
+          .order('date', ascending: false);
 
-      final expenses = snapshot.docs.map((doc) {
-        final data = doc.data();
+      final expenses = (data as List).map((row) {
         return Expense(
-          expenseId: doc.id,
+          expenseId: row['id']?.toString() ?? '',
           groupId: groupId,
-          title: data['title'] as String,
-          amount: (data['amount'] as num).toDouble(),
-          currency: data['currency'] as String? ?? 'USD',
-          paidBy: data['paidBy'] as String,
-          splitAmong: Map<String, double>.from(data['splitAmong'] ?? {}),
-          date: (data['date'] as Timestamp).toDate(),
-          notes: data['notes'] as String?,
-          categoryIconCodePoint: data['categoryIconCodePoint'] as int? ??
+          title: row['title'] as String,
+          amount: (row['amount'] as num).toDouble(),
+          currency: row['currency'] as String? ?? 'USD',
+          paidBy: row['paidBy'] as String,
+          splitAmong: Map<String, double>.from(row['splitAmong'] ?? {}),
+          date: row['date'] != null
+              ? DateTime.parse(row['date'] as String)
+              : DateTime.now(),
+          notes: row['notes'] as String?,
+          categoryIconCodePoint: row['categoryIconCodePoint'] as int? ??
               Icons.restaurant.codePoint,
         );
       }).toList();
@@ -96,7 +92,7 @@ class FirebaseExpenseNotifier extends StateNotifier<FirebaseExpenseState> {
     }
   }
 
-  // Add a new expense to Firestore
+  // Add a new expense to Supabase
   Future<void> addExpense({
     required String groupId,
     required String title,
@@ -108,18 +104,13 @@ class FirebaseExpenseNotifier extends StateNotifier<FirebaseExpenseState> {
     int categoryIconCodePoint = 0xe567,
   }) async {
     try {
-      final user = _auth.currentUser;
+      final user = _supabase.auth.currentUser;
       if (user == null) {
         throw Exception('No user logged in');
       }
 
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('groups')
-          .doc(groupId)
-          .collection('expenses')
-          .add({
+      await _supabase.from('expenses').insert({
+        'groupId': groupId,
         'title': title,
         'amount': amount,
         'currency': currency,
@@ -127,7 +118,7 @@ class FirebaseExpenseNotifier extends StateNotifier<FirebaseExpenseState> {
         'splitAmong': splitAmong,
         'notes': notes,
         'categoryIconCodePoint': categoryIconCodePoint,
-        'date': FieldValue.serverTimestamp(),
+        'date': DateTime.now().toIso8601String(),
       });
 
       // Reload expenses for the group
@@ -145,22 +136,15 @@ class FirebaseExpenseNotifier extends StateNotifier<FirebaseExpenseState> {
         .toList();
   }
 
-  // Update an expense in Firestore
+  // Update an expense in Supabase
   Future<void> updateExpense(Expense updatedExpense) async {
     try {
-      final user = _auth.currentUser;
+      final user = _supabase.auth.currentUser;
       if (user == null) {
         throw Exception('No user logged in');
       }
 
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('groups')
-          .doc(updatedExpense.groupId)
-          .collection('expenses')
-          .doc(updatedExpense.expenseId)
-          .update({
+      await _supabase.from('expenses').update({
         'title': updatedExpense.title,
         'amount': updatedExpense.amount,
         'currency': updatedExpense.currency,
@@ -168,7 +152,7 @@ class FirebaseExpenseNotifier extends StateNotifier<FirebaseExpenseState> {
         'splitAmong': updatedExpense.splitAmong,
         'notes': updatedExpense.notes,
         'categoryIconCodePoint': updatedExpense.categoryIconCodePoint,
-      });
+      }).eq('id', updatedExpense.expenseId);
 
       await loadExpensesForGroup(updatedExpense.groupId);
     } catch (e) {
@@ -177,22 +161,18 @@ class FirebaseExpenseNotifier extends StateNotifier<FirebaseExpenseState> {
     }
   }
 
-  // Delete an expense from Firestore
+  // Delete an expense from Supabase
   Future<void> deleteExpense(String groupId, String expenseId) async {
     try {
-      final user = _auth.currentUser;
+      final user = _supabase.auth.currentUser;
       if (user == null) {
         throw Exception('No user logged in');
       }
 
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('groups')
-          .doc(groupId)
-          .collection('expenses')
-          .doc(expenseId)
-          .delete();
+      await _supabase
+          .from('expenses')
+          .delete()
+          .eq('id', expenseId);
 
       await loadExpensesForGroup(groupId);
     } catch (e) {
@@ -223,47 +203,44 @@ class FirebaseExpenseNotifier extends StateNotifier<FirebaseExpenseState> {
   }
 }
 
-// Firebase Expense Provider
+// Firebase Expense Provider (now Supabase backed)
 final firebaseExpenseProvider =
     StateNotifierProvider<FirebaseExpenseNotifier, FirebaseExpenseState>((ref) {
   return FirebaseExpenseNotifier(
-    ref.watch(firebaseFirestoreProvider),
-    ref.watch(firebaseAuthProvider),
+    ref.watch(supabaseClientProvider),
   );
 });
 
 // Provider to get expenses for a specific group
 final expensesForGroupProvider =
     StreamProvider.family<List<Expense>, String>((ref, groupId) {
-  final firestore = ref.watch(firebaseFirestoreProvider);
-  final auth = ref.watch(firebaseAuthProvider);
+  final supabase = ref.watch(supabaseClientProvider);
 
-  if (auth.currentUser == null) {
+  if (supabase.auth.currentUser == null) {
     return Stream.value([]);
   }
 
-  return firestore
-      .collection('users')
-      .doc(auth.currentUser!.uid)
-      .collection('groups')
-      .doc(groupId)
-      .collection('expenses')
-      .orderBy('date', descending: true)
-      .snapshots()
+  return supabase
+      .from('expenses')
+      .stream(primaryKey: ['id'])
+      .eq('groupId', groupId)
+      .order('date', ascending: false)
       .map((snapshot) {
-    return snapshot.docs.map((doc) {
-      final data = doc.data();
+    return snapshot.map((row) {
       return Expense(
-        expenseId: doc.id,
-        title: data['title'] ?? '',
-        amount: (data['amount'] as num).toDouble(),
-        currency: data['currency'] ?? 'USD',
-        paidBy: data['paidBy'] ?? '',
-        splitAmong: Map<String, double>.from(data['splitAmong'] ?? {}),
-        date: (data['date'] as Timestamp).toDate(),
-        notes: data['notes'],
-        groupId: data['groupId'] ?? '',
-        categoryIconCodePoint: data['categoryIconCodePoint'] ?? 0xe567,
+        expenseId: row['id']?.toString() ?? '',
+        title: row['title'] as String,
+        amount: (row['amount'] as num).toDouble(),
+        currency: row['currency'] as String? ?? 'USD',
+        paidBy: row['paidBy'] as String,
+        splitAmong: Map<String, double>.from(row['splitAmong'] ?? {}),
+        date: row['date'] != null
+            ? DateTime.parse(row['date'] as String)
+            : DateTime.now(),
+        notes: row['notes'] as String?,
+        groupId: row['groupId'] as String,
+        categoryIconCodePoint: row['categoryIconCodePoint'] as int? ??
+            Icons.restaurant.codePoint,
       );
     }).toList();
   });
