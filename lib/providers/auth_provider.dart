@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../core/router/app_router.dart';
@@ -51,22 +51,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      final auth = FirebaseAuth.instance;
+      final supabase = Supabase.instance.client;
 
       if (state.isLogin) {
         // Sign in
-        await auth.signInWithEmailAndPassword(
+        await supabase.auth.signInWithPassword(
           email: email.trim(),
           password: password.trim(),
         );
       } else {
         // Sign up
-        await auth.createUserWithEmailAndPassword(
+        await supabase.auth.signUp(
           email: email.trim(),
           password: password.trim(),
         );
       }
 
+      if (!context.mounted) return;
       AppSnackBar.showSuccess(
         context,
         state.isLogin
@@ -74,25 +75,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
             : 'Account created successfully',
       );
       context.go('/');
-    } on FirebaseAuthException catch (e) {
-      String errorMessage = 'Authentication failed';
-      if (e.code == 'user-not-found') {
-        errorMessage = 'No user found for this email';
-      } else if (e.code == 'wrong-password') {
-        errorMessage = 'Wrong password provided';
-      } else if (e.code == 'email-already-in-use') {
-        errorMessage = 'Email already in use';
-      } else if (e.code == 'weak-password') {
-        errorMessage = 'Password is too weak';
-      } else if (e.code == 'invalid-email') {
-        errorMessage = 'Invalid email address';
-      }
-
+    } on AuthException catch (e) {
+      final errorMessage = e.message;
       state = state.copyWith(error: errorMessage);
-      AppSnackBar.showError(context, errorMessage);
+      if (context.mounted) {
+        AppSnackBar.showError(context, errorMessage);
+      }
     } catch (e) {
       state = state.copyWith(error: 'An error occurred: $e');
-      AppSnackBar.showError(context, 'An error occurred: $e');
+      if (context.mounted) {
+        AppSnackBar.showError(context, 'An error occurred: $e');
+      }
     } finally {
       state = state.copyWith(isLoading: false);
     }
@@ -110,9 +103,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(
-        email: email.trim(),
+      await Supabase.instance.client.auth.resetPasswordForEmail(
+        email.trim(),
       );
+      if (!context.mounted) return;
       AppSnackBar.showSuccess(
         context,
         'Password reset email sent successfully. Please check your inbox.',
@@ -122,18 +116,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
       } else {
         context.go(AppRouter.login);
       }
-    } on FirebaseAuthException catch (e) {
-      String errorMessage = 'Password reset failed';
-      if (e.code == 'user-not-found') {
-        errorMessage = 'No user found with this email';
-      } else if (e.code == 'invalid-email') {
-        errorMessage = 'Invalid email address';
-      }
+    } on AuthException catch (e) {
+      final errorMessage = e.message;
       state = state.copyWith(error: errorMessage);
-      AppSnackBar.showError(context, errorMessage);
+      if (context.mounted) {
+        AppSnackBar.showError(context, errorMessage);
+      }
     } catch (e) {
       state = state.copyWith(error: 'An error occurred: $e');
-      AppSnackBar.showError(context, 'An error occurred: $e');
+      if (context.mounted) {
+        AppSnackBar.showError(context, 'An error occurred: $e');
+      }
     } finally {
       state = state.copyWith(isLoading: false);
     }

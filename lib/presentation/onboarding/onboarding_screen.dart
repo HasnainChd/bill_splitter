@@ -29,27 +29,27 @@ class OnboardingScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SizedBox(height: 20.h),
+                SizedBox(height: 10.h),
 
                 // Logo and App Name
                 _buildLogoSection(),
 
-                SizedBox(height: 48.h),
+                SizedBox(height: 38.h),
 
                 // Main Balance Card
                 _buildMainBalanceCard(),
 
-                SizedBox(height: 20.h),
+                SizedBox(height: 15.h),
 
                 // Balance Summary Card (merged)
                 _buildBalanceSummaryCard(),
 
-                SizedBox(height: 48.h),
+                SizedBox(height: 38.h),
 
                 // Features List
                 _buildFeaturesList(),
 
-                SizedBox(height: 48.h),
+                SizedBox(height: 38.h),
 
                 // Get Started Button
                 _buildGetStartedButton(context),
@@ -59,7 +59,7 @@ class OnboardingScreen extends StatelessWidget {
                 // Sign In Link
                 _buildSignInLink(context),
 
-                SizedBox(height: 32.h),
+                SizedBox(height: 22.h),
               ],
             ),
           ),
@@ -91,7 +91,7 @@ class OnboardingScreen extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(height: 16.h),
+        SizedBox(height: 14.h),
         const AppText(
           'Divvy',
           fontSize: 32,

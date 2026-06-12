@@ -213,9 +213,13 @@ class RegisterScreen extends ConsumerWidget {
                     SizedBox(height: 8.h),
 
                     // ── Password Strength Bar ────────────────────────────
-                    _PasswordStrengthBar(
-                      controllers: controllers,
-                      ref: ref,
+                    ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: controllers.password,
+                      builder: (context, value, child) {
+                        return _PasswordStrengthBar(
+                          password: value.text,
+                        );
+                      },
                     ),
                     SizedBox(height: 24.h),
 
@@ -307,55 +311,88 @@ class _BackButton extends ConsumerWidget {
   }
 }
 
-class _PasswordStrengthBar extends StatelessWidget {
-  final RegisterFormControllers controllers;
-  final WidgetRef ref;
+class _PasswordStrengthBar extends ConsumerWidget {
+  final String password;
 
   const _PasswordStrengthBar({
-    required this.controllers,
-    required this.ref,
+    required this.password,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final password = controllers.password.text;
+  Widget build(BuildContext context, WidgetRef ref) {
     final strength = ref.watch(passwordStrengthProvider(password));
 
-    Color barColor;
-    String label;
-    if (strength <= 0.25) {
-      barColor = AppColors.coralRed;
+    String label = '';
+    Color labelColor = AppColors.white.withValues(alpha: 0.25);
+    int activeSegments = 0;
+
+    if (password.isEmpty) {
+      label = '';
+      labelColor = AppColors.white.withValues(alpha: 0.25);
+      activeSegments = 0;
+    } else if (strength <= 0.25) {
       label = 'Weak';
+      labelColor = const Color(0xFFEF4444); // Red
+      activeSegments = 1;
     } else if (strength <= 0.5) {
-      barColor = AppColors.avatarAmber;
       label = 'Fair';
+      labelColor = const Color(0xFFF59E0B); // Orange
+      activeSegments = 2;
     } else if (strength <= 0.75) {
-      barColor = AppColors.onboardingCyan;
-      label = 'Good';
+      label = 'Medium';
+      labelColor = const Color(0xFFF59E0B); // Orange/Amber
+      activeSegments = 3;
     } else {
-      barColor = AppColors.mintGreen;
       label = 'Strong';
+      labelColor = const Color(0xFF10B981); // Emerald Green
+      activeSegments = 4;
     }
 
-    return Row(
+    final colors = [
+      const Color(0xFFEF4444), // Red
+      const Color(0xFFF59E0B), // Orange
+      const Color(0xFF6366F1), // Indigo/Violet
+      const Color(0xFF10B981), // Emerald
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(4.r),
-            child: LinearProgressIndicator(
-              value: strength,
-              minHeight: 4.h,
-              backgroundColor: Colors.white.withValues(alpha: 0.1),
-              valueColor: AlwaysStoppedAnimation<Color>(barColor),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            AppText(
+              'Password strength',
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.white.withValues(alpha: 0.45),
             ),
-          ),
+            if (password.isNotEmpty)
+              AppText(
+                label,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: labelColor,
+              ),
+          ],
         ),
-        SizedBox(width: 10.w),
-        AppText(
-          label,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: barColor,
+        SizedBox(height: 8.h),
+        Row(
+          children: List.generate(4, (index) {
+            final isActive = index < activeSegments;
+            final color = isActive ? colors[index] : AppColors.white.withValues(alpha: 0.05);
+
+            return Expanded(
+              child: Container(
+                height: 4.h,
+                margin: EdgeInsets.only(right: index == 3 ? 0 : 6.w),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(2.r),
+                ),
+              ),
+            );
+          }),
         ),
       ],
     );

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../core/utils/app_snackbar.dart';
 import '../core/router/app_router.dart';
@@ -28,8 +27,7 @@ class RegisterState {
 }
 
 class RegisterNotifier extends StateNotifier<RegisterState> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   RegisterNotifier() : super(const RegisterState());
 
@@ -57,41 +55,44 @@ class RegisterNotifier extends StateNotifier<RegisterState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      // Create user in Firebase Auth
-      final credential = await _auth.createUserWithEmailAndPassword(
+      // Create user in Supabase Auth with metadata
+      final response = await _supabase.auth.signUp(
         email: email.trim(),
         password: password.trim(),
+        data: {
+          'fullName': fullName.trim(),
+          'username': username.trim(),
+        },
       );
 
-      final user = credential.user;
+      final user = response.user;
       if (user != null) {
-        // Create user doc in Firestore 'users' collection
-        await _firestore.collection('users').doc(user.uid).set({
+        // Create user row in 'users' table in public schema
+        await _supabase.from('users').insert({
+          'id': user.id,
           'fullName': fullName.trim(),
           'username': username.trim(),
           'email': email.trim(),
-          'createdAt': FieldValue.serverTimestamp(),
+          'createdAt': DateTime.now().toIso8601String(),
         });
       }
 
+      if (!context.mounted) return;
       AppSnackBar.showSuccess(context, 'Account created successfully!');
       
       // Go to home screen
       context.go(AppRouter.home);
-    } on FirebaseAuthException catch (e) {
-      String errorMessage = 'Registration failed';
-      if (e.code == 'email-already-in-use') {
-        errorMessage = 'Email already in use';
-      } else if (e.code == 'weak-password') {
-        errorMessage = 'Password is too weak';
-      } else if (e.code == 'invalid-email') {
-        errorMessage = 'Invalid email address';
-      }
+    } on AuthException catch (e) {
+      final errorMessage = e.message;
       state = state.copyWith(error: errorMessage);
-      AppSnackBar.showError(context, errorMessage);
+      if (context.mounted) {
+        AppSnackBar.showError(context, errorMessage);
+      }
     } catch (e) {
       state = state.copyWith(error: e.toString());
-      AppSnackBar.showError(context, 'An error occurred: $e');
+      if (context.mounted) {
+        AppSnackBar.showError(context, 'An error occurred: $e');
+      }
     } finally {
       state = state.copyWith(isLoading: false);
     }
