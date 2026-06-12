@@ -34,15 +34,33 @@ class AppColors {
 
   // Onboarding & Theme Specific Colors
   static const Color onboardingViolet = Color(0xFF7F77FE);
+  static const Color onboardingVioletDark = Color(0xFF5348FF);
   static const Color onboardingCyan = Color(0xFF1EA6E9);
   static const Color onboardingGreen = Color(0xFF109E68);
   static const Color mintGreen = Color(0xFF00FFC2);
   static const Color coralRed = Color(0xFFFF6B6B);
-  
+
   // Onboarding Avatar Colors
   static const Color avatarRose = Color(0xFFF43F5E);
   static const Color avatarAmber = Color(0xFFF59E0B);
   static const Color avatarEmerald = Color(0xFF10B981);
+
+  // Dashboard / Balance Colors
+  static const Color balanceOwed = Color(0xFFFFA8A8); // "You owe" pinkish text
+  static const Color balanceOwedTo =
+      Color(0xFF83F8C5); // "Owed to you" mint green text
+  static const Color successDark =
+      Color(0xFF00B084); // Settle All button gradient end
+
+  // Group Card Gradient Colors
+  static const Color groupBlue = Color(0xFF0EA5E9);
+  static const Color groupBlueDark = Color(0xFF0284C7);
+  static const Color groupOrange = Color(0xFFF97316);
+  static const Color groupOrangeDark = Color(0xFFEA580C);
+
+  // Navigation
+  static const Color navBarDark =
+      Color(0xFF131318); // Bottom nav bar background
 
   // Neutral
   static const Color white = Color(0xFFFFFFFF);
@@ -66,6 +84,7 @@ class AppColors {
   static const Color textGrey = Color(0xFF9CA3AF);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
   static const Color textOnAccent = Color(0xFF0A1628);
+  static const Color transparent = Colors.transparent;
 
   // Avatar colors
   static const List<Color> avatarColors = [

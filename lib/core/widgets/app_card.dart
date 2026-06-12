@@ -10,6 +10,7 @@ class AppCard extends StatelessWidget {
   final double? borderRadius;
   final bool highlighted;
   final bool gradient;
+  final BoxBorder? border;
 
   const AppCard({
     super.key,
@@ -20,23 +21,28 @@ class AppCard extends StatelessWidget {
     this.borderRadius,
     this.highlighted = false,
     this.gradient = false,
+    this.border,
   });
 
   @override
   Widget build(BuildContext context) {
     final radius = borderRadius ?? 16.r;
+    final cardColor = color ?? AppColors.cardDark;
+    final borderColor = AppColors.white.withValues(alpha: 0.05);
+    final defaultBorder = Border.all(
+      color: borderColor,
+      width: 1,
+    );
 
-    // For highlighted cards, we need to use a custom painter or stack
-    // because borderRadius + non-uniform border colors don't work together
     if (highlighted) {
       return Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: cardColor,
           borderRadius: BorderRadius.circular(radius),
         ),
         child: Stack(
           children: [
-            // Gold left border
+            // Left indicator border
             Positioned(
               left: 0,
               top: 0,
@@ -44,7 +50,7 @@ class AppCard extends StatelessWidget {
               child: Container(
                 width: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.accent,
+                  color: AppColors.onboardingViolet,
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(radius),
                     bottomLeft: Radius.circular(radius),
@@ -55,10 +61,7 @@ class AppCard extends StatelessWidget {
             // Subtle border around the card
             Container(
               decoration: BoxDecoration(
-                border: Border.all(
-                  color: AppColors.divider,
-                  width: 1,
-                ),
+                border: border ?? defaultBorder,
                 borderRadius: BorderRadius.circular(radius),
               ),
               child: Material(
@@ -66,8 +69,8 @@ class AppCard extends StatelessWidget {
                 child: InkWell(
                   onTap: onTap,
                   borderRadius: BorderRadius.circular(radius),
-                  splashColor: AppColors.primary.withValues(alpha: 0.04),
-                  highlightColor: AppColors.primary.withValues(alpha: 0.04),
+                  splashColor: AppColors.white.withValues(alpha: 0.04),
+                  highlightColor: AppColors.white.withValues(alpha: 0.04),
                   child: Padding(
                     padding: padding ?? EdgeInsets.all(16.w),
                     child: child,
@@ -80,30 +83,27 @@ class AppCard extends StatelessWidget {
       );
     }
 
-    // Normal card (not highlighted)
+    // Normal card
     return Container(
       decoration: BoxDecoration(
-        color: gradient ? null : (color ?? AppColors.surface),
+        color: gradient ? null : cardColor,
         gradient: gradient
             ? const LinearGradient(
-                colors: [AppColors.surface, AppColors.surfaceVariant],
+                colors: [AppColors.cardDark, AppColors.cardDarkSecondary],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
             : null,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(
-          color: AppColors.divider,
-          width: 1,
-        ),
+        border: border ?? defaultBorder,
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(radius),
-          splashColor: AppColors.primary.withValues(alpha: 0.04),
-          highlightColor: AppColors.primary.withValues(alpha: 0.04),
+          splashColor: AppColors.white.withValues(alpha: 0.04),
+          highlightColor: AppColors.white.withValues(alpha: 0.04),
           child: Padding(
             padding: padding ?? EdgeInsets.all(16.w),
             child: child,

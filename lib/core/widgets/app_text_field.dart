@@ -88,7 +88,7 @@ class AppTextField extends StatelessWidget {
               fontWeight: FontWeight.w500,
             ),
             filled: true,
-            fillColor: AppColors.cardDarkSecondary.withValues(alpha: 0.4),
+            fillColor: AppColors.cardDark,
             contentPadding: EdgeInsets.symmetric(
               horizontal: 16.w,
               vertical: 12.h,

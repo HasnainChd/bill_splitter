@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/models/group.dart';
 import '../../core/models/expense.dart';
 import '../../presentation/screens/home_screen.dart';
@@ -15,8 +15,24 @@ import '../../presentation/screens/settings_screen.dart';
 import '../../presentation/screens/login_screen.dart';
 import '../../presentation/screens/register_screen.dart';
 import '../../presentation/screens/forgot_password_screen.dart';
+import '../../presentation/screens/activity_screen.dart';
+import '../../presentation/screens/edit_profile_screen.dart';
+import '../../presentation/screens/help_support_screen.dart';
+import '../../presentation/screens/payment_methods_screen.dart';
+import '../../presentation/screens/notifications_screen.dart';
+import '../../presentation/screens/notification_settings_screen.dart';
+import '../../presentation/screens/security_screen.dart';
+import '../../presentation/screens/divvy_pro_screen.dart';
 import '../../presentation/onboarding/onboarding_screen.dart';
 import '../../presentation/onboarding/onboarding_walkthrough_screen.dart';
+import '../../presentation/screens/privacy_settings_screen.dart';
+import '../../presentation/screens/default_currency_screen.dart';
+import '../../presentation/screens/language_screen.dart';
+import '../../presentation/screens/date_format_screen.dart';
+import '../../presentation/screens/two_factor_auth_screen.dart';
+import '../../presentation/screens/change_password_screen.dart';
+import '../../presentation/screens/report_bug_screen.dart';
+import '../../presentation/screens/about_legal_screen.dart';
 
 class AppRouter {
   static const String onboarding = '/onboarding';
@@ -31,11 +47,27 @@ class AppRouter {
   static const String expenseDetail = '/expenseDetail';
   static const String settleUp = '/settleUp';
   static const String settings = '/settings';
+  static const String activity = '/activity';
+  static const String editProfile = '/editProfile';
+  static const String helpSupport = '/helpSupport';
+  static const String paymentMethods = '/paymentMethods';
+  static const String notifications = '/notifications';
+  static const String notificationSettings = '/notificationSettings';
+  static const String security = '/security';
+  static const String divvyPro = '/divvyPro';
+  static const String privacySettings = '/privacySettings';
+  static const String defaultCurrency = '/defaultCurrency';
+  static const String language = '/language';
+  static const String dateFormat = '/dateFormat';
+  static const String twoFactorAuth = '/twoFactorAuth';
+  static const String changePassword = '/changePassword';
+  static const String reportBug = '/reportBug';
+  static const String aboutLegal = '/aboutLegal';
 
   static final GoRouter router = GoRouter(
     initialLocation: onboarding,
     redirect: (context, state) {
-      final auth = FirebaseAuth.instance.currentUser;
+      final auth = Supabase.instance.client.auth.currentUser;
       final isLoggingIn = state.matchedLocation == login;
       final isRegistering = state.matchedLocation == register;
       final isForgotPassword = state.matchedLocation == forgotPassword;
@@ -105,25 +137,12 @@ class AppRouter {
         path: addExpense,
         name: 'addExpense',
         builder: (context, state) {
-          print(' Router: Building AddExpenseScreen');
-          print(' Router: state.extra type: ${state.extra.runtimeType}');
-
-          // Accept Group object via extra parameter
-          if (state.extra == null) {
-            print(' Router: No group object provided');
-            return Scaffold(
-              appBar: AppBar(
-                title: const Text('Error'),
-              ),
-              body: const Center(
-                child: Text('Invalid navigation: Group object not provided'),
-              ),
+          final group = state.extra as Group?;
+          if (group == null) {
+            return const Scaffold(
+              body: Center(child: Text('Group data required')),
             );
           }
-
-          final group = state.extra as Group;
-          print('👥 Router: Group received: ${group.name} (${group.groupId})');
-
           return AddExpenseScreen(group: group);
         },
       ),
@@ -133,14 +152,8 @@ class AppRouter {
         builder: (context, state) {
           final expense = state.extra as Expense?;
           if (expense == null) {
-            // If no expense provided, redirect to home
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              context.go('/');
-            });
             return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
+              body: Center(child: Text('Expense data required')),
             );
           }
           return ExpenseDetailScreen(expense: expense);
@@ -161,6 +174,86 @@ class AppRouter {
         path: settings,
         name: 'settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: activity,
+        name: 'activity',
+        builder: (context, state) => const ActivityScreen(),
+      ),
+      GoRoute(
+        path: editProfile,
+        name: 'editProfile',
+        builder: (context, state) => const EditProfileScreen(),
+      ),
+      GoRoute(
+        path: helpSupport,
+        name: 'helpSupport',
+        builder: (context, state) => const HelpSupportScreen(),
+      ),
+      GoRoute(
+        path: paymentMethods,
+        name: 'paymentMethods',
+        builder: (context, state) => const PaymentMethodsScreen(),
+      ),
+      GoRoute(
+        path: notifications,
+        name: 'notifications',
+        builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: notificationSettings,
+        name: 'notificationSettings',
+        builder: (context, state) => const NotificationSettingsScreen(),
+      ),
+      GoRoute(
+        path: security,
+        name: 'security',
+        builder: (context, state) => const SecurityScreen(),
+      ),
+      GoRoute(
+        path: divvyPro,
+        name: 'divvyPro',
+        builder: (context, state) => const DivvyProScreen(),
+      ),
+      GoRoute(
+        path: privacySettings,
+        name: 'privacySettings',
+        builder: (context, state) => const PrivacySettingsScreen(),
+      ),
+      GoRoute(
+        path: defaultCurrency,
+        name: 'defaultCurrency',
+        builder: (context, state) => const DefaultCurrencyScreen(),
+      ),
+      GoRoute(
+        path: language,
+        name: 'language',
+        builder: (context, state) => const LanguageScreen(),
+      ),
+      GoRoute(
+        path: dateFormat,
+        name: 'dateFormat',
+        builder: (context, state) => const DateFormatScreen(),
+      ),
+      GoRoute(
+        path: twoFactorAuth,
+        name: 'twoFactorAuth',
+        builder: (context, state) => const TwoFactorAuthScreen(),
+      ),
+      GoRoute(
+        path: changePassword,
+        name: 'changePassword',
+        builder: (context, state) => const ChangePasswordScreen(),
+      ),
+      GoRoute(
+        path: reportBug,
+        name: 'reportBug',
+        builder: (context, state) => const ReportBugScreen(),
+      ),
+      GoRoute(
+        path: aboutLegal,
+        name: 'aboutLegal',
+        builder: (context, state) => const AboutLegalScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

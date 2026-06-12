@@ -85,7 +85,7 @@ class AppButton extends StatelessWidget {
             ),
             elevation: 0,
             shadowColor: Colors.transparent,
-            padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
+            padding: EdgeInsets.symmetric(horizontal: 24.w),
           ),
           child: isLoading
               ? SizedBox(

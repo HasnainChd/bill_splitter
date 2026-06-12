@@ -26,21 +26,16 @@ class SettlementCard extends StatelessWidget {
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
-        color: isPaid ? AppColors.successLight : AppColors.surface,
+        color: isPaid
+            ? AppColors.success.withValues(alpha: 0.12)
+            : AppColors.cardDark,
         borderRadius: BorderRadius.circular(16.r),
         border: Border.all(
-          color: isPaid ? AppColors.success : AppColors.accent,
-          width: 1.5,
+          color: isPaid
+              ? AppColors.success
+              : AppColors.white.withValues(alpha: 0.05),
+          width: 1,
         ),
-        boxShadow: isPaid
-            ? []
-            : [
-                BoxShadow(
-                  color: AppColors.accent.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
       ),
       padding: EdgeInsets.all(16.w),
       child: Column(
@@ -56,11 +51,12 @@ class SettlementCard extends StatelessWidget {
                     name: fromMember,
                     size: 44.sp,
                   ),
-                  SizedBox(height: 4.h),
+                  SizedBox(height: 6.h),
                   AppText(
                     fromMember,
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.white,
                   ),
                 ],
               ),
@@ -69,21 +65,21 @@ class SettlementCard extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.arrow_forward_rounded,
-                    color: AppColors.accent,
+                    color: AppColors.onboardingViolet,
                     size: 20.sp,
                   ),
                   SizedBox(height: 4.h),
                   AppText(
-                    '\$${amount.toStringAsFixed(2)}',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+                    '\$${amount.toStringAsFixed(0)}',
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: isPaid ? AppColors.success : AppColors.white,
                   ),
                   SizedBox(height: 2.h),
                   AppText(
                     '$fromMember pays $toMember',
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    color: AppColors.white.withValues(alpha: 0.4),
                   ),
                 ],
               ),
@@ -94,17 +90,18 @@ class SettlementCard extends StatelessWidget {
                     name: toMember,
                     size: 44.sp,
                   ),
-                  SizedBox(height: 4.h),
+                  SizedBox(height: 6.h),
                   AppText(
                     toMember,
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.white,
                   ),
                 ],
               ),
             ],
           ),
-          SizedBox(height: 14.h),
+          SizedBox(height: 16.h),
           // Button or Paid state
           if (isPaid)
             Row(
@@ -116,21 +113,37 @@ class SettlementCard extends StatelessWidget {
                   size: 18.sp,
                 ),
                 SizedBox(width: 6.w),
-                AppText(
+                const AppText(
                   "Paid",
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.success,
                 ),
               ],
             )
           else
-            AppButton(
-              label: 'Mark as Paid',
-              onTap: onMarkAsPaid,
-              isOutlined: true,
-              color: AppColors.success,
-              textColor: AppColors.success,
+            SizedBox(
+              width: double.infinity,
+              height: 38.h,
+              child: ElevatedButton(
+                onPressed: onMarkAsPaid,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success.withValues(alpha: 0.12),
+                  elevation: 0,
+                  side: BorderSide(
+                    color: AppColors.success.withValues(alpha: 0.25),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                ),
+                child: const AppText(
+                  'Mark as Paid',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.success,
+                ),
+              ),
             ),
         ],
       ),
