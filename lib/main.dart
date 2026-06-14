@@ -25,12 +25,17 @@ void main() async {
     publishableKey: SupabaseOptions.anonKey,
   );
 
-  // Listen to password recovery events globally
+  // Listen to auth events globally
   Supabase.instance.client.auth.onAuthStateChange.listen((data) {
     if (data.event == AuthChangeEvent.passwordRecovery) {
       Future.delayed(const Duration(milliseconds: 300), () {
         AppRouter.router.refresh();
         AppRouter.router.go('${AppRouter.changePassword}?isRecovery=true');
+      });
+    } else if (data.event == AuthChangeEvent.signedIn) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        AppRouter.router.refresh();
+        AppRouter.router.go(AppRouter.home);
       });
     }
   });

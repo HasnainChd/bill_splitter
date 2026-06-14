@@ -85,16 +85,18 @@ class LoginScreen extends ConsumerWidget {
                         SizedBox(height: 32.h),
 
                         // ── Social Auth Buttons ───────────────────────────────
-                        _SocialButton(
-                          emoji: '🍎',
-                          label: 'Continue with Apple',
-                          onTap: () {},
-                        ),
-                        SizedBox(height: 12.h),
+                        if (Theme.of(context).platform == TargetPlatform.iOS) ...[
+                          _SocialButton(
+                            emoji: '🍎',
+                            label: 'Continue with Apple',
+                            onTap: () => authNotifier.signInWithApple(context),
+                          ),
+                          SizedBox(height: 12.h),
+                        ],
                         _SocialButton(
                           emoji: '🌐',
                           label: 'Continue with Google',
-                          onTap: () {},
+                          onTap: () => authNotifier.signInWithGoogle(context),
                         ),
                         SizedBox(height: 24.h),
 

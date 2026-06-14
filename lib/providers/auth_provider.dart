@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../core/router/app_router.dart';
+import '../supabase_options.dart';
 
 // Auth State
 class AuthState {
@@ -105,6 +108,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(
         email.trim(),
+        redirectTo: 'divvy://reset-password',
       );
       if (!context.mounted) return;
       AppSnackBar.showSuccess(
@@ -131,15 +135,94 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(isLoading: false);
     }
   }
+
+  Future<void> signInWithGoogle(BuildContext context) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      final googleSignIn = GoogleSignIn(
+        serverClientId: SupabaseOptions.googleWebClientId,
+      );
+      
+      try {
+        await googleSignIn.signOut();
+      } catch (_) {}
+
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        state = state.copyWith(isLoading: false);
+        return;
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      final accessToken = googleAuth.accessToken;
+
+      if (idToken == null) {
+        throw 'Could not retrieve ID Token from Google';
+      }
+
+      await Supabase.instance.client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+    } on AuthException catch (e) {
+      state = state.copyWith(error: e.message);
+      if (context.mounted) {
+        AppSnackBar.showError(context, e.message);
+      }
+    } catch (e) {
+      state = state.copyWith(error: 'Google sign-in failed: $e');
+      if (context.mounted) {
+        AppSnackBar.showError(context, 'Google Sign-In failed: $e');
+      }
+    } finally {
+      state = state.copyWith(isLoading: false);
+    }
+  }
+
+  Future<void> signInWithApple(BuildContext context) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final idToken = credential.identityToken;
+      if (idToken == null) {
+        throw 'Could not retrieve ID Token from Apple';
+      }
+
+      await Supabase.instance.client.auth.signInWithIdToken(
+        provider: OAuthProvider.apple,
+        idToken: idToken,
+      );
+    } on AuthException catch (e) {
+      state = state.copyWith(error: e.message);
+      if (context.mounted) {
+        AppSnackBar.showError(context, e.message);
+      }
+    } catch (e) {
+      state = state.copyWith(error: 'Apple sign-in failed: $e');
+      if (context.mounted) {
+        AppSnackBar.showError(context, 'Apple Sign-In failed: $e');
+      }
+    } finally {
+      state = state.copyWith(isLoading: false);
+    }
+  }
 }
 
 // Auth Provider
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authProvider = StateNotifierProvider.autoDispose<AuthNotifier, AuthState>((ref) {
   return AuthNotifier();
 });
 
 // Login password visibility toggle
-final loginObscureProvider = StateProvider<bool>((ref) => true);
+final loginObscureProvider = StateProvider.autoDispose<bool>((ref) => true);
 
 // Form Controllers Provider
 class FormControllers {
@@ -154,7 +237,7 @@ class FormControllers {
   }
 }
 
-final formControllersProvider = Provider<FormControllers>((ref) {
+final formControllersProvider = Provider.autoDispose<FormControllers>((ref) {
   final controllers = FormControllers(
     email: TextEditingController(),
     password: TextEditingController(),
@@ -175,7 +258,7 @@ class ForgotPasswordControllers {
   }
 }
 
-final forgotPasswordControllersProvider = Provider<ForgotPasswordControllers>((ref) {
+final forgotPasswordControllersProvider = Provider.autoDispose<ForgotPasswordControllers>((ref) {
   final controllers = ForgotPasswordControllers(
     email: TextEditingController(),
   );

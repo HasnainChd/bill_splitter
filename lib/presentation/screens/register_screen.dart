@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_text_field.dart';
@@ -19,6 +21,7 @@ class RegisterScreen extends ConsumerWidget {
     final controllers = ref.watch(registerFormControllersProvider);
     final termsAccepted = ref.watch(termsAcceptedProvider);
     final obscure = ref.watch(registerObscureProvider);
+    final profilePhoto = ref.watch(profilePhotoProvider);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
@@ -82,63 +85,85 @@ class RegisterScreen extends ConsumerWidget {
                     SizedBox(height: 28.h),
 
                     // ── Profile Photo ────────────────────────────────────
-                    Row(
-                      children: [
-                        Stack(
-                          children: [
-                            Container(
-                              width: 56.w,
-                              height: 56.w,
-                              decoration: BoxDecoration(
-                                color: AppColors.onboardingViolet,
-                                borderRadius: BorderRadius.circular(16.r),
+                    GestureDetector(
+                      onTap: () async {
+                        final ImagePicker picker = ImagePicker();
+                        final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                        if (image != null) {
+                          ref.read(profilePhotoProvider.notifier).state = image.path;
+                        }
+                      },
+                      child: Row(
+                        children: [
+                          Stack(
+                            children: [
+                              profilePhoto != null
+                                  ? Container(
+                                      width: 56.w,
+                                      height: 56.w,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(16.r),
+                                        image: DecorationImage(
+                                          image: FileImage(File(profilePhoto)),
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    )
+                                  : Container(
+                                      width: 56.w,
+                                      height: 56.w,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.onboardingViolet,
+                                        borderRadius: BorderRadius.circular(16.r),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: const Icon(
+                                        Icons.person_rounded,
+                                        color: Colors.white,
+                                        size: 28,
+                                      ),
+                                    ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  width: 20.w,
+                                  height: 20.w,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.onboardingGreen,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.add_rounded,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                ),
                               ),
-                              alignment: Alignment.center,
-                              child: const AppText(
-                                'NH',
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
+                            ],
+                          ),
+                          SizedBox(width: 14.w),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const AppText(
+                                'Profile photo',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
                                 color: Colors.white,
                               ),
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: Container(
-                                width: 20.w,
-                                height: 20.w,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.onboardingGreen,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.add_rounded,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
+                              SizedBox(height: 2.h),
+                              AppText(
+                                profilePhoto != null
+                                    ? 'Photo selected · tap to change'
+                                    : 'Optional · tap to upload',
+                                fontSize: 13,
+                                color: AppColors.textGrey,
                               ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(width: 14.w),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const AppText(
-                              'Profile photo',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                            SizedBox(height: 2.h),
-                            const AppText(
-                              'Optional · tap to upload',
-                              fontSize: 13,
-                              color: AppColors.textGrey,
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                     SizedBox(height: 28.h),
 
@@ -244,6 +269,7 @@ class RegisterScreen extends ConsumerWidget {
                           password: controllers.password.text,
                           termsAccepted: termsAccepted,
                           context: context,
+                          profilePhotoPath: profilePhoto,
                         );
                       },
                       isLoading: registerState.isLoading,

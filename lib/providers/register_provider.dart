@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -38,6 +39,7 @@ class RegisterNotifier extends StateNotifier<RegisterState> {
     required String password,
     required bool termsAccepted,
     required BuildContext context,
+    String? profilePhotoPath,
   }) async {
     if (fullName.trim().isEmpty ||
         username.trim().isEmpty ||
@@ -67,14 +69,39 @@ class RegisterNotifier extends StateNotifier<RegisterState> {
 
       final user = response.user;
       if (user != null) {
-        // Create user row in 'users' table in public schema
-        await _supabase.from('users').insert({
-          'id': user.id,
-          'fullName': fullName.trim(),
-          'username': username.trim(),
-          'email': email.trim(),
-          'createdAt': DateTime.now().toIso8601String(),
-        });
+        String? avatarUrl;
+
+        // Upload profile photo to storage if provided
+        if (profilePhotoPath != null && profilePhotoPath.isNotEmpty) {
+          try {
+            final file = File(profilePhotoPath);
+            final fileExt = profilePhotoPath.split('.').last;
+            final fileName = '${user.id}_avatar.$fileExt';
+
+            await _supabase.storage.from('avatars').upload(
+              fileName,
+              file,
+              fileOptions: const FileOptions(upsert: true),
+            );
+
+            avatarUrl = _supabase.storage.from('avatars').getPublicUrl(fileName);
+          } catch (storageError) {
+            debugPrint('Storage upload failed: $storageError');
+          }
+        }
+
+        // The public profile row is automatically created in the 'users' table
+        // by the database trigger on auth.users.
+        // We only need to update the avatarUrl in the public.users table if we uploaded a photo.
+        if (avatarUrl != null) {
+          try {
+            await _supabase.from('users').update({
+              'avatarUrl': avatarUrl,
+            }).eq('id', user.id);
+          } catch (dbError) {
+            debugPrint('Failed to update avatarUrl in database: $dbError');
+          }
+        }
       }
 
       if (!context.mounted) return;
@@ -100,21 +127,21 @@ class RegisterNotifier extends StateNotifier<RegisterState> {
 }
 
 // Providers
-final registerProvider = StateNotifierProvider<RegisterNotifier, RegisterState>((ref) {
+final registerProvider = StateNotifierProvider.autoDispose<RegisterNotifier, RegisterState>((ref) {
   return RegisterNotifier();
 });
 
 // Terms Acceptance Provider
-final termsAcceptedProvider = StateProvider<bool>((ref) => false);
+final termsAcceptedProvider = StateProvider.autoDispose<bool>((ref) => false);
 
 // Register Password Obscure Provider
-final registerObscureProvider = StateProvider<bool>((ref) => true);
+final registerObscureProvider = StateProvider.autoDispose<bool>((ref) => true);
 
 // Profile Photo Provider (contains profile picture details/path if selected)
-final profilePhotoProvider = StateProvider<String?>((ref) => null);
+final profilePhotoProvider = StateProvider.autoDispose<String?>((ref) => null);
 
 // Password Strength Provider
-final passwordStrengthProvider = Provider.family<double, String>((ref, password) {
+final passwordStrengthProvider = Provider.autoDispose.family<double, String>((ref, password) {
   if (password.isEmpty) return 0.0;
   double score = 0.0;
   if (password.length >= 8) score += 0.25;
@@ -146,7 +173,7 @@ class RegisterFormControllers {
   }
 }
 
-final registerFormControllersProvider = Provider<RegisterFormControllers>((ref) {
+final registerFormControllersProvider = Provider.autoDispose<RegisterFormControllers>((ref) {
   final controllers = RegisterFormControllers(
     fullName: TextEditingController(),
     username: TextEditingController(),
