@@ -51,6 +51,7 @@ void main() async {
   // Open boxes
   final groupsBox = await Hive.openBox<Group>('groups');
   await Hive.openBox<Expense>('expenses');
+  await Hive.openBox('settings');
 
   // Add sample groups if none exist
   if (groupsBox.isEmpty) {

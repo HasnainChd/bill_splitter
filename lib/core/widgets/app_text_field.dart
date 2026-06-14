@@ -18,6 +18,7 @@ class AppTextField extends StatelessWidget {
   final int? maxLines;
   final String? suffixText;
   final void Function(String)? onChanged;
+  final bool readOnly;
 
   const AppTextField({
     super.key,
@@ -33,6 +34,7 @@ class AppTextField extends StatelessWidget {
     this.maxLines = 1,
     this.suffixText,
     this.onChanged,
+    this.readOnly = false,
   });
 
   @override
@@ -40,11 +42,26 @@ class AppTextField extends StatelessWidget {
     // Prefer explicit Widget prefix; fall back to wrapping the IconData
     final resolvedPrefix = prefix ??
         (prefixIcon != null
-            ? Icon(
-                prefixIcon,
-                color: AppColors.textGrey.withValues(alpha: 0.5),
-                size: 18,
-              )
+            ? (maxLines != null && maxLines! > 1
+                ? Padding(
+                    padding: EdgeInsets.only(top: 10.h),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          prefixIcon,
+                          color: AppColors.textGrey.withValues(alpha: 0.5),
+                          size: 18,
+                        ),
+                      ],
+                    ),
+                  )
+                : Icon(
+                    prefixIcon,
+                    color: AppColors.textGrey.withValues(alpha: 0.5),
+                    size: 18,
+                  ))
             : null);
 
     return Column(
@@ -67,11 +84,12 @@ class AppTextField extends StatelessWidget {
           validator: validator,
           maxLines: maxLines,
           onChanged: onChanged,
+          readOnly: readOnly,
           cursorColor: Colors.white,
           style: TextStyle(
             fontSize: 15.sp,
             fontWeight: FontWeight.w500,
-            color: Colors.white,
+            color: readOnly ? Colors.white.withValues(alpha: 0.4) : Colors.white,
           ),
           decoration: InputDecoration(
             hintText: hint,

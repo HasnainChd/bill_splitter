@@ -8,12 +8,87 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_text.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/router/app_router.dart';
+import '../../../providers/profile_provider.dart';
 
 class ProfileTab extends ConsumerWidget {
   const ProfileTab({super.key});
 
+  String _getInitials(String name) {
+    if (name.isEmpty) return '?';
+    final parts = name.trim().split(' ');
+    if (parts.length > 1) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final profileState = ref.watch(profileProvider);
+    final profile = profileState.profile;
+
+    if (profile == null) {
+      if (profileState.error != null) {
+        return SizedBox(
+          height: 400.h,
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline_rounded,
+                    color: AppColors.coralRed,
+                    size: 48.sp,
+                  ),
+                  SizedBox(height: 16.h),
+                  const AppText(
+                    'Error loading profile',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white,
+                  ),
+                  SizedBox(height: 8.h),
+                  AppText(
+                    profileState.error!,
+                    fontSize: 13,
+                    color: AppColors.white.withValues(alpha: 0.5),
+                    align: TextAlign.center,
+                  ),
+                  SizedBox(height: 24.h),
+                  ElevatedButton(
+                    onPressed: () =>
+                        ref.read(profileProvider.notifier).fetchProfile(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.onboardingViolet,
+                      foregroundColor: AppColors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                    ),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      return SizedBox(
+        height: 400.h,
+        child: const Center(
+          child: CircularProgressIndicator(color: AppColors.onboardingViolet),
+        ),
+      );
+    }
+
+    final names = profile.fullName.split(' ');
+    final firstName = names.isNotEmpty ? names.first : '';
+    final lastName = names.length > 1 ? names.sublist(1).join(' ') : '';
+    final initials = _getInitials(profile.fullName);
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -66,14 +141,22 @@ class ProfileTab extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: AppColors.onboardingViolet,
                         borderRadius: BorderRadius.circular(24.r),
+                        image: profile.avatarUrl.isNotEmpty
+                            ? DecorationImage(
+                                image: NetworkImage(profile.avatarUrl),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
                       ),
                       alignment: Alignment.center,
-                      child: const AppText(
-                        'AJ',
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.white,
-                      ),
+                      child: profile.avatarUrl.isEmpty
+                          ? AppText(
+                              initials,
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.white,
+                            )
+                          : null,
                     ),
                     Positioned(
                       bottom: 4.h,
@@ -82,8 +165,7 @@ class ProfileTab extends ConsumerWidget {
                         width: 18.w,
                         height: 18.w,
                         decoration: BoxDecoration(
-                          color:
-                              const Color(0xFF10B981), // emerald green status
+                          color: AppColors.success,
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: AppColors.backgroundDark,
@@ -96,22 +178,18 @@ class ProfileTab extends ConsumerWidget {
                 ),
                 SizedBox(height: 16.h),
 
-                // Name: "Alex Johnson"
-                const AppText(
-                  'Alex',
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.white,
-                ),
-                const AppText(
-                  'Johnson',
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.white,
-                ),
+                // Name: profile.fullName
+                if (firstName.isNotEmpty && lastName.isNotEmpty)
+                  AppText(
+                    '$firstName $lastName',
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.white,
+                  ),
+
                 SizedBox(height: 6.h),
                 AppText(
-                  '@alexj · divvy.app/alexj',
+                  '@${profile.username.isNotEmpty ? profile.username : "username"}',
                   fontSize: 13,
                   color: AppColors.white.withValues(alpha: 0.4),
                 ),
