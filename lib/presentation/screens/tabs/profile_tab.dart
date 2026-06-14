@@ -1,3 +1,4 @@
+import 'package:bill_splitter/presentation/providers/tab_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -271,18 +272,13 @@ class ProfileTab extends ConsumerWidget {
                 ),
                 _buildDivider(),
                 _buildMenuRowItem(
-                  emoji: '❓',
-                  title: 'Help & Support',
-                  onTap: () => context.push(AppRouter.helpSupport),
-                ),
-                _buildDivider(),
-                _buildMenuRowItem(
                   emoji: '⬅️',
                   title: 'Sign Out',
                   textColor: AppColors.coralRed,
                   onTap: () async {
                     final router = GoRouter.of(context);
                     await Supabase.instance.client.auth.signOut();
+                    ref.read(homeTabIndexProvider.notifier).state = 0;
                     router.go(AppRouter.login);
                   },
                 ),

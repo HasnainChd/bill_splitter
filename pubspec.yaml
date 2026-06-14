@@ -57,11 +57,14 @@ dependencies:
   # Responsive Design
   flutter_screenutil: ^5.9.3
   
-  # Firebase
+  # Supabase
+  supabase_flutter: ^2.14.2
+
+  # Firebase (Analytics only)
   firebase_core: ^3.6.0
-  firebase_auth: ^5.3.1
-  cloud_firestore: ^5.4.4
   firebase_analytics: ^11.3.3
+  image_picker: ^1.2.0
+  flutter_animate: ^4.5.2
 
 dev_dependencies:
   flutter_test:

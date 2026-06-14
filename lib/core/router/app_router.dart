@@ -34,7 +34,10 @@ import '../../presentation/screens/change_password_screen.dart';
 import '../../presentation/screens/report_bug_screen.dart';
 import '../../presentation/screens/about_legal_screen.dart';
 
+import '../../presentation/screens/splash_screen.dart';
+
 class AppRouter {
+  static const String splash = '/splash';
   static const String onboarding = '/onboarding';
   static const String walkthrough = '/walkthrough';
   static const String login = '/login';
@@ -65,17 +68,19 @@ class AppRouter {
   static const String aboutLegal = '/aboutLegal';
 
   static final GoRouter router = GoRouter(
-    initialLocation: onboarding,
+    initialLocation: splash,
     redirect: (context, state) {
       final auth = Supabase.instance.client.auth.currentUser;
+      final isSplash = state.matchedLocation == splash;
       final isLoggingIn = state.matchedLocation == login;
       final isRegistering = state.matchedLocation == register;
       final isForgotPassword = state.matchedLocation == forgotPassword;
+      final isChangePassword = state.matchedLocation == changePassword;
       final isOnboarding = state.matchedLocation == onboarding ||
           state.matchedLocation == walkthrough;
 
-      // Always allow onboarding and auth screens
-      if (isOnboarding || isLoggingIn || isRegistering || isForgotPassword) {
+      // Always allow splash, onboarding, auth, and change password screens
+      if (isSplash || isOnboarding || isLoggingIn || isRegistering || isForgotPassword || isChangePassword) {
         return null;
       }
 
@@ -87,6 +92,11 @@ class AppRouter {
       return null;
     },
     routes: [
+      GoRoute(
+        path: splash,
+        name: 'splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         path: onboarding,
         name: 'onboarding',
@@ -243,7 +253,10 @@ class AppRouter {
       GoRoute(
         path: changePassword,
         name: 'changePassword',
-        builder: (context, state) => const ChangePasswordScreen(),
+        builder: (context, state) {
+          final isRecovery = state.uri.queryParameters['isRecovery'] == 'true';
+          return ChangePasswordScreen(isRecovery: isRecovery);
+        },
       ),
       GoRoute(
         path: reportBug,
