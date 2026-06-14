@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_button.dart';
@@ -301,7 +302,14 @@ class OnboardingWalkthroughScreen extends ConsumerWidget {
                 // Visual content section
                 Expanded(
                   child: Center(
-                    child: child,
+                    child: child
+                        .animate(key: ValueKey('${pageIndexText}_child'))
+                        .fadeIn(duration: 500.ms)
+                        .scale(
+                          begin: const Offset(0.9, 0.9),
+                          end: const Offset(1.0, 1.0),
+                          curve: Curves.easeOutBack,
+                        ),
                   ),
                 ),
 
@@ -314,7 +322,10 @@ class OnboardingWalkthroughScreen extends ConsumerWidget {
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                   height: 1.15,
-                ),
+                )
+                    .animate(key: ValueKey('${pageIndexText}_title'))
+                    .fadeIn(delay: 150.ms, duration: 400.ms)
+                    .slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
                 SizedBox(height: 12.h),
 
                 // Description
@@ -323,7 +334,10 @@ class OnboardingWalkthroughScreen extends ConsumerWidget {
                   fontSize: 14,
                   color: Colors.white.withValues(alpha: 0.7),
                   height: 1.4,
-                ),
+                )
+                    .animate(key: ValueKey('${pageIndexText}_desc'))
+                    .fadeIn(delay: 300.ms, duration: 400.ms)
+                    .slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
                 SizedBox(height: 8.h),
               ],
             ),

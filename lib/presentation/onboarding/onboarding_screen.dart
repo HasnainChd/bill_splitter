@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_button.dart';
@@ -32,32 +33,49 @@ class OnboardingScreen extends StatelessWidget {
                 SizedBox(height: 10.h),
 
                 // Logo and App Name
-                _buildLogoSection(),
+                _buildLogoSection()
+                    .animate()
+                    .fadeIn(duration: 600.ms)
+                    .slideY(begin: -0.15, end: 0, curve: Curves.easeOutQuad),
 
                 SizedBox(height: 38.h),
 
                 // Main Balance Card
-                _buildMainBalanceCard(),
+                _buildMainBalanceCard()
+                    .animate()
+                    .fadeIn(delay: 150.ms, duration: 600.ms)
+                    .slideY(begin: 0.12, end: 0, curve: Curves.easeOutQuad),
 
                 SizedBox(height: 15.h),
 
                 // Balance Summary Card (merged)
-                _buildBalanceSummaryCard(),
+                _buildBalanceSummaryCard()
+                    .animate()
+                    .fadeIn(delay: 300.ms, duration: 600.ms)
+                    .slideY(begin: 0.12, end: 0, curve: Curves.easeOutQuad),
 
                 SizedBox(height: 38.h),
 
                 // Features List
-                _buildFeaturesList(),
+                _buildFeaturesList()
+                    .animate()
+                    .fadeIn(delay: 450.ms, duration: 600.ms)
+                    .slideY(begin: 0.12, end: 0, curve: Curves.easeOutQuad),
 
                 SizedBox(height: 38.h),
 
                 // Get Started Button
-                _buildGetStartedButton(context),
+                _buildGetStartedButton(context)
+                    .animate()
+                    .fadeIn(delay: 600.ms, duration: 600.ms)
+                    .slideY(begin: 0.12, end: 0, curve: Curves.easeOutQuad),
 
                 SizedBox(height: 16.h),
 
                 // Sign In Link
-                _buildSignInLink(context),
+                _buildSignInLink(context)
+                    .animate()
+                    .fadeIn(delay: 750.ms, duration: 600.ms),
 
                 SizedBox(height: 22.h),
               ],
