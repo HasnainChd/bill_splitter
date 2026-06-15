@@ -15,10 +15,16 @@ class AppDialog {
   }) async {
     return showDialog<bool>(
       context: context,
-      barrierColor: AppColors.black.withValues(alpha: 0.5),
+      barrierColor: AppColors.black.withValues(alpha: 0.6),
       builder: (context) => Dialog(
+        backgroundColor: AppColors.cardDark,
+        elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20.r),
+          side: BorderSide(
+            color: AppColors.white.withValues(alpha: 0.08),
+            width: 1,
+          ),
         ),
         child: Padding(
           padding: EdgeInsets.all(24.w),
@@ -29,8 +35,9 @@ class AppDialog {
                 width: 56.w,
                 height: 56.w,
                 decoration: BoxDecoration(
-                  color:
-                      isDanger ? AppColors.errorLight : AppColors.primaryLight,
+                  color: isDanger
+                      ? AppColors.error.withValues(alpha: 0.12)
+                      : AppColors.onboardingViolet.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -38,22 +45,24 @@ class AppDialog {
                       ? Icons.delete_outline_rounded
                       : Icons.help_outline_rounded,
                   size: 28.sp,
-                  color: isDanger ? AppColors.error : AppColors.primary,
+                  color: isDanger ? AppColors.error : AppColors.onboardingViolet,
                 ),
               ),
-              SizedBox(height: 16.h),
+              SizedBox(height: 20.h),
               AppText(
                 title,
-                fontSize: 18.sp,
+                fontSize: 18,
                 fontWeight: FontWeight.w700,
+                color: AppColors.white,
                 align: TextAlign.center,
               ),
-              SizedBox(height: 8.h),
+              SizedBox(height: 10.h),
               AppText(
                 message,
-                fontSize: 14.sp,
-                color: AppColors.textSecondary,
+                fontSize: 14,
+                color: AppColors.white.withValues(alpha: 0.6),
                 align: TextAlign.center,
+                height: 1.4,
               ),
               SizedBox(height: 24.h),
               Row(
@@ -63,6 +72,8 @@ class AppDialog {
                       label: cancelText,
                       onTap: () => Navigator.of(context).pop(false),
                       isOutlined: true,
+                      color: AppColors.white.withValues(alpha: 0.2),
+                      textColor: AppColors.white,
                     ),
                   ),
                   SizedBox(width: 12.w),
@@ -70,7 +81,8 @@ class AppDialog {
                     child: AppButton(
                       label: confirmText,
                       onTap: () => Navigator.of(context).pop(true),
-                      color: isDanger ? AppColors.error : null,
+                      color: isDanger ? AppColors.error : AppColors.onboardingViolet,
+                      textColor: AppColors.white,
                     ),
                   ),
                 ],

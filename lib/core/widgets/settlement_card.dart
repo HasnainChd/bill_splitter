@@ -3,13 +3,14 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../constants/app_colors.dart';
 import 'app_text.dart';
 import 'app_avatar.dart';
-import 'app_button.dart';
 
 class SettlementCard extends StatelessWidget {
   final String fromMember;
   final String toMember;
   final double amount;
   final bool isPaid;
+  final String currency;
+  final bool isLoading;
   final VoidCallback? onMarkAsPaid;
 
   const SettlementCard({
@@ -18,11 +19,19 @@ class SettlementCard extends StatelessWidget {
     required this.toMember,
     required this.amount,
     required this.isPaid,
+    this.currency = 'USD',
+    this.isLoading = false,
     this.onMarkAsPaid,
   });
 
   @override
   Widget build(BuildContext context) {
+    final formattedAmount = currency == 'EUR'
+        ? '€${amount.toStringAsFixed(0)}'
+        : currency == 'USD'
+            ? '\$${amount.toStringAsFixed(0)}'
+            : '$currency ${amount.toStringAsFixed(0)}';
+
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
@@ -45,59 +54,83 @@ class SettlementCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // From member
-              Column(
-                children: [
-                  AppAvatar(
-                    name: fromMember,
-                    size: 44.sp,
-                  ),
-                  SizedBox(height: 6.h),
-                  AppText(
-                    fromMember,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.white,
-                  ),
-                ],
+              Expanded(
+                flex: 3,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppAvatar(
+                      name: fromMember,
+                      size: 44.sp,
+                    ),
+                    SizedBox(height: 6.h),
+                    AppText(
+                      fromMember,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.white,
+                      align: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
               // Center: arrow + amount
-              Column(
-                children: [
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    color: AppColors.onboardingViolet,
-                    size: 20.sp,
-                  ),
-                  SizedBox(height: 4.h),
-                  AppText(
-                    '\$${amount.toStringAsFixed(0)}',
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: isPaid ? AppColors.success : AppColors.white,
-                  ),
-                  SizedBox(height: 2.h),
-                  AppText(
-                    '$fromMember pays $toMember',
-                    fontSize: 11,
-                    color: AppColors.white.withValues(alpha: 0.4),
-                  ),
-                ],
+              Expanded(
+                flex: 4,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      color: AppColors.onboardingViolet,
+                      size: 20.sp,
+                    ),
+                    SizedBox(height: 4.h),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: AppText(
+                        formattedAmount,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: isPaid ? AppColors.success : AppColors.white,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    AppText(
+                      '$fromMember pays $toMember',
+                      fontSize: 10,
+                      color: AppColors.white.withValues(alpha: 0.4),
+                      align: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
               // To member
-              Column(
-                children: [
-                  AppAvatar(
-                    name: toMember,
-                    size: 44.sp,
-                  ),
-                  SizedBox(height: 6.h),
-                  AppText(
-                    toMember,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.white,
-                  ),
-                ],
+              Expanded(
+                flex: 3,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppAvatar(
+                      name: toMember,
+                      size: 44.sp,
+                    ),
+                    SizedBox(height: 6.h),
+                    AppText(
+                      toMember,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.white,
+                      align: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -126,7 +159,7 @@ class SettlementCard extends StatelessWidget {
               width: double.infinity,
               height: 38.h,
               child: ElevatedButton(
-                onPressed: onMarkAsPaid,
+                onPressed: isLoading ? null : onMarkAsPaid,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.success.withValues(alpha: 0.12),
                   elevation: 0,
@@ -137,12 +170,21 @@ class SettlementCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12.r),
                   ),
                 ),
-                child: const AppText(
-                  'Mark as Paid',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.success,
-                ),
+                child: isLoading
+                    ? SizedBox(
+                        width: 16.w,
+                        height: 16.w,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.success),
+                        ),
+                      )
+                    : const AppText(
+                        'Mark as Paid',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.success,
+                      ),
               ),
             ),
         ],

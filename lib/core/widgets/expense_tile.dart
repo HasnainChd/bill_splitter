@@ -10,6 +10,7 @@ class ExpenseTile extends StatelessWidget {
   final double amount;
   final String date;
   final IconData categoryIcon;
+  final String currency;
   final VoidCallback? onTap;
 
   const ExpenseTile({
@@ -19,11 +20,18 @@ class ExpenseTile extends StatelessWidget {
     required this.amount,
     required this.date,
     required this.categoryIcon,
+    this.currency = 'USD',
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final currencySymbol = currency == 'USD'
+        ? '\$'
+        : currency == 'EUR'
+            ? '€'
+            : '$currency ';
+
     return AppCard(
       onTap: onTap,
       padding: EdgeInsets.all(16.w),
@@ -61,7 +69,7 @@ class ExpenseTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               AppText(
-                '\$${amount.toStringAsFixed(2)}',
+                '$currencySymbol${amount.toStringAsFixed(2)}',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),

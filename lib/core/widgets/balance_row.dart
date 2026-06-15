@@ -7,11 +7,13 @@ import 'app_avatar.dart';
 class BalanceRow extends StatelessWidget {
   final String memberName;
   final double balance;
+  final String currency;
 
   const BalanceRow({
     super.key,
     required this.memberName,
     required this.balance,
+    this.currency = 'USD',
   });
 
   @override
@@ -22,14 +24,20 @@ class BalanceRow extends StatelessWidget {
     String balanceText;
     Color balanceColor;
 
+    final currencySymbol = currency == 'USD'
+        ? '\$'
+        : currency == 'EUR'
+            ? '€'
+            : '$currency ';
+
     if (isZero) {
       balanceText = 'settled';
       balanceColor = AppColors.textHint;
     } else if (isPositive) {
-      balanceText = 'gets back \$${balance.abs().toStringAsFixed(2)}';
+      balanceText = 'gets back $currencySymbol${balance.abs().toStringAsFixed(2)}';
       balanceColor = AppColors.success;
     } else {
-      balanceText = 'owes \$${balance.abs().toStringAsFixed(2)}';
+      balanceText = 'owes $currencySymbol${balance.abs().toStringAsFixed(2)}';
       balanceColor = AppColors.error;
     }
 

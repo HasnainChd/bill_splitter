@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
+import '../../providers/settings_provider.dart';
 
 final divvyProBillingCycleProvider =
     StateProvider.autoDispose<String>((ref) => 'Yearly');
@@ -16,8 +17,9 @@ class DivvyProScreen extends ConsumerWidget {
     final billingCycle = ref.watch(divvyProBillingCycleProvider);
     final isYearly = billingCycle == 'Yearly';
 
-    final proPrice = isYearly ? '\$3.49' : '\$4.99';
-    final teamPrice = isYearly ? '\$6.99' : '\$9.99';
+    final defaultCurrency = ref.watch(defaultCurrencyProvider);
+    final proPrice = isYearly ? '$defaultCurrency 3.49' : '$defaultCurrency 4.99';
+    final teamPrice = isYearly ? '$defaultCurrency 6.99' : '$defaultCurrency 9.99';
 
     return SafeArea(
       top: false,
@@ -169,8 +171,8 @@ class DivvyProScreen extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.baseline,
                             textBaseline: TextBaseline.alphabetic,
                             children: [
-                              const AppText(
-                                '\$0',
+                              AppText(
+                                '$defaultCurrency 0',
                                 fontSize: 28,
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.white,

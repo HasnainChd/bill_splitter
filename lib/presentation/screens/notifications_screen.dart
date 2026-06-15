@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
+import '../../providers/notifications_provider.dart';
 
 final notificationsFilterProvider =
     StateProvider.autoDispose<String>((ref) => 'All');
@@ -14,122 +15,40 @@ final notificationsHasUnreadProvider =
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
-  static const List<Map<String, dynamic>> _allNotifications = [
-    {
-      'id': '1',
-      'category': 'Payments',
-      'group': 'JUST NOW',
-      'title': 'Sarah Chen paid you back',
-      'subtitle': '2 min ago',
-      'amount': '+\$168.00',
-      'amountColor': Color(0xFF00C896),
-      'avatarText': 'SC',
-      'avatarColor': AppColors.coralRed,
-      'badgeIcon': Icons.check_circle_rounded,
-      'badgeColor': Color(0xFF00C896),
-      'isUnread': true,
-    },
-    {
-      'id': '2',
-      'category': 'Expenses',
-      'group': 'JUST NOW',
-      'title': 'Marcus Thompson added "Thai dinner" to Friday Crew',
-      'subtitle': '12 min ago',
-      'amount': '\$164.00',
-      'amountColor': AppColors.white,
-      'avatarText': 'MT',
-      'avatarColor': AppColors.orange,
-      'badgeIcon': Icons.restaurant_rounded,
-      'badgeColor': AppColors.onboardingViolet,
-      'isUnread': true,
-    },
-    {
-      'id': '3',
-      'category': 'Payments',
-      'group': 'TODAY',
-      'title': 'Divvy Reminder: you owe Marcus \$41 from Friday Crew',
-      'subtitle': '9:00 AM',
-      'amount': null,
-      'amountColor': null,
-      'avatarText': '⚡',
-      'avatarColor': AppColors.onboardingViolet,
-      'badgeIcon': Icons.alarm_rounded,
-      'badgeColor': AppColors.orange,
-      'isUnread': false,
-    },
-    {
-      'id': '4',
-      'category': 'Groups',
-      'group': 'TODAY',
-      'title': 'Priya Patel added you to NYC Getaway',
-      'subtitle': '8:30 AM',
-      'amount': null,
-      'amountColor': null,
-      'avatarText': 'PP',
-      'avatarColor': Color(0xFF10B981),
-      'badgeIcon': Icons.group_add_rounded,
-      'badgeColor': AppColors.onboardingCyan,
-      'isUnread': false,
-    },
-    {
-      'id': '5',
-      'category': 'Payments',
-      'group': 'TODAY',
-      'title': 'Kai Wilson settled up \$800.00 Grove Apt',
-      'subtitle': '7:45 AM',
-      'amount': '+\$800.00',
-      'amountColor': Color(0xFF00C896),
-      'avatarText': 'KW',
-      'avatarColor': AppColors.onboardingCyan,
-      'badgeIcon': Icons.check_circle_rounded,
-      'badgeColor': Color(0xFF00C896),
-      'isUnread': false,
-    },
-    {
-      'id': '6',
-      'category': 'Expenses',
-      'group': 'YESTERDAY',
-      'title': 'Sarah Chen added "Sagrada Família" to Barcelona Trip',
-      'subtitle': 'May 17',
-      'amount': '\$90.00',
-      'amountColor': AppColors.white,
-      'avatarText': 'SC',
-      'avatarColor': AppColors.coralRed,
-      'badgeIcon': Icons.flight_takeoff_rounded,
-      'badgeColor': AppColors.onboardingCyan,
-      'isUnread': false,
-    },
-    {
-      'id': '7',
-      'category': 'Groups',
-      'group': 'YESTERDAY',
-      'title': 'Marcus Thompson: "Split this differently?" Barcelona Trip',
-      'subtitle': 'May 17',
-      'amount': null,
-      'amountColor': null,
-      'avatarText': 'MT',
-      'avatarColor': AppColors.orange,
-      'badgeIcon': Icons.chat_bubble_rounded,
-      'badgeColor': AppColors.onboardingViolet,
-      'isUnread': false,
-    },
-  ];
+  String _getGroupLabel(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final itemDate = DateTime(date.year, date.month, date.day);
+
+    final diffInMinutes = now.difference(date).inMinutes;
+    if (diffInMinutes < 60 && diffInMinutes >= 0) {
+      return 'JUST NOW';
+    } else if (itemDate == today) {
+      return 'TODAY';
+    } else if (itemDate == yesterday) {
+      return 'YESTERDAY';
+    } else {
+      return 'OLDER';
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeFilter = ref.watch(notificationsFilterProvider);
     final hasUnread = ref.watch(notificationsHasUnreadProvider);
+    final notifications = ref.watch(dynamicNotificationsProvider);
 
     // Filter list
-    final filteredList = _allNotifications.where((n) {
+    final filteredList = notifications.where((n) {
       if (activeFilter == 'All') return true;
-      return n['category'] == activeFilter;
+      return n.category == activeFilter;
     }).toList();
 
     // Group items
-    final Map<String, List<Map<String, dynamic>>> grouped = {};
+    final Map<String, List<NotificationItem>> grouped = {};
     for (var n in filteredList) {
-      final grp = n['group'] as String;
+      final grp = _getGroupLabel(n.date);
       grouped.putIfAbsent(grp, () => []).add(n);
     }
 
@@ -291,7 +210,7 @@ class NotificationsScreen extends ConsumerWidget {
                                 children: List.generate(items.length, (idx) {
                                   final item = items[idx];
                                   final isItemUnread =
-                                      hasUnread && (item['isUnread'] as bool);
+                                      hasUnread && item.isUnread;
 
                                   return Column(
                                     children: [
@@ -305,14 +224,13 @@ class NotificationsScreen extends ConsumerWidget {
                                               width: 38.w,
                                               height: 38.w,
                                               decoration: BoxDecoration(
-                                                color: item['avatarColor']
-                                                    as Color,
+                                                color: item.avatarColor,
                                                 borderRadius:
                                                     BorderRadius.circular(10.r),
                                               ),
                                               alignment: Alignment.center,
                                               child: AppText(
-                                                item['avatarText'] as String,
+                                                item.avatarText,
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w800,
                                                 color: AppColors.white,
@@ -334,9 +252,8 @@ class NotificationsScreen extends ConsumerWidget {
                                                 ),
                                                 alignment: Alignment.center,
                                                 child: Icon(
-                                                  item['badgeIcon'] as IconData,
-                                                  color: item['badgeColor']
-                                                      as Color,
+                                                  item.badgeIcon,
+                                                  color: item.badgeColor,
                                                   size: 10.sp,
                                                 ),
                                               ),
@@ -344,7 +261,7 @@ class NotificationsScreen extends ConsumerWidget {
                                           ],
                                         ),
                                         title: AppText(
-                                          item['title'] as String,
+                                          item.title,
                                           fontSize: 13.5,
                                           fontWeight: FontWeight.w700,
                                           color: AppColors.white,
@@ -353,7 +270,7 @@ class NotificationsScreen extends ConsumerWidget {
                                         subtitle: Row(
                                           children: [
                                             AppText(
-                                              item['subtitle'] as String,
+                                              item.subtitle,
                                               fontSize: 11,
                                               color: AppColors.white
                                                   .withValues(alpha: 0.35),
@@ -372,13 +289,12 @@ class NotificationsScreen extends ConsumerWidget {
                                             ],
                                           ],
                                         ),
-                                        trailing: item['amount'] != null
+                                        trailing: item.amount != null
                                             ? AppText(
-                                                item['amount'] as String,
+                                                item.amount!,
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w800,
-                                                color: item['amountColor']
-                                                    as Color,
+                                                color: item.amountColor ?? Colors.white,
                                               )
                                             : null,
                                       ),
