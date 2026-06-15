@@ -12,6 +12,8 @@ import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/models/group.dart';
 import 'core/models/expense.dart';
+import 'providers/auth_provider.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +38,11 @@ void main() async {
       Future.delayed(const Duration(milliseconds: 300), () {
         AppRouter.router.refresh();
         AppRouter.router.go(AppRouter.home);
+      });
+    } else if (data.event == AuthChangeEvent.signedOut) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        AppRouter.router.refresh();
+        AppRouter.router.go(AppRouter.login);
       });
     }
   });
@@ -101,6 +108,7 @@ class BillSplitterApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(authStateListenerProvider);
     return ScreenUtilInit(
       designSize: const Size(390, 844),
       minTextAdapt: true,

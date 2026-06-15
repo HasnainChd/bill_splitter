@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/utils/app_snackbar.dart';
 
 import 'package:hive_flutter/hive_flutter.dart';
+import 'auth_provider.dart';
 
 class UserProfile {
   final String id;
@@ -51,7 +52,8 @@ class UserProfile {
 
   factory UserProfile.fromMap(Map<String, dynamic> data, String authEmail) {
     final box = Hive.box('settings');
-    final localCurrency = box.get('default_currency', defaultValue: 'USD (\$)') as String;
+    final localCurrency =
+        box.get('default_currency', defaultValue: 'USD (\$)') as String;
     return UserProfile(
       id: data['id'] ?? '',
       fullName: data['fullName'] ?? data['full_name'] ?? '',
@@ -59,7 +61,10 @@ class UserProfile {
       email: data['email'] ?? authEmail,
       phone: data['phone'] ?? '',
       bio: data['bio'] ?? '',
-      currency: data['currency'] ?? data['default_currency'] ?? localCurrency,
+      currency: data['currency'] ??
+          data['default_currency'] ??
+          data['defaultCurrency'] ??
+          localCurrency,
       avatarUrl: data['avatarUrl'] ?? data['avatar_url'] ?? '',
     );
   }
@@ -91,7 +96,7 @@ class ProfileState {
 
 class ProfileNotifier extends StateNotifier<ProfileState> {
   final SupabaseClient _supabase = Supabase.instance.client;
-  List<String> _dbColumns = [];
+  final List<String> _dbColumns = [];
 
   ProfileNotifier() : super(const ProfileState()) {
     fetchProfile();
@@ -110,7 +115,9 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
           .maybeSingle();
 
       if (response != null) {
-        _dbColumns = response.keys.toList();
+        // _dbColumns = response.keys.toList();
+        // debugPrint('👤 Profile response from Supabase: $response');
+        // debugPrint('👤 Available database columns: $_dbColumns');
         state = state.copyWith(
           profile: UserProfile.fromMap(response, user.email ?? ''),
           isLoading: false,
@@ -119,7 +126,9 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         // If not found in public.users, create default structure and try inserting
         final defaultProfile = UserProfile(
           id: user.id,
-          fullName: user.userMetadata?['fullName'] ?? user.userMetadata?['full_name'] ?? '',
+          fullName: user.userMetadata?['fullName'] ??
+              user.userMetadata?['full_name'] ??
+              '',
           username: user.userMetadata?['username'] ?? '',
           email: user.email ?? '',
           phone: '',
@@ -158,17 +167,17 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         final fileName = '${user.id}_avatar.$fileExt';
 
         await _supabase.storage.from('avatars').upload(
-          fileName,
-          file,
-          fileOptions: const FileOptions(upsert: true),
-        );
+              fileName,
+              file,
+              fileOptions: const FileOptions(upsert: true),
+            );
 
         avatarUrl = _supabase.storage.from('avatars').getPublicUrl(fileName);
       }
 
       // Build safe update request using verified database columns
       final Map<String, dynamic> updateData = {'id': user.id};
-      
+
       void addIfColumnExists(String colName, dynamic value) {
         if (_dbColumns.contains(colName)) {
           updateData[colName] = value;
@@ -193,8 +202,19 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         addIfColumnExists('bio', bio);
         addIfColumnExists('currency', currency);
         addIfColumnExists('default_currency', currency);
+        addIfColumnExists('defaultCurrency', currency);
         addIfColumnExists('avatarUrl', avatarUrl);
         addIfColumnExists('avatar_url', avatarUrl);
+      }
+
+      // debugPrint('👤 Sending profile updates to Supabase: $updateData');
+
+      // Save currency locally to Hive box immediately so fetchProfile falls back to it
+      try {
+        final box = Hive.box('settings');
+        await box.put('default_currency', currency);
+      } catch (e) {
+        debugPrint('Error saving default_currency locally: $e');
       }
 
       await _supabase.from('users').upsert(updateData);
@@ -214,5 +234,6 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
 final profileProvider =
     StateNotifierProvider<ProfileNotifier, ProfileState>((ref) {
+  ref.watch(supabaseUserProvider);
   return ProfileNotifier();
 });

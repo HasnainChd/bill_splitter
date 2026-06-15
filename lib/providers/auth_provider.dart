@@ -6,7 +6,11 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../core/router/app_router.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../../core/models/group.dart';
+import '../../core/models/expense.dart';
 import '../supabase_options.dart';
+
 
 // Auth State
 class AuthState {
@@ -267,3 +271,41 @@ final forgotPasswordControllersProvider = Provider.autoDispose<ForgotPasswordCon
   });
   return controllers;
 });
+
+// Provider for the current Supabase user
+final supabaseUserProvider = StateProvider<User?>((ref) {
+  return Supabase.instance.client.auth.currentUser;
+});
+
+// Listener for Supabase auth state changes to clear Hive data and reset states
+final authStateListenerProvider = Provider<void>((ref) {
+  final client = Supabase.instance.client;
+  final subscription = client.auth.onAuthStateChange.listen((data) async {
+    final event = data.event;
+    if (event == AuthChangeEvent.signedOut) {
+      debugPrint('👤 Supabase Auth event: signedOut. Clearing Hive boxes...');
+      try {
+        if (Hive.isBoxOpen('groups')) {
+          await Hive.box<Group>('groups').clear();
+        }
+        if (Hive.isBoxOpen('expenses')) {
+          await Hive.box<Expense>('expenses').clear();
+        }
+        if (Hive.isBoxOpen('settings')) {
+          await Hive.box('settings').clear();
+        }
+      } catch (e) {
+        debugPrint('Error clearing Hive boxes on sign out: $e');
+      }
+      ref.read(supabaseUserProvider.notifier).state = null;
+    } else if (event == AuthChangeEvent.signedIn) {
+      debugPrint('👤 Supabase Auth event: signedIn. Setting current user...');
+      ref.read(supabaseUserProvider.notifier).state = client.auth.currentUser;
+    }
+  });
+
+  ref.onDispose(() {
+    subscription.cancel();
+  });
+});
+
