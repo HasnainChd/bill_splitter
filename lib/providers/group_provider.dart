@@ -3,6 +3,8 @@ import 'package:uuid/uuid.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../core/models/group.dart';
 import 'expense_provider.dart';
+import 'auth_provider.dart';
+
 
 // Group State
 class GroupState {
@@ -128,8 +130,10 @@ class GroupNotifier extends StateNotifier<GroupState> {
 
 // Provider
 final groupProvider = StateNotifierProvider<GroupNotifier, GroupState>((ref) {
+  ref.watch(supabaseUserProvider);
   return GroupNotifier();
 });
+
 
 // Balance for a specific group computed from expenses
 final groupBalanceProvider = Provider.family<double, String>((ref, groupId) {

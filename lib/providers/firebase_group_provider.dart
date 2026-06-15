@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/models/group.dart';
+import 'auth_provider.dart';
+
 
 // Firebase Group State
 class FirebaseGroupState {
@@ -171,7 +173,9 @@ final supabaseClientProvider = Provider<SupabaseClient>((ref) {
 
 final firebaseGroupProvider =
     StateNotifierProvider<FirebaseGroupNotifier, FirebaseGroupState>((ref) {
+  ref.watch(supabaseUserProvider);
   return FirebaseGroupNotifier(
     ref.watch(supabaseClientProvider),
   );
 });
+

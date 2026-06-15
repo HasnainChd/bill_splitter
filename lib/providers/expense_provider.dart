@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../core/models/expense.dart';
+import 'auth_provider.dart';
+
 
 // Expense State
 class ExpenseState {
@@ -141,8 +143,10 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
 // Provider
 final expenseProvider =
     StateNotifierProvider<ExpenseNotifier, ExpenseState>((ref) {
+  ref.watch(supabaseUserProvider);
   return ExpenseNotifier();
 });
+
 
 // Family provider for expenses by group
 final expensesForGroupProvider =

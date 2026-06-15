@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/models/expense.dart';
 import 'firebase_group_provider.dart';
+import 'auth_provider.dart';
+
 
 // Firebase Expense State
 class FirebaseExpenseState {
@@ -206,19 +208,23 @@ class FirebaseExpenseNotifier extends StateNotifier<FirebaseExpenseState> {
 // Firebase Expense Provider (now Supabase backed)
 final firebaseExpenseProvider =
     StateNotifierProvider<FirebaseExpenseNotifier, FirebaseExpenseState>((ref) {
+  ref.watch(supabaseUserProvider);
   return FirebaseExpenseNotifier(
     ref.watch(supabaseClientProvider),
   );
 });
 
+
 // Provider to get expenses for a specific group
 final expensesForGroupProvider =
     StreamProvider.family<List<Expense>, String>((ref, groupId) {
+  final user = ref.watch(supabaseUserProvider);
   final supabase = ref.watch(supabaseClientProvider);
 
-  if (supabase.auth.currentUser == null) {
+  if (user == null) {
     return Stream.value([]);
   }
+
 
   return supabase
       .from('expenses')
