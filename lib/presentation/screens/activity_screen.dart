@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_button.dart';
+import '../../providers/settings_provider.dart';
 
 final activityFilterProvider = StateProvider<String>((ref) => 'All');
 
@@ -15,6 +16,7 @@ class ActivityScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeFilter = ref.watch(activityFilterProvider);
+    final defaultCurrency = ref.watch(defaultCurrencyProvider);
 
     return SafeArea(
       top: false,
@@ -127,7 +129,7 @@ class ActivityScreen extends ConsumerWidget {
                     // May 2024 Header
                     _buildSectionHeader(
                       title: 'May 2024',
-                      amountBadge: '-\$756',
+                      amountBadge: '-$defaultCurrency 756',
                       isPositive: false,
                     ),
                     SizedBox(height: 12.h),
@@ -141,7 +143,7 @@ class ActivityScreen extends ConsumerWidget {
                             emoji: '🏨',
                             title: 'Airbnb accommodation',
                             subtitle: 'Barcelona Trip · May 15 · by You',
-                            amount: '-\$180',
+                            amount: '-$defaultCurrency 180',
                             amountColor: AppColors.coralRed,
                           ),
                           _buildDivider(),
@@ -149,7 +151,7 @@ class ActivityScreen extends ConsumerWidget {
                             emoji: '💸',
                             title: 'Sarah paid you back',
                             subtitle: 'Barcelona Trip · May 18',
-                            amount: '+\$168',
+                            amount: '+$defaultCurrency 168',
                             amountColor: const Color(0xFF00C896),
                           ),
                           _buildDivider(),
@@ -157,7 +159,7 @@ class ActivityScreen extends ConsumerWidget {
                             emoji: '🎭',
                             title: 'Sagrada Família tickets',
                             subtitle: 'Barcelona Trip · May 17 · by Sarah',
-                            amount: '-\$30',
+                            amount: '-$defaultCurrency 30',
                             amountColor: AppColors.coralRed,
                           ),
                           _buildDivider(),
@@ -165,7 +167,7 @@ class ActivityScreen extends ConsumerWidget {
                             emoji: '🍕',
                             title: 'Tapas dinner',
                             subtitle: 'Barcelona Trip · May 16 · by Sarah',
-                            amount: '-\$42',
+                            amount: '-$defaultCurrency 42',
                             amountColor: AppColors.coralRed,
                           ),
                           _buildDivider(),
@@ -184,7 +186,7 @@ class ActivityScreen extends ConsumerWidget {
                     // April 2024 Header
                     _buildSectionHeader(
                       title: 'April 2024',
-                      amountBadge: '+\$1,560',
+                      amountBadge: '+$defaultCurrency 1,560',
                       isPositive: true,
                     ),
                     SizedBox(height: 12.h),
@@ -198,7 +200,7 @@ class ActivityScreen extends ConsumerWidget {
                             emoji: '🏠',
                             title: 'Priya paid rent share',
                             subtitle: 'Grove Apartment · Apr 30',
-                            amount: '+\$800',
+                            amount: '+$defaultCurrency 800',
                             amountColor: const Color(0xFF00C896),
                           ),
                           _buildDivider(),
@@ -206,7 +208,7 @@ class ActivityScreen extends ConsumerWidget {
                             emoji: '⚡',
                             title: 'Electricity bill',
                             subtitle: 'Grove Apartment · Apr 28 · by Priya',
-                            amount: '-\$60',
+                            amount: '-$defaultCurrency 60',
                             amountColor: AppColors.coralRed,
                           ),
                           _buildDivider(),
@@ -214,7 +216,7 @@ class ActivityScreen extends ConsumerWidget {
                             emoji: '🏠',
                             title: 'Kai paid rent share',
                             subtitle: 'Grove Apartment · Apr 30',
-                            amount: '+\$800',
+                            amount: '+$defaultCurrency 800',
                             amountColor: const Color(0xFF00C896),
                           ),
                           _buildDivider(),
@@ -222,7 +224,7 @@ class ActivityScreen extends ConsumerWidget {
                             emoji: '🛒',
                             title: 'Grocery run',
                             subtitle: 'Grove Apartment · Apr 22 · by You',
-                            amount: '-\$47',
+                            amount: '-$defaultCurrency 47',
                             amountColor: AppColors.coralRed,
                           ),
                         ],

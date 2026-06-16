@@ -147,6 +147,12 @@ class AppRouter {
         path: addExpense,
         name: 'addExpense',
         builder: (context, state) {
+          if (state.extra is Map<String, dynamic>) {
+            final map = state.extra as Map<String, dynamic>;
+            final group = map['group'] as Group;
+            final expense = map['expense'] as Expense?;
+            return AddExpenseScreen(group: group, expenseToEdit: expense);
+          }
           final group = state.extra as Group?;
           if (group == null) {
             return const Scaffold(

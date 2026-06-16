@@ -18,9 +18,15 @@ import 'providers/auth_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  FirebaseAnalytics? analytics;
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    analytics = FirebaseAnalytics.instance;
+  } catch (e) {
+    debugPrint('Firebase initialization skipped/failed: $e');
+  }
 
   await Supabase.initialize(
     url: SupabaseOptions.url,
@@ -47,7 +53,6 @@ void main() async {
     }
   });
 
-  FirebaseAnalytics analytics = FirebaseAnalytics.instance;
   // Initialize Hive
   await Hive.initFlutter();
 

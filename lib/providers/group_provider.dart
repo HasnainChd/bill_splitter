@@ -1,10 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/models/group.dart';
-import 'expense_provider.dart';
 import 'auth_provider.dart';
-
+import 'expense_provider.dart';
+import 'profile_provider.dart';
 
 // Group State
 class GroupState {
@@ -45,31 +46,112 @@ class GroupState {
 
 // Group Notifier
 class GroupNotifier extends StateNotifier<GroupState> {
+  final SupabaseClient _supabase = Supabase.instance.client;
+  RealtimeChannel? _groupsSubscription;
+  RealtimeChannel? _groupMembersSubscription;
+
   GroupNotifier() : super(const GroupState(groups: [], isLoading: false)) {
-    _loadGroups();
+    loadGroups();
+    _setupRealtimeListeners();
   }
 
-  // Load groups from Hive
-  Future<void> _loadGroups() async {
-    try {
-      final box = await Hive.openBox<Group>('groups');
-      final groups = box.values.toList();
-      state = state.copyWith(groups: groups);
-    } catch (e) {
-      state = state.copyWith(error: 'Failed to load groups: $e');
-    }
+  void _setupRealtimeListeners() {
+    final currentUser = _supabase.auth.currentUser;
+    if (currentUser == null) return;
+
+    _groupsSubscription = _supabase
+        .channel('public:groups')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'groups',
+          callback: (payload) {
+            loadGroups();
+          },
+        );
+    _groupsSubscription?.subscribe();
+
+    _groupMembersSubscription = _supabase
+        .channel('public:group_members')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'group_members',
+          callback: (payload) {
+            loadGroups();
+          },
+        );
+    _groupMembersSubscription?.subscribe();
   }
 
-  // Save groups to Hive
-  Future<void> _saveGroups() async {
+  @override
+  void dispose() {
+    _groupsSubscription?.unsubscribe();
+    _groupMembersSubscription?.unsubscribe();
+    super.dispose();
+  }
+
+  // Load groups from Supabase, caching them in Hive
+  Future<void> loadGroups() async {
     try {
+      state = state.copyWith(isLoading: true);
+      final currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) {
+        // Fallback: Load from Hive cache
+        final box = await Hive.openBox<Group>('groups');
+        state = state.copyWith(groups: box.values.toList(), isLoading: false);
+        return;
+      }
+
+      // Query group_members to get the groups this user belongs to
+      final memberGroupsResponse = await _supabase
+          .from('group_members')
+          .select('joined_at, groups(*, group_members(user_id))')
+          .eq('user_id', currentUser.id);
+
+      final List<Group> groupsList = [];
       final box = await Hive.openBox<Group>('groups');
       await box.clear();
-      for (final group in state.groups) {
+
+      for (final row in memberGroupsResponse as List) {
+        final groupRow = row['groups'];
+        if (groupRow == null) continue;
+
+        final memberList = (groupRow['group_members'] as List)
+            .map((m) => m['user_id']?.toString() ?? '')
+            .where((m) => m.isNotEmpty)
+            .toList();
+
+        final group = Group(
+          groupId: groupRow['id']?.toString() ?? '',
+          name: groupRow['name'] as String,
+          members: memberList,
+          currency: groupRow['currency'] as String? ?? 'PKR',
+          createdAt: groupRow['created_at'] != null
+              ? DateTime.parse(groupRow['created_at'] as String)
+              : DateTime.now(),
+        );
+
+        groupsList.add(group);
         await box.put(group.groupId, group);
       }
+
+      state = state.copyWith(groups: groupsList, isLoading: false);
     } catch (e) {
-      state = state.copyWith(error: 'Failed to save groups: $e');
+      debugPrint('Error loading groups: $e');
+      try {
+        final box = await Hive.openBox<Group>('groups');
+        state = state.copyWith(
+          groups: box.values.toList(),
+          isLoading: false,
+          error: 'Offline mode: $e',
+        );
+      } catch (boxError) {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'Failed to load groups: $e (Cache: $boxError)',
+        );
+      }
     }
   }
 
@@ -79,25 +161,52 @@ class GroupNotifier extends StateNotifier<GroupState> {
     required List<String> members,
     String currency = 'PKR',
   }) async {
-    print('👥 Adding group: $name');
-    print('👨‍👩‍👧‍👦 Members: ${members.join(', ')}');
-    print('💵 Currency: $currency');
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        throw Exception('No user logged in');
+      }
 
-    final newGroup = Group(
-      groupId: const Uuid().v4(),
-      name: name,
-      members: members,
-      currency: currency,
-      createdAt: DateTime.now(),
-    );
+      // 1. Insert into groups table
+      final groupData = await _supabase.from('groups').insert({
+        'name': name,
+        'currency': currency,
+        'created_by': user.id,
+      }).select().single();
 
-    state = state.copyWith(
-      groups: [...state.groups, newGroup],
-    );
+      final String groupId = groupData['id'] as String;
 
-    await _saveGroups();
+      // 2. Insert members into group_members (creator + other members)
+      final List<Map<String, dynamic>> memberRows = [
+        {'group_id': groupId, 'user_id': user.id},
+        ...members
+            .where((mId) => mId != user.id)
+            .map((mId) => {'group_id': groupId, 'user_id': mId}),
+      ];
+      await _supabase.from('group_members').insert(memberRows);
 
-    print('✅ Group added successfully. Total groups: ${state.groups.length}');
+      // 3. Reload from remote to update local state and Hive cache
+      await loadGroups();
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to add group: $e');
+      rethrow;
+    }
+  }
+
+  // Add a member to an existing group
+  Future<void> addMemberToGroup(String groupId, String userId) async {
+    try {
+      await _supabase.from('group_members').insert({
+        'group_id': groupId,
+        'user_id': userId,
+      });
+
+      // Reload groups to update local state and Hive cache
+      await loadGroups();
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to add member: $e');
+      rethrow;
+    }
   }
 
   // Get a single group by ID
@@ -111,20 +220,40 @@ class GroupNotifier extends StateNotifier<GroupState> {
 
   // Update a group
   Future<void> updateGroup(Group updatedGroup) async {
-    final updatedGroups = state.groups.map((group) {
-      return group.groupId == updatedGroup.groupId ? updatedGroup : group;
-    }).toList();
+    try {
+      await _supabase.from('groups').update({
+        'name': updatedGroup.name,
+        'currency': updatedGroup.currency,
+      }).eq('id', updatedGroup.groupId);
 
-    state = state.copyWith(groups: updatedGroups);
-    await _saveGroups();
+      final updatedGroups = state.groups.map((group) {
+        return group.groupId == updatedGroup.groupId ? updatedGroup : group;
+      }).toList();
+
+      state = state.copyWith(groups: updatedGroups);
+      final box = await Hive.openBox<Group>('groups');
+      await box.put(updatedGroup.groupId, updatedGroup);
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to update group: $e');
+      rethrow;
+    }
   }
 
   // Delete a group
   Future<void> deleteGroup(String groupId) async {
-    final updatedGroups =
-        state.groups.where((group) => group.groupId != groupId).toList();
-    state = state.copyWith(groups: updatedGroups);
-    await _saveGroups();
+    try {
+      await _supabase.from('groups').delete().eq('id', groupId);
+
+      final updatedGroups =
+          state.groups.where((group) => group.groupId != groupId).toList();
+      state = state.copyWith(groups: updatedGroups);
+
+      final box = await Hive.openBox<Group>('groups');
+      await box.delete(groupId);
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to delete group: $e');
+      rethrow;
+    }
   }
 }
 
@@ -134,11 +263,43 @@ final groupProvider = StateNotifierProvider<GroupNotifier, GroupState>((ref) {
   return GroupNotifier();
 });
 
-
 // Balance for a specific group computed from expenses
 final groupBalanceProvider = Provider.family<double, String>((ref, groupId) {
   final balances = ref.watch(balancesForGroupProvider(groupId));
-  // Return net total of all balances
   if (balances.isEmpty) return 0.0;
   return balances.values.fold(0.0, (sum, b) => sum + b);
+});
+
+// Fetch user profiles of all members in a specific group
+final groupMembersProvider =
+    FutureProvider.family<List<UserProfile>, String>((ref, groupId) async {
+  final supabase = Supabase.instance.client;
+
+  try {
+    final data = await supabase
+        .from('group_members')
+        .select('users(*)')
+        .eq('group_id', groupId);
+
+    final List<UserProfile> profiles = [];
+    for (final row in data as List) {
+      final userRow = row['users'];
+      if (userRow != null) {
+        profiles.add(UserProfile(
+          id: userRow['id']?.toString() ?? '',
+          fullName: userRow['fullName'] as String? ?? 'Unknown',
+          username: userRow['username'] as String? ?? '',
+          email: userRow['email'] as String? ?? '',
+          phone: userRow['phone'] as String? ?? '',
+          bio: userRow['bio'] as String? ?? '',
+          currency: userRow['currency'] as String? ?? 'USD',
+          avatarUrl: userRow['avatarUrl'] as String? ?? '',
+        ));
+      }
+    }
+    return profiles;
+  } catch (e) {
+    debugPrint('Error fetching group members for $groupId: $e');
+    return [];
+  }
 });
