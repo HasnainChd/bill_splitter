@@ -8,24 +8,10 @@ import '../../core/widgets/app_text_field.dart';
 import '../../core/router/app_router.dart';
 import '../../providers/create_group_provider.dart';
 import '../providers/screen_providers.dart';
+import '../../core/utils/group_icon_helper.dart';
 
 class CreateGroupScreen extends ConsumerWidget {
   const CreateGroupScreen({super.key});
-
-  static const List<IconData> _icons = [
-    Icons.flight_takeoff_rounded,
-    Icons.home_rounded,
-    Icons.local_pizza_rounded,
-    Icons.theater_comedy_rounded,
-    Icons.bolt_rounded,
-    Icons.shopping_cart_rounded,
-    Icons.celebration_rounded,
-    Icons.landscape_rounded,
-    Icons.directions_boat_rounded,
-    Icons.school_rounded,
-    Icons.work_rounded,
-    Icons.favorite_rounded,
-  ];
 
   static const List<Color> _colors = [
     Color(0xFF818CF8), // violet
@@ -38,19 +24,11 @@ class CreateGroupScreen extends ConsumerWidget {
     Color(0xFFF97316), // orange
   ];
 
-  // Mock available contacts
-  static const List<Map<String, String>> _contacts = [
-    {'initials': 'SC', 'name': 'Sarah Chen', 'handle': '@sarah', 'color': '0xFFEC4899'},
-    {'initials': 'MT', 'name': 'Marcus T.', 'handle': '@marcus', 'color': '0xFFF59E0B'},
-    {'initials': 'PP', 'name': 'Priya Patel', 'handle': '@priya', 'color': '0xFF10B981'},
-    {'initials': 'KW', 'name': 'Kai Wilson', 'handle': '@kai', 'color': '0xFF38BDF8'},
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final nameCtrl = ref.watch(cgNameControllerProvider);
     final searchCtrl = ref.watch(cgSearchControllerProvider);
-    final iconIndex = ref.watch(cgIconIndexProvider);
+    final selectedIconCodePoint = ref.watch(cgSelectedIconCodePointProvider);
     final colorIndex = ref.watch(cgColorIndexProvider);
     final selectedMembers = ref.watch(cgSelectedMembersProvider);
     final searchQuery = ref.watch(cgMemberSearchProvider);
@@ -59,10 +37,12 @@ class CreateGroupScreen extends ConsumerWidget {
     final groupName = nameCtrl.text.isEmpty ? 'New Group' : nameCtrl.text;
     final selectedColor = _colors[colorIndex];
 
-    final filteredContacts = _contacts
-        .where((c) =>
-            c['name']!.toLowerCase().contains(searchQuery.toLowerCase()) ||
-            c['handle']!.toLowerCase().contains(searchQuery.toLowerCase()))
+    final usersAsync = ref.watch(allUsersProvider);
+    final usersList = usersAsync.value ?? [];
+    final filteredUsers = usersList
+        .where((u) =>
+            u.fullName.toLowerCase().contains(searchQuery.toLowerCase()) ||
+            u.username.toLowerCase().contains(searchQuery.toLowerCase()))
         .toList();
 
     return Scaffold(
@@ -106,7 +86,8 @@ class CreateGroupScreen extends ConsumerWidget {
                               ],
                             ),
                             child: Icon(
-                              _icons[iconIndex],
+                              IconData(selectedIconCodePoint,
+                                  fontFamily: 'MaterialIcons'),
                               color: AppColors.white,
                               size: 40.sp,
                             ),
@@ -137,36 +118,79 @@ class CreateGroupScreen extends ConsumerWidget {
                     Wrap(
                       spacing: 10.w,
                       runSpacing: 10.h,
-                      children: List.generate(_icons.length, (i) {
-                        final isSelected = i == iconIndex;
-                        return GestureDetector(
-                          onTap: () => ref
-                              .read(cgIconIndexProvider.notifier)
-                              .state = i,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
+                      alignment: WrapAlignment.start,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        // Quick select icons
+                        ...GroupIconHelper.quickSelectIcons.map((item) {
+                          final isSelected =
+                              item.icon.codePoint == selectedIconCodePoint;
+                          return GestureDetector(
+                            onTap: () => ref
+                                .read(cgSelectedIconCodePointProvider.notifier)
+                                .state = item.icon.codePoint,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              width: 48.w,
+                              height: 48.w,
+                              decoration: BoxDecoration(
+                                color: AppColors.cardDark,
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.onboardingViolet
+                                      : AppColors.white.withValues(alpha: 0.08),
+                                  width: isSelected ? 2 : 1,
+                                ),
+                              ),
+                              child: Icon(
+                                item.icon,
+                                color: isSelected
+                                    ? AppColors.onboardingViolet
+                                    : AppColors.white.withValues(alpha: 0.7),
+                                size: 22.sp,
+                              ),
+                            ),
+                          );
+                        }),
+
+                        // "More" button
+                        GestureDetector(
+                          onTap: () => _showAllIconsDialog(context, ref),
+                          child: Container(
                             width: 48.w,
                             height: 48.w,
                             decoration: BoxDecoration(
                               color: AppColors.cardDark,
                               borderRadius: BorderRadius.circular(12.r),
                               border: Border.all(
-                                color: isSelected
+                                color: !GroupIconHelper.quickSelectIcons.any(
+                                        (item) =>
+                                            item.icon.codePoint ==
+                                            selectedIconCodePoint)
                                     ? AppColors.onboardingViolet
                                     : AppColors.white.withValues(alpha: 0.08),
-                                width: isSelected ? 2 : 1,
+                                width: !GroupIconHelper.quickSelectIcons.any(
+                                        (item) =>
+                                            item.icon.codePoint ==
+                                            selectedIconCodePoint)
+                                    ? 2
+                                    : 1,
                               ),
                             ),
                             child: Icon(
-                              _icons[i],
-                              color: isSelected
+                              Icons.more_horiz_rounded,
+                              color: !GroupIconHelper.quickSelectIcons.any(
+                                      (item) =>
+                                          item.icon.codePoint ==
+                                          selectedIconCodePoint)
                                   ? AppColors.onboardingViolet
                                   : AppColors.white.withValues(alpha: 0.7),
                               size: 22.sp,
                             ),
                           ),
-                        );
-                      }),
+                        ),
+                      ],
                     ),
                     SizedBox(height: 24.h),
 
@@ -198,8 +222,8 @@ class CreateGroupScreen extends ConsumerWidget {
                                 boxShadow: isSelected
                                     ? [
                                         BoxShadow(
-                                          color: _colors[i]
-                                              .withValues(alpha: 0.5),
+                                          color:
+                                              _colors[i].withValues(alpha: 0.5),
                                           blurRadius: 8,
                                         )
                                       ]
@@ -217,9 +241,8 @@ class CreateGroupScreen extends ConsumerWidget {
                       label: 'Add Members',
                       hint: 'Search by name or @username...',
                       controller: searchCtrl,
-                      onChanged: (val) => ref
-                          .read(cgMemberSearchProvider.notifier)
-                          .state = val,
+                      onChanged: (val) =>
+                          ref.read(cgMemberSearchProvider.notifier).state = val,
                       prefix: Icon(
                         Icons.search_rounded,
                         color: AppColors.white.withValues(alpha: 0.3),
@@ -230,40 +253,89 @@ class CreateGroupScreen extends ConsumerWidget {
 
                     // Members list
                     Container(
+                      width: double.infinity,
                       decoration: BoxDecoration(
                         color: AppColors.cardDark,
                         borderRadius: BorderRadius.circular(16.r),
                         border: Border.all(
                             color: AppColors.white.withValues(alpha: 0.05)),
                       ),
-                      child: Column(
-                        children: List.generate(filteredContacts.length, (i) {
-                          final contact = filteredContacts[i];
-                          final isSelected =
-                              selectedMembers.contains(contact['initials']);
-                          final color =
-                              Color(int.parse(contact['color']!));
-                          final isLast = i == filteredContacts.length - 1;
-
-                          return Column(
-                            children: [
-                              _buildMemberTile(
-                                ref: ref,
-                                contact: contact,
-                                avatarColor: color,
-                                isSelected: isSelected,
-                                selectedMembers: selectedMembers,
-                              ),
-                              if (!isLast)
-                                Divider(
-                                  color:
-                                      AppColors.white.withValues(alpha: 0.04),
-                                  height: 1,
-                                  indent: 60.w,
+                      child: usersAsync.when(
+                        loading: () => const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24.0),
+                            child: CircularProgressIndicator(
+                              color: AppColors.onboardingViolet,
+                            ),
+                          ),
+                        ),
+                        error: (err, stack) => Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: AppText(
+                              'Failed to load users: $err',
+                              color: AppColors.white,
+                            ),
+                          ),
+                        ),
+                        data: (_) {
+                          if (filteredUsers.isEmpty) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24.0),
+                                child: AppText(
+                                  'No registered users found',
+                                  color: Colors.white54,
                                 ),
-                            ],
+                              ),
+                            );
+                          }
+                          return Column(
+                            children: List.generate(filteredUsers.length, (i) {
+                              final contact = filteredUsers[i];
+                              final isSelected =
+                                  selectedMembers.contains(contact.id);
+
+                              // Compute initials
+                              final nameParts =
+                                  contact.fullName.trim().split(' ');
+                              final initials = nameParts.length >= 2
+                                  ? '${nameParts[0][0]}${nameParts[1][0]}'
+                                      .toUpperCase()
+                                  : nameParts.isNotEmpty &&
+                                          nameParts[0].isNotEmpty
+                                      ? nameParts[0][0].toUpperCase()
+                                      : 'U';
+
+                              // Compute color based on ID hash
+                              final color = _colors[
+                                  contact.id.hashCode.abs() % _colors.length];
+                              final isLast = i == filteredUsers.length - 1;
+
+                              return Column(
+                                children: [
+                                  _buildMemberTile(
+                                    ref: ref,
+                                    contactId: contact.id,
+                                    name: contact.fullName,
+                                    handle: '@${contact.username}',
+                                    initials: initials,
+                                    avatarColor: color,
+                                    isSelected: isSelected,
+                                    selectedMembers: selectedMembers,
+                                  ),
+                                  if (!isLast)
+                                    Divider(
+                                      color: AppColors.white
+                                          .withValues(alpha: 0.04),
+                                      height: 1,
+                                      indent: 60.w,
+                                    ),
+                                ],
+                              );
+                            }),
                           );
-                        }),
+                        },
                       ),
                     ),
                     SizedBox(height: 16.h),
@@ -293,7 +365,8 @@ class CreateGroupScreen extends ConsumerWidget {
                     GestureDetector(
                       onTap: groupState.isLoading
                           ? null
-                          : () => _createGroup(context, ref, nameCtrl, selectedMembers),
+                          : () => _createGroup(context, ref, nameCtrl,
+                              selectedMembers, selectedIconCodePoint),
                       child: Container(
                         width: double.infinity,
                         height: 54.h,
@@ -349,34 +422,17 @@ class CreateGroupScreen extends ConsumerWidget {
           GestureDetector(
             onTap: () => context.go(AppRouter.home),
             child: Container(
-              width: 36.w,
-              height: 36.w,
+              width: 42.w,
+              height: 42.w,
               decoration: BoxDecoration(
-                color: AppColors.cardDark,
-                borderRadius: BorderRadius.circular(10.r),
-                border: Border.all(
-                    color: AppColors.white.withValues(alpha: 0.08)),
+                color: const Color(0xFF1E1C38),
+                borderRadius: BorderRadius.circular(12.r),
               ),
-              child: Icon(Icons.chevron_left_rounded,
-                  color: AppColors.white, size: 20.sp),
-            ),
-          ),
-          SizedBox(width: 12.w),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const AppText(
-                'New Group',
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
+              child: const Icon(
+                Icons.chevron_left_rounded,
                 color: AppColors.white,
               ),
-              AppText(
-                'Step 1 of 2',
-                fontSize: 12,
-                color: AppColors.white.withValues(alpha: 0.4),
-              ),
-            ],
+            ),
           ),
           const Spacer(),
           // Progress indicator
@@ -408,7 +464,10 @@ class CreateGroupScreen extends ConsumerWidget {
 
   Widget _buildMemberTile({
     required WidgetRef ref,
-    required Map<String, String> contact,
+    required String contactId,
+    required String name,
+    required String handle,
+    required String initials,
     required Color avatarColor,
     required bool isSelected,
     required Set<String> selectedMembers,
@@ -416,11 +475,10 @@ class CreateGroupScreen extends ConsumerWidget {
     return GestureDetector(
       onTap: () {
         final current = Set<String>.from(selectedMembers);
-        final id = contact['initials']!;
-        if (current.contains(id)) {
-          current.remove(id);
+        if (current.contains(contactId)) {
+          current.remove(contactId);
         } else {
-          current.add(id);
+          current.add(contactId);
         }
         ref.read(cgSelectedMembersProvider.notifier).state = current;
       },
@@ -435,17 +493,22 @@ class CreateGroupScreen extends ConsumerWidget {
                   color: avatarColor,
                   borderRadius: BorderRadius.circular(12.r)),
               alignment: Alignment.center,
-              child: AppText(contact['initials']!, fontSize: 13,
-                  fontWeight: FontWeight.w800, color: AppColors.white),
+              child: AppText(initials,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.white),
             ),
             SizedBox(width: 12.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AppText(contact['name']!, fontSize: 15,
-                      fontWeight: FontWeight.w600, color: AppColors.white),
-                  AppText(contact['handle']!, fontSize: 12,
+                  AppText(name,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.white),
+                  AppText(handle,
+                      fontSize: 12,
                       color: AppColors.white.withValues(alpha: 0.4)),
                 ],
               ),
@@ -460,8 +523,7 @@ class CreateGroupScreen extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(8.r),
                 border: isSelected
                     ? null
-                    : Border.all(
-                        color: AppColors.white.withValues(alpha: 0.1)),
+                    : Border.all(color: AppColors.white.withValues(alpha: 0.1)),
               ),
               child: isSelected
                   ? Icon(Icons.check_rounded,
@@ -491,13 +553,206 @@ class CreateGroupScreen extends ConsumerWidget {
     WidgetRef ref,
     TextEditingController nameCtrl,
     Set<String> selectedMembers,
+    int selectedIconCodePoint,
   ) {
     final notifier = ref.read(createGroupProvider.notifier);
-    notifier.createGroup(
+    final selectedIcon =
+        IconData(selectedIconCodePoint, fontFamily: 'MaterialIcons');
+    final nameWithIcon = GroupIconHelper.buildNameWithIcon(
       nameCtrl.text.trim(),
+      selectedIcon,
+    );
+    notifier.createGroup(
+      nameWithIcon,
       selectedMembers.toList(),
       ref,
       context,
+    );
+  }
+
+  void _showAllIconsDialog(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.backgroundDark,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+      ),
+      isScrollControlled: true,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.7,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            return _IconPickerSheet(
+                ref: ref, scrollController: scrollController);
+          },
+        );
+      },
+    );
+  }
+}
+
+class _IconPickerSheet extends StatefulWidget {
+  final WidgetRef ref;
+  final ScrollController scrollController;
+  const _IconPickerSheet({required this.ref, required this.scrollController});
+
+  @override
+  State<_IconPickerSheet> createState() => _IconPickerSheetState();
+}
+
+class _IconPickerSheetState extends State<_IconPickerSheet> {
+  late final TextEditingController _searchController;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedIconCodePoint =
+        widget.ref.watch(cgSelectedIconCodePointProvider);
+    final filtered = GroupIconHelper.allIcons.where((item) {
+      return item.title.toLowerCase().contains(_query.toLowerCase()) ||
+          item.category.toLowerCase().contains(_query.toLowerCase());
+    }).toList();
+
+    // Group by category
+    final Map<String, List<GroupIconItem>> grouped = {};
+    for (final item in filtered) {
+      grouped.putIfAbsent(item.category, () => []).add(item);
+    }
+
+    return Column(
+      children: [
+        Container(
+          margin: EdgeInsets.only(top: 8.h, bottom: 16.h),
+          width: 40.w,
+          height: 4.h,
+          decoration: BoxDecoration(
+            color: AppColors.white.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(2.r),
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const AppText(
+                'Select Group Icon',
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.white,
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close_rounded, color: AppColors.white),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 12.h),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: AppTextField(
+            hint: 'Search icons...',
+            controller: _searchController,
+            prefix: Icon(Icons.search_rounded,
+                color: AppColors.white.withValues(alpha: 0.3), size: 18.sp),
+            onChanged: (val) {
+              setState(() {
+                _query = val;
+              });
+            },
+          ),
+        ),
+        SizedBox(height: 16.h),
+        Expanded(
+          child: ListView.builder(
+            controller: widget.scrollController,
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            itemCount: grouped.length,
+            itemBuilder: (context, index) {
+              final category = grouped.keys.elementAt(index);
+              final items = grouped[category]!;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: AppText(
+                      category.toUpperCase(),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.white.withValues(alpha: 0.4),
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 5,
+                      crossAxisSpacing: 10.w,
+                      mainAxisSpacing: 10.h,
+                    ),
+                    itemCount: items.length,
+                    itemBuilder: (context, idx) {
+                      final item = items[idx];
+                      final isSelected =
+                          selectedIconCodePoint == item.icon.codePoint;
+                      return GestureDetector(
+                        onTap: () {
+                          widget.ref
+                              .read(cgSelectedIconCodePointProvider.notifier)
+                              .state = item.icon.codePoint;
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.onboardingViolet
+                                    .withValues(alpha: 0.15)
+                                : AppColors.cardDark,
+                            borderRadius: BorderRadius.circular(12.r),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppColors.onboardingViolet
+                                  : AppColors.white.withValues(alpha: 0.05),
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: Icon(
+                            item.icon,
+                            color: isSelected
+                                ? AppColors.onboardingViolet
+                                : AppColors.white,
+                            size: 22.sp,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  SizedBox(height: 16.h),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

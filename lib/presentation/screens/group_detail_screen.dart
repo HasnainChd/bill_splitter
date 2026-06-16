@@ -1,3 +1,4 @@
+import 'package:bill_splitter/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -7,66 +8,65 @@ import '../../core/constants/app_colors.dart';
 import '../../core/models/expense.dart';
 import '../../core/models/group.dart';
 import '../../core/widgets/app_text.dart';
-import '../../providers/firebase_group_provider.dart';
-import '../../providers/firebase_expense_provider.dart';
+import '../../core/widgets/app_text_field.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/group_provider.dart';
+import '../../providers/expense_provider.dart';
+import '../providers/screen_providers.dart';
+import '../../core/utils/app_dialog.dart';
+
+import '../../core/utils/group_icon_helper.dart';
 
 class GroupDetailScreen extends ConsumerWidget {
   final String groupId;
   const GroupDetailScreen({super.key, required this.groupId});
 
-  // Mock member balance data — replaced with real data post-backend migration
-  static const List<Map<String, dynamic>> _mockBalances = [
-    {
-      'initials': 'SC',
-      'name': 'Sarah Chen',
-      'sub': 'you owe',
-      'amount': -168.0,
-      'color': 0xFFEC4899
-    },
-    {
-      'initials': 'MT',
-      'name': 'Marcus Thompson',
-      'sub': 'you owe',
-      'amount': -169.0,
-      'color': 0xFFF59E0B
-    },
-    {
-      'initials': 'AJ',
-      'name': 'You',
-      'sub': 'owes you',
-      'amount': 337.0,
-      'color': 0xFF818CF8
-    },
+  static const List<Color> _avatarColors = [
+    Color(0xFF818CF8), // violet
+    Color(0xFFEC4899), // pink
+    Color(0xFFF59E0B), // amber
+    Color(0xFF10B981), // green
+    Color(0xFF8B5CF6), // purple
+    Color(0xFF38BDF8), // cyan
   ];
-
-  static const Map<String, IconData> _categoryIcons = {
-    'Food': Icons.restaurant_rounded,
-    'Travel': Icons.flight_takeoff_rounded,
-    'Rent': Icons.home_rounded,
-    'Shopping': Icons.shopping_cart_rounded,
-    'Bills': Icons.bolt_rounded,
-    'Fun': Icons.theater_comedy_rounded,
-    'default': Icons.receipt_rounded,
-  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final groupState = ref.watch(firebaseGroupProvider);
-    final expensesAsync = ref.watch(expensesForGroupProvider(groupId));
-    final expenses = expensesAsync.value ?? [];
+    final groupState = ref.watch(groupProvider);
+    final expenses = ref.watch(expensesForGroupProvider(groupId));
+    final balances = ref.watch(balancesForGroupProvider(groupId));
+    final membersAsync = ref.watch(groupMembersProvider(groupId));
+    final currentUserId = ref.watch(supabaseUserProvider)?.id;
+
+    // Load latest remote expenses once per screen mount using Riverpod state
+    final loadedGroups = ref.watch(loadedGroupExpensesProvider);
+    if (!loadedGroups.contains(groupId)) {
+      Future.microtask(() {
+        ref
+            .read(loadedGroupExpensesProvider.notifier)
+            .update((state) => {...state, groupId});
+        ref.read(expenseProvider.notifier).loadExpensesForGroup(groupId);
+      });
+    }
 
     final group = groupState.groups.firstWhere(
       (g) => g.groupId == groupId,
       orElse: () => Group(
         groupId: groupId,
-        name: 'Friday Dinner Crew',
-        members: const ['You', 'Sarah', 'Marcus', 'Priya'],
-        currency: 'USD',
+        name: 'Group Detail',
+        members: const [],
+        currency: 'PKR',
         createdAt: DateTime.now(),
       ),
     );
 
-    final totalExpenses = expenses.fold<double>(0, (sum, e) => sum + e.amount);
+    final totalExpenses = expenses
+        .where((e) =>
+            e.categoryIconCodePoint != Icons.handshake_rounded.codePoint &&
+            e.title != 'Settle Payment')
+        .fold<double>(0, (sum, e) => sum + e.amount);
+    final myBalance =
+        currentUserId != null ? (balances[currentUserId] ?? 0.0) : 0.0;
 
     return SafeArea(
       top: false,
@@ -77,7 +77,7 @@ class GroupDetailScreen extends ConsumerWidget {
           slivers: [
             // ── Gradient Header ──
             SliverToBoxAdapter(
-              child: _buildGradientHeader(context, group, expenses),
+              child: _buildGradientHeader(context, ref, group, myBalance),
             ),
 
             // ── Members Section ──
@@ -97,22 +97,74 @@ class GroupDetailScreen extends ConsumerWidget {
                         border: Border.all(
                             color: AppColors.white.withValues(alpha: 0.05)),
                       ),
-                      child: Column(
-                        children: List.generate(_mockBalances.length, (i) {
-                          final m = _mockBalances[i];
-                          final isLast = i == _mockBalances.length - 1;
+                      child: membersAsync.when(
+                        loading: () => const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(20.0),
+                            child: CircularProgressIndicator(
+                              color: AppColors.onboardingViolet,
+                            ),
+                          ),
+                        ),
+                        error: (err, stack) => Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: AppText(
+                            'Failed to load members: $err',
+                            color: AppColors.white,
+                          ),
+                        ),
+                        data: (membersList) {
+                          if (membersList.isEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: AppText(
+                                'No members in this group yet',
+                                color: Colors.white54,
+                              ),
+                            );
+                          }
+
                           return Column(
-                            children: [
-                              _buildMemberRow(m),
-                              if (!isLast)
-                                Divider(
-                                    color:
-                                        AppColors.white.withValues(alpha: 0.04),
-                                    height: 1,
-                                    indent: 56.w),
-                            ],
+                            children: List.generate(membersList.length, (i) {
+                              final m = membersList[i];
+                              final isLast = i == membersList.length - 1;
+                              final balance = balances[m.id] ?? 0.0;
+                              final isMe = m.id == currentUserId;
+
+                              // Compute initials
+                              final nameParts = m.fullName.trim().split(' ');
+                              final initials = nameParts.length >= 2
+                                  ? '${nameParts[0][0]}${nameParts[1][0]}'
+                                      .toUpperCase()
+                                  : nameParts.isNotEmpty &&
+                                          nameParts[0].isNotEmpty
+                                      ? nameParts[0][0].toUpperCase()
+                                      : 'U';
+
+                              final avatarColor = _avatarColors[
+                                  m.id.hashCode.abs() % _avatarColors.length];
+
+                              return Column(
+                                children: [
+                                  _buildMemberRow(
+                                    isMe: isMe,
+                                    name: isMe ? 'You' : m.fullName,
+                                    initials: initials,
+                                    avatarColor: avatarColor,
+                                    balance: balance,
+                                    currency: group.currency,
+                                  ),
+                                  if (!isLast)
+                                    Divider(
+                                        color: AppColors.white
+                                            .withValues(alpha: 0.04),
+                                        height: 1,
+                                        indent: 56.w),
+                                ],
+                              );
+                            }),
                           );
-                        }),
+                        },
                       ),
                     ),
                     SizedBox(height: 24.h),
@@ -167,7 +219,16 @@ class GroupDetailScreen extends ConsumerWidget {
                       (context, i) => Padding(
                         padding: EdgeInsets.symmetric(
                             horizontal: 16.w, vertical: 4.h),
-                        child: _buildExpenseRow(context, expenses[i]),
+                        child: _buildExpenseRow(
+                          context,
+                          expenses[i],
+                          {
+                            for (final m
+                                in membersAsync.value ?? <UserProfile>[])
+                              m.id: m.fullName,
+                          },
+                          currentUserId ?? '',
+                        ),
                       ),
                       childCount: expenses.length,
                     ),
@@ -199,7 +260,7 @@ class GroupDetailScreen extends ConsumerWidget {
                             color: AppColors.white.withValues(alpha: 0.6),
                           ),
                           AppText(
-                            '\$${totalExpenses.toStringAsFixed(2)}',
+                            '${group.currency} ${totalExpenses.toStringAsFixed(2)}',
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: AppColors.white,
@@ -219,7 +280,25 @@ class GroupDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildGradientHeader(
-      BuildContext context, dynamic group, List<Expense> expenses) {
+      BuildContext context, WidgetRef ref, Group group, double myBalance) {
+    final String balanceStr = myBalance == 0
+        ? '${group.currency} 0.00'
+        : myBalance > 0
+            ? '+${group.currency} ${myBalance.toStringAsFixed(2)}'
+            : '-${group.currency} ${myBalance.abs().toStringAsFixed(2)}';
+
+    final Color balanceColor = myBalance == 0
+        ? AppColors.white
+        : myBalance > 0
+            ? const Color(0xFF10B981)
+            : AppColors.balanceOwed;
+
+    final String subText = myBalance == 0
+        ? 'No outstanding balance'
+        : myBalance > 0
+            ? 'You are owed'
+            : 'You owe';
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -252,15 +331,92 @@ class GroupDetailScreen extends ConsumerWidget {
                           color: AppColors.white, size: 20.sp),
                     ),
                   ),
-                  Container(
-                    width: 36.w,
-                    height: 36.w,
-                    decoration: BoxDecoration(
-                      color: AppColors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10.r),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      cardColor: AppColors.cardDark,
                     ),
-                    child: Icon(Icons.more_horiz_rounded,
-                        color: AppColors.white, size: 20.sp),
+                    child: PopupMenuButton<String>(
+                      onSelected: (value) async {
+                        if (value == 'add_member') {
+                          _showAddMemberBottomSheet(context, ref, group);
+                        } else if (value == 'delete') {
+                          final confirm = await AppDialog.showConfirm(
+                            context,
+                            title: 'Delete Group',
+                            message:
+                                'Are you sure you want to delete this group and all its expenses?',
+                            confirmText: 'Delete',
+                            cancelText: 'Cancel',
+                            isDanger: true,
+                          );
+                          if (confirm == true) {
+                            try {
+                              await ref
+                                  .read(groupProvider.notifier)
+                                  .deleteGroup(groupId);
+                              if (context.mounted) {
+                                context.go('/');
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Group deleted successfully'),
+                                    backgroundColor: AppColors.success,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Failed to delete group: $e'),
+                                    backgroundColor: AppColors.coralRed,
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        }
+                      },
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'add_member',
+                          child: Row(
+                            children: [
+                              Icon(Icons.person_add_outlined,
+                                  color: AppColors.white, size: 20),
+                              SizedBox(width: 8),
+                              AppText('Add Member',
+                                  color: AppColors.white, fontSize: 14),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline_rounded,
+                                  color: AppColors.coralRed, size: 20),
+                              SizedBox(width: 8),
+                              AppText('Delete Group',
+                                  color: AppColors.coralRed, fontSize: 14),
+                            ],
+                          ),
+                        ),
+                      ],
+                      child: Container(
+                        width: 36.w,
+                        height: 36.w,
+                        decoration: BoxDecoration(
+                          color: AppColors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        child: Icon(Icons.more_horiz_rounded,
+                            color: AppColors.white, size: 20.sp),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -276,7 +432,7 @@ class GroupDetailScreen extends ConsumerWidget {
                       color: AppColors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(14.r),
                     ),
-                    child: Icon(Icons.flight_takeoff_rounded,
+                    child: Icon(GroupIconHelper.getGroupIcon(group.name),
                         color: AppColors.white, size: 26.sp),
                   ),
                   SizedBox(width: 14.w),
@@ -285,13 +441,13 @@ class GroupDetailScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         AppText(
-                          group?.name ?? 'Group',
+                          GroupIconHelper.getCleanGroupName(group.name),
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: AppColors.white,
                         ),
                         AppText(
-                          '${group?.members.length ?? 0} members · May 2024',
+                          '${group.members.length} members',
                           fontSize: 13,
                           color: AppColors.white.withValues(alpha: 0.7),
                         ),
@@ -316,16 +472,16 @@ class GroupDetailScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           AppText(
-                            'Your balance in group',
+                            subText,
                             fontSize: 12,
                             color: AppColors.white.withValues(alpha: 0.7),
                           ),
                           SizedBox(height: 6.h),
-                          const AppText(
-                            '+\$337.00',
-                            fontSize: 26,
+                          AppText(
+                            balanceStr,
+                            fontSize: 24,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF10B981),
+                            color: balanceColor,
                           ),
                         ],
                       ),
@@ -359,10 +515,20 @@ class GroupDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMemberRow(Map<String, dynamic> m) {
-    final double amount = m['amount'] as double;
-    final bool isPositive = amount > 0;
-    final color = Color(m['color'] as int);
+  Widget _buildMemberRow({
+    required bool isMe,
+    required String name,
+    required String initials,
+    required Color avatarColor,
+    required double balance,
+    required String currency,
+  }) {
+    final bool isPositive = balance > 0;
+    final String subText = balance == 0
+        ? 'settled up'
+        : isMe
+            ? (isPositive ? 'you are owed' : 'you owe')
+            : (isPositive ? 'is owed' : 'owes');
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
@@ -371,9 +537,10 @@ class GroupDetailScreen extends ConsumerWidget {
           Container(
             width: 38.w,
             height: 38.w,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            decoration:
+                BoxDecoration(color: avatarColor, shape: BoxShape.circle),
             alignment: Alignment.center,
-            child: AppText(m['initials'] as String,
+            child: AppText(initials,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
                 color: AppColors.white),
@@ -383,16 +550,20 @@ class GroupDetailScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AppText(m['name'] as String,
+                AppText(name,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppColors.white),
                 AppText(
-                  '${m['sub']} \$${amount.abs().toStringAsFixed(0)}',
+                  balance == 0
+                      ? subText
+                      : '$subText $currency ${balance.abs().toStringAsFixed(0)}',
                   fontSize: 12,
-                  color: isPositive
-                      ? const Color(0xFF10B981)
-                      : AppColors.balanceOwed,
+                  color: balance == 0
+                      ? AppColors.white.withValues(alpha: 0.4)
+                      : isPositive
+                          ? const Color(0xFF10B981)
+                          : AppColors.balanceOwed,
                 ),
               ],
             ),
@@ -400,19 +571,26 @@ class GroupDetailScreen extends ConsumerWidget {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
             decoration: BoxDecoration(
-              color: isPositive
-                  ? const Color(0xFF10B981).withValues(alpha: 0.12)
-                  : AppColors.balanceOwed.withValues(alpha: 0.12),
+              color: balance == 0
+                  ? AppColors.white.withValues(alpha: 0.05)
+                  : isPositive
+                      ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                      : AppColors.balanceOwed.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8.r),
             ),
             child: AppText(
-              isPositive
-                  ? '+\$${amount.abs().toStringAsFixed(0)}'
-                  : '-\$${amount.abs().toStringAsFixed(0)}',
+              balance == 0
+                  ? '0'
+                  : isPositive
+                      ? '+$currency${balance.abs().toStringAsFixed(0)}'
+                      : '-$currency${balance.abs().toStringAsFixed(0)}',
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color:
-                  isPositive ? const Color(0xFF10B981) : AppColors.balanceOwed,
+              color: balance == 0
+                  ? Colors.white54
+                  : isPositive
+                      ? const Color(0xFF10B981)
+                      : AppColors.balanceOwed,
             ),
           ),
         ],
@@ -420,9 +598,39 @@ class GroupDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildExpenseRow(BuildContext context, Expense expense) {
+  Widget _buildExpenseRow(
+    BuildContext context,
+    Expense expense,
+    Map<String, String> memberMap,
+    String currentUserId,
+  ) {
+    final isSettlement = expense.title == 'Settle Payment' ||
+        expense.categoryIconCodePoint == Icons.handshake_rounded.codePoint;
     final dateStr = DateFormat('MMM d').format(expense.date);
-    final icon = expense.categoryIcon;
+
+    // Customize title and icon for settlements
+    String displayTitle = expense.title;
+    IconData displayIcon = expense.categoryIcon;
+    Color displayIconColor = AppColors.onboardingViolet;
+    Color displayIconBgColor =
+        AppColors.onboardingViolet.withValues(alpha: 0.12);
+
+    if (isSettlement) {
+      final payerName = expense.paidBy == currentUserId
+          ? 'You'
+          : (memberMap[expense.paidBy] ?? 'Someone');
+      final receiverId = expense.splitAmong.keys.isNotEmpty
+          ? expense.splitAmong.keys.first
+          : '';
+      final receiverName = receiverId == currentUserId
+          ? 'You'
+          : (memberMap[receiverId] ?? 'Someone');
+      displayTitle = '$payerName paid $receiverName';
+      displayIcon = Icons.handshake_rounded;
+      displayIconColor = AppColors.success;
+      displayIconBgColor = AppColors.success.withValues(alpha: 0.12);
+    }
+
     final perPerson = expense.splitAmong.isNotEmpty
         ? expense.amount / expense.splitAmong.length
         : expense.amount;
@@ -440,15 +648,15 @@ class GroupDetailScreen extends ConsumerWidget {
           width: 38.w,
           height: 38.w,
           decoration: BoxDecoration(
-            color: AppColors.onboardingViolet.withValues(alpha: 0.12),
+            color: displayIconBgColor,
             borderRadius: BorderRadius.circular(10.r),
           ),
-          child: Icon(icon, color: AppColors.onboardingViolet, size: 18.sp),
+          child: Icon(displayIcon, color: displayIconColor, size: 18.sp),
         ),
-        title: AppText(expense.title,
+        title: AppText(displayTitle,
             fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.white),
         subtitle: AppText(
-          'Paid by ${expense.paidBy} · $dateStr',
+          isSettlement ? 'Settlement · $dateStr' : 'Paid · $dateStr',
           fontSize: 11,
           color: AppColors.white.withValues(alpha: 0.4),
         ),
@@ -457,16 +665,17 @@ class GroupDetailScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             AppText(
-              '\$${expense.amount.toStringAsFixed(2)}',
+              '${expense.currency} ${expense.amount.toStringAsFixed(2)}',
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.white,
             ),
-            AppText(
-              '\$${perPerson.toStringAsFixed(0)}/person',
-              fontSize: 11,
-              color: AppColors.white.withValues(alpha: 0.4),
-            ),
+            if (!isSettlement)
+              AppText(
+                '${expense.currency} ${perPerson.toStringAsFixed(0)}/person',
+                fontSize: 11,
+                color: AppColors.white.withValues(alpha: 0.4),
+              ),
           ],
         ),
         onTap: () => context.push('/expenseDetail', extra: expense),
@@ -503,6 +712,287 @@ class GroupDetailScreen extends ConsumerWidget {
       fontWeight: FontWeight.w700,
       color: AppColors.white.withValues(alpha: 0.4),
       letterSpacing: 1.2,
+    );
+  }
+
+  void _showAddMemberBottomSheet(BuildContext context, WidgetRef ref, Group group) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.backgroundDark,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+      ),
+      builder: (context) {
+        return _AddMemberBottomSheetContent(
+          groupId: groupId,
+        );
+      },
+    );
+  }
+}
+
+class _AddMemberBottomSheetContent extends ConsumerStatefulWidget {
+  final String groupId;
+
+  const _AddMemberBottomSheetContent({
+    required this.groupId,
+  });
+
+  @override
+  ConsumerState<_AddMemberBottomSheetContent> createState() =>
+      _AddMemberBottomSheetContentState();
+}
+
+class _AddMemberBottomSheetContentState
+    extends ConsumerState<_AddMemberBottomSheetContent> {
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final usersAsync = ref.watch(allUsersProvider);
+    final usersList = usersAsync.value ?? [];
+
+    final groupMembersAsync = ref.watch(groupMembersProvider(widget.groupId));
+    final groupMembersList = groupMembersAsync.value ?? [];
+    final currentUser = ref.watch(supabaseUserProvider);
+
+    final existingMemberIds = {
+      ...groupMembersList.map((m) => m.id),
+      if (currentUser != null) currentUser.id,
+    };
+
+    // Filter out users who are already members
+    final nonMembers = usersList
+        .where((u) => !existingMemberIds.contains(u.id))
+        .toList();
+
+    // Filter by search query (email or username or full name)
+    final filteredUsers = nonMembers.where((u) {
+      final q = _searchQuery.toLowerCase();
+      return u.fullName.toLowerCase().contains(q) ||
+          u.username.toLowerCase().contains(q) ||
+          u.email.toLowerCase().contains(q);
+    }).toList();
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20.w,
+        right: 20.w,
+        top: 20.h,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20.h,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const AppText(
+                'Add Member',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.white,
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: AppColors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          SizedBox(height: 16.h),
+          AppTextField(
+            label: 'Search Members',
+            hint: 'Search by email or username...',
+            controller: _searchCtrl,
+            onChanged: (val) {
+              setState(() {
+                _searchQuery = val;
+              });
+            },
+            prefix: Icon(
+              Icons.search_rounded,
+              color: AppColors.white.withValues(alpha: 0.3),
+              size: 18.sp,
+            ),
+          ),
+          SizedBox(height: 16.h),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: 250.h),
+            child: usersAsync.when(
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: CircularProgressIndicator(
+                    color: AppColors.onboardingViolet,
+                  ),
+                ),
+              ),
+              error: (err, stack) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: AppText(
+                    'Failed to load users: $err',
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+              data: (_) {
+                if (filteredUsers.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24.0),
+                      child: AppText(
+                        'No unregistered users found',
+                        color: Colors.white54,
+                      ),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: filteredUsers.length,
+                  itemBuilder: (context, index) {
+                    final user = filteredUsers[index];
+                    final isLast = index == filteredUsers.length - 1;
+
+                    // Compute initials
+                    final nameParts = user.fullName.trim().split(' ');
+                    final initials = nameParts.length >= 2
+                        ? '${nameParts[0][0]}${nameParts[1][0]}'
+                            .toUpperCase()
+                        : nameParts.isNotEmpty && nameParts[0].isNotEmpty
+                            ? nameParts[0][0].toUpperCase()
+                            : 'U';
+
+                    final avatarColor = GroupDetailScreen._avatarColors[
+                        user.id.hashCode.abs() %
+                            GroupDetailScreen._avatarColors.length];
+
+                    return Column(
+                      children: [
+                        ListTile(
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 8.w, vertical: 4.h),
+                          leading: CircleAvatar(
+                            backgroundColor: avatarColor,
+                            radius: 18.r,
+                            child: AppText(
+                              initials,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.white,
+                            ),
+                          ),
+                          title: AppText(
+                            user.fullName,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.white,
+                          ),
+                          subtitle: AppText(
+                            '@${user.username}',
+                            fontSize: 12,
+                            color: AppColors.white.withValues(alpha: 0.4),
+                          ),
+                          trailing: _isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.onboardingViolet,
+                                  ),
+                                )
+                              : Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12.w, vertical: 6.h),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.onboardingViolet,
+                                    borderRadius: BorderRadius.circular(8.r),
+                                  ),
+                                  child: const AppText(
+                                    'Add',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.white,
+                                  ),
+                                ),
+                          onTap: _isSaving
+                              ? null
+                              : () async {
+                                  setState(() {
+                                    _isSaving = true;
+                                  });
+                                  try {
+                                    await ref
+                                        .read(groupProvider.notifier)
+                                        .addMemberToGroup(
+                                            widget.groupId, user.id);
+                                    
+                                    // Invalidate group members future
+                                    ref.invalidate(groupMembersProvider(widget.groupId));
+
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: AppText(
+                                            '${user.fullName} added successfully',
+                                            color: AppColors.white,
+                                          ),
+                                          backgroundColor: AppColors.success,
+                                        ),
+                                      );
+                                      Navigator.pop(context);
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: AppText(
+                                            'Failed to add member: $e',
+                                            color: AppColors.white,
+                                          ),
+                                          backgroundColor: AppColors.coralRed,
+                                        ),
+                                      );
+                                    }
+                                  } finally {
+                                    if (mounted) {
+                                      setState(() {
+                                        _isSaving = false;
+                                      });
+                                    }
+                                  }
+                                },
+                        ),
+                        if (!isLast)
+                          Divider(
+                            color: AppColors.white.withValues(alpha: 0.04),
+                            height: 1,
+                            indent: 48.w,
+                          ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

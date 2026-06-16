@@ -10,33 +10,50 @@ import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/utils/app_snackbar.dart';
-import '../../providers/firebase_group_provider.dart';
-import '../../providers/firebase_expense_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/group_provider.dart';
+import '../../providers/expense_provider.dart';
+import '../../core/utils/app_dialog.dart';
+import '../../providers/profile_provider.dart';
+import '../../core/router/app_router.dart';
+import '../../core/utils/group_icon_helper.dart';
+
 
 class ExpenseDetailScreen extends ConsumerWidget {
   final Expense expense;
 
   const ExpenseDetailScreen({super.key, required this.expense});
 
-  static const Map<String, Color> _avatarColors = {
-    'AJ': AppColors.onboardingViolet,
-    'SC': Color(0xFFEC4899),
-    'MT': Color(0xFFF59E0B),
-    'PP': Color(0xFF10B981),
-    'KW': Color(0xFF8B5CF6),
-  };
+  static const List<Color> _avatarColors = [
+    Color(0xFF818CF8), // violet
+    Color(0xFFEC4899), // pink
+    Color(0xFFF59E0B), // amber
+    Color(0xFF10B981), // green
+    Color(0xFF8B5CF6), // purple
+    Color(0xFF38BDF8), // cyan
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final groupState = ref.watch(firebaseGroupProvider);
+    final groupState = ref.watch(groupProvider);
+    final currentUserId = ref.watch(supabaseUserProvider)?.id;
+    final membersAsync = ref.watch(groupMembersProvider(this.expense.groupId));
+    final members = membersAsync.value ?? [];
+
+    // Watch list of expenses reactively to handle live updates from edit screen
+    final groupExpenses = ref.watch(expensesForGroupProvider(this.expense.groupId));
+    final resolvedExpense = groupExpenses.firstWhere(
+      (e) => e.expenseId == this.expense.expenseId,
+      orElse: () => this.expense,
+    );
+    final expense = resolvedExpense;
+
     final group = groupState.groups.firstWhere(
       (g) => g.groupId == expense.groupId,
       orElse: () => Group(
         groupId: expense.groupId,
-        name: 'Friday Dinner Crew',
-        members: expense.splitAmong.keys.toList().isNotEmpty
-            ? expense.splitAmong.keys.toList()
-            : const ['You', 'Sarah', 'Marcus', 'Priya'],
+        name: 'Group Detail',
+        members: const [],
         currency: expense.currency,
         createdAt: DateTime.now(),
       ),
@@ -45,21 +62,41 @@ class ExpenseDetailScreen extends ConsumerWidget {
     final dateStr = DateFormat('MMMM d, yyyy').format(expense.date);
     final shortDateStr = DateFormat('MMM d').format(expense.date);
 
-    // Dynamic split calculation
     final totalAmount = expense.amount;
-    final splitCount =
-        expense.splitAmong.isNotEmpty ? expense.splitAmong.length : 1;
-    final share = totalAmount / splitCount;
-
     final emoji = _getEmoji(expense.title, expense.categoryIconCodePoint);
-    final categoryLabel = _getCategoryLabel(expense.title, expense.categoryIconCodePoint);
+    final categoryLabel =
+        _getCategoryLabel(expense.title, expense.categoryIconCodePoint);
+
+    final isUserPayer = expense.paidBy == currentUserId;
+    final myOwedAmt = currentUserId != null
+        ? (expense.splitAmong[currentUserId] ?? 0.0)
+        : 0.0;
+
+    final payerProfile = members.firstWhere(
+      (m) => m.id == expense.paidBy,
+      orElse: () => UserProfile(
+        id: expense.paidBy,
+        fullName: 'Another Member',
+        username: '',
+        email: '',
+        phone: '',
+        bio: '',
+        currency: expense.currency,
+        avatarUrl: '',
+      ),
+    );
+    final payerName = currentUserId == expense.paidBy ? 'You' : payerProfile.fullName;
+
+    final memberMap = {
+      for (final m in members) m.id: m.fullName,
+    };
 
     return SafeArea(
+      top: false,
       child: Scaffold(
         backgroundColor: AppColors.backgroundDark,
         body: Stack(
           children: [
-            // Decorative background circle in the top right
             Positioned(
               top: -60.h,
               right: -60.w,
@@ -72,7 +109,6 @@ class ExpenseDetailScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            
             SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
@@ -81,11 +117,10 @@ class ExpenseDetailScreen extends ConsumerWidget {
                 children: [
                   SizedBox(height: 20.h),
 
-                  // ── Custom Header (In Scroll View) ──
+                  // ── Custom Header ──
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Back button (no border, dark background card)
                       Container(
                         width: 42.w,
                         height: 42.w,
@@ -103,7 +138,6 @@ class ExpenseDetailScreen extends ConsumerWidget {
                           onPressed: () => context.pop(),
                         ),
                       ),
-                      // Title
                       Expanded(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -123,7 +157,6 @@ class ExpenseDetailScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      // Actions Row (no border)
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -138,12 +171,17 @@ class ExpenseDetailScreen extends ConsumerWidget {
                               padding: EdgeInsets.zero,
                               icon: Icon(
                                 Icons.edit_outlined,
-                                color: const Color(0xFFFBBF24), // Yellow/Orange pencil icon
+                                color: const Color(0xFFFBBF24),
                                 size: 18.sp,
                               ),
                               onPressed: () {
-                                AppSnackBar.showSuccess(
-                                    context, 'Edit functionality coming soon');
+                                context.push(
+                                  AppRouter.addExpense,
+                                  extra: {
+                                    'group': group,
+                                    'expense': expense,
+                                  },
+                                );
                               },
                             ),
                           ),
@@ -159,13 +197,22 @@ class ExpenseDetailScreen extends ConsumerWidget {
                               padding: EdgeInsets.zero,
                               icon: Icon(
                                 Icons.delete_outline_rounded,
-                                color: AppColors.white.withValues(alpha: 0.7), // Grey/White delete icon
+                                color: AppColors.white.withValues(alpha: 0.7),
                                 size: 18.sp,
                               ),
                               onPressed: () async {
+                                final confirm = await AppDialog.showConfirm(
+                                  context,
+                                  title: 'Delete Expense',
+                                  message: 'Are you sure you want to delete this expense?',
+                                  confirmText: 'Delete',
+                                  cancelText: 'Cancel',
+                                  isDanger: true,
+                                );
+                                if (confirm != true) return;
                                 try {
                                   await ref
-                                      .read(firebaseExpenseProvider.notifier)
+                                      .read(expenseProvider.notifier)
                                       .deleteExpense(
                                           expense.groupId, expense.expenseId);
                                   if (context.mounted) {
@@ -192,7 +239,6 @@ class ExpenseDetailScreen extends ConsumerWidget {
                   Center(
                     child: Column(
                       children: [
-                        // Large stand-alone emoji directly on background (no container card)
                         AppText(
                           emoji,
                           fontSize: 56,
@@ -207,13 +253,13 @@ class ExpenseDetailScreen extends ConsumerWidget {
                         ),
                         SizedBox(height: 6.h),
                         AppText(
-                          '${group.name} · $dateStr',
+                          '${GroupIconHelper.getCleanGroupName(group.name)} · $dateStr',
                           fontSize: 13,
                           color: AppColors.white.withValues(alpha: 0.4),
                         ),
                         SizedBox(height: 20.h),
                         AppText(
-                          '\$${totalAmount.toStringAsFixed(2)}',
+                          '${expense.currency} ${totalAmount.toStringAsFixed(2)}',
                           fontSize: 44,
                           fontWeight: FontWeight.w900,
                           color: AppColors.white,
@@ -228,11 +274,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
                               color: AppColors.white.withValues(alpha: 0.4),
                             ),
                             AppText(
-                              expense.paidBy == 'You' ||
-                                      (group.members.isNotEmpty &&
-                                          expense.paidBy == group.members.first)
-                                  ? 'You'
-                                  : expense.paidBy,
+                              payerName,
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: AppColors.onboardingViolet,
@@ -244,7 +286,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
                   ),
                   SizedBox(height: 28.h),
 
-                  // Info Cards Row (vertical cards Category, Split, Date using AppCard)
+                  // Info Cards Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -269,105 +311,132 @@ class ExpenseDetailScreen extends ConsumerWidget {
                   SizedBox(height: 12.h),
                   AppCard(
                     padding: EdgeInsets.zero,
-                    child: Column(
-                      children: List.generate(group.members.length, (index) {
-                        final memberName = group.members[index];
-                        final isPayer = memberName == expense.paidBy ||
-                            (memberName == 'You' &&
-                                expense.paidBy == group.members.first);
-
-                        final initials = memberName.length >= 2
-                            ? memberName.substring(0, 2).toUpperCase()
-                            : memberName.toUpperCase();
-
-                        final avatarColor = _avatarColors[initials] ??
-                            _avatarColors.values
-                                .elementAt(index % _avatarColors.length);
-
-                        // Calculate balance
-                        final double displayBal =
-                            isPayer ? (totalAmount - share) : share;
-                        final isLast = index == group.members.length - 1;
-
+                    child: membersAsync.when(
+                      loading: () => const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24.0),
+                          child: CircularProgressIndicator(
+                              color: AppColors.onboardingViolet),
+                        ),
+                      ),
+                      error: (err, stack) => Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: AppText('Failed to load split breakdown: $err',
+                            color: AppColors.white),
+                      ),
+                      data: (_) {
+                        if (members.isEmpty) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: AppText('No members in group',
+                                color: Colors.white54),
+                          );
+                        }
                         return Column(
-                          children: [
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 16.w, vertical: 14.h),
-                              child: Row(
-                                children: [
-                                  // Avatar
-                                  Container(
-                                    width: 40.w,
-                                    height: 40.w,
-                                    decoration: BoxDecoration(
-                                      color: avatarColor,
-                                      borderRadius: BorderRadius.circular(12.r),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: AppText(
-                                      initials,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.white,
-                                    ),
-                                  ),
-                                  SizedBox(width: 12.w),
+                          children: List.generate(members.length, (index) {
+                            final m = members[index];
+                            final isMe = m.id == currentUserId;
+                            final isPayer = m.id == expense.paidBy;
 
-                                  // Name & Subtitle & Status
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
+                            final nameParts = m.fullName.trim().split(' ');
+                            final initials = nameParts.length >= 2
+                                ? '${nameParts[0][0]}${nameParts[1][0]}'
+                                    .toUpperCase()
+                                : nameParts.isNotEmpty &&
+                                        nameParts[0].isNotEmpty
+                                    ? nameParts[0][0].toUpperCase()
+                                    : 'U';
+
+                            final avatarColor = _avatarColors[
+                                m.id.hashCode.abs() % _avatarColors.length];
+
+                            // Calculations
+                            final double paidAmt = isPayer ? totalAmount : 0.0;
+                            final double owedAmt =
+                                expense.splitAmong[m.id] ?? 0.0;
+                            final double netAmt = paidAmt - owedAmt;
+
+                            final isLast = index == members.length - 1;
+
+                            return Column(
+                              children: [
+                                Padding(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 16.w, vertical: 14.h),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 40.w,
+                                        height: 40.w,
+                                        decoration: BoxDecoration(
+                                          color: avatarColor,
+                                          borderRadius:
+                                              BorderRadius.circular(12.r),
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: AppText(
+                                          initials,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.white,
+                                        ),
+                                      ),
+                                      SizedBox(width: 12.w),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            AppText(
-                                              memberName == group.members.first
-                                                  ? 'You'
-                                                  : memberName,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.white,
+                                            Row(
+                                              children: [
+                                                AppText(
+                                                  isMe ? 'You' : m.fullName,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.white,
+                                                ),
+                                                SizedBox(width: 8.w),
+                                                _buildStatusBadge(isPayer),
+                                              ],
                                             ),
-                                            SizedBox(width: 8.w),
-                                            _buildStatusBadge(isPayer),
+                                            SizedBox(height: 4.h),
+                                            AppText(
+                                              isPayer
+                                                  ? 'Paid ${expense.currency} ${totalAmount.toStringAsFixed(0)}'
+                                                  : 'Owes ${expense.currency} ${owedAmt.toStringAsFixed(0)}',
+                                              fontSize: 11,
+                                              color: AppColors.white
+                                                  .withValues(alpha: 0.4),
+                                            ),
                                           ],
                                         ),
-                                        SizedBox(height: 4.h),
-                                        AppText(
-                                          isPayer
-                                              ? 'Paid \$${totalAmount.toStringAsFixed(0)}'
-                                              : 'Owes \$${share.toStringAsFixed(0)}',
-                                          fontSize: 11,
-                                          color: AppColors.white
-                                              .withValues(alpha: 0.4),
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                      AppText(
+                                        netAmt == 0
+                                            ? '0'
+                                            : '${netAmt > 0 ? '+' : '-'}${expense.currency}${netAmt.abs().toStringAsFixed(0)}',
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: netAmt == 0
+                                            ? Colors.white54
+                                            : netAmt > 0
+                                                ? const Color(0xFF00C896)
+                                                : AppColors.white,
+                                      ),
+                                    ],
                                   ),
-
-                                  // Net Balance
-                                  AppText(
-                                    '${isPayer ? '+' : '-'}\$${displayBal.toStringAsFixed(0)}',
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    color: isPayer
-                                        ? const Color(0xFF00C896)
-                                        : AppColors.white,
+                                ),
+                                if (!isLast)
+                                  Divider(
+                                    color: Colors.white.withValues(alpha: 0.04),
+                                    height: 1,
+                                    indent: 68.w,
                                   ),
-                                ],
-                              ),
-                            ),
-                            if (!isLast)
-                              Divider(
-                                color: Colors.white.withValues(alpha: 0.04),
-                                height: 1,
-                                indent: 68.w,
-                              ),
-                          ],
+                              ],
+                            );
+                          }),
                         );
-                      }),
+                      },
                     ),
                   ),
                   SizedBox(height: 28.h),
@@ -377,6 +446,15 @@ class ExpenseDetailScreen extends ConsumerWidget {
                   SizedBox(height: 12.h),
                   AppCard(
                     padding: EdgeInsets.all(16.w),
+                    onTap: () {
+                      _showDigitalReceipt(
+                        context,
+                        expense,
+                        memberMap,
+                        currentUserId ?? '',
+                        payerName,
+                      );
+                    },
                     child: Row(
                       children: [
                         Container(
@@ -397,15 +475,15 @@ class ExpenseDetailScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const AppText(
-                                'receipt_thai_restaurant.pdf',
+                              AppText(
+                                'receipt_${expense.title.toLowerCase().replaceAll(' ', '_')}.pdf',
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.white,
                               ),
                               SizedBox(height: 2.h),
                               AppText(
-                                '2.4 MB',
+                                '${((expense.amount * 7) % 5 + 1.2).toStringAsFixed(1)} MB',
                                 fontSize: 12,
                                 color: AppColors.white.withValues(alpha: 0.4),
                               ),
@@ -438,16 +516,55 @@ class ExpenseDetailScreen extends ConsumerWidget {
                     SizedBox(height: 32.h),
                   ],
 
-                  // ── Reminder Button (Full Width via AppButton) ──
-                  AppButton(
-                    label: 'Remind members · \$${(totalAmount - share).toStringAsFixed(0)}',
-                    color: AppColors.onboardingViolet,
-                    textColor: AppColors.white,
-                    onTap: () {
-                      AppSnackBar.showSuccess(
-                          context, 'Reminder sent to members!');
-                    },
-                  ),
+                  // Reminder Button (only show for non-settlements)
+                  if (expense.title != 'Settle Payment' &&
+                      expense.categoryIconCodePoint != Icons.handshake_rounded.codePoint) ...[
+                    if (isUserPayer) ...[
+                      if (totalAmount - myOwedAmt > 0)
+                        AppButton(
+                          label: 'Remind members · ${expense.currency} ${(totalAmount - myOwedAmt).toStringAsFixed(0)}',
+                          color: AppColors.onboardingViolet,
+                          textColor: AppColors.white,
+                          onTap: () async {
+                            final confirm = await AppDialog.showConfirm(
+                              context,
+                              title: 'Send Reminder',
+                              message: 'Are you sure you want to send a payment reminder to other members?',
+                              confirmText: 'Send',
+                              cancelText: 'Cancel',
+                            );
+                            if (confirm == true) {
+                              if (context.mounted) {
+                                AppSnackBar.showSuccess(
+                                    context, 'Reminder sent to members!');
+                              }
+                            }
+                          },
+                        ),
+                    ] else ...[
+                      if (myOwedAmt > 0)
+                        AppButton(
+                          label: 'Remind payer · ${expense.currency} ${myOwedAmt.toStringAsFixed(0)}',
+                          color: AppColors.onboardingViolet,
+                          textColor: AppColors.white,
+                          onTap: () async {
+                            final confirm = await AppDialog.showConfirm(
+                              context,
+                              title: 'Send Reminder',
+                              message: 'Are you sure you want to send a payment reminder to $payerName?',
+                              confirmText: 'Send',
+                              cancelText: 'Cancel',
+                            );
+                            if (confirm == true) {
+                              if (context.mounted) {
+                                AppSnackBar.showSuccess(
+                                    context, 'Reminder sent to payer!');
+                              }
+                            }
+                          },
+                        ),
+                    ],
+                  ],
                   SizedBox(height: 24.h),
                 ],
               ),
@@ -489,25 +606,49 @@ class ExpenseDetailScreen extends ConsumerWidget {
   }
 
   String _getEmoji(String title, int codePoint) {
+    if (codePoint == Icons.restaurant_rounded.codePoint ||
+        codePoint == Icons.restaurant.codePoint ||
+        codePoint == 0xe567) {
+      return '🍕';
+    } else if (codePoint == Icons.flight_takeoff_rounded.codePoint ||
+        codePoint == Icons.flight.codePoint) {
+      return '✈️';
+    } else if (codePoint == Icons.home_rounded.codePoint ||
+        codePoint == Icons.home.codePoint) {
+      return '🏠';
+    } else if (codePoint == Icons.shopping_cart_rounded.codePoint ||
+        codePoint == Icons.shopping_cart.codePoint) {
+      return '🛍️';
+    } else if (codePoint == Icons.bolt_rounded.codePoint ||
+        codePoint == Icons.bolt.codePoint) {
+      return '⚡';
+    } else if (codePoint == Icons.theater_comedy_rounded.codePoint ||
+        codePoint == Icons.theater_comedy.codePoint) {
+      return '🎭';
+    } else if (codePoint == Icons.handshake_rounded.codePoint ||
+        codePoint == Icons.handshake.codePoint) {
+      return '🤝';
+    }
+
     final t = title.toLowerCase();
-    if (t.contains('airbnb') || t.contains('hotel') || t.contains('accommodation') || t.contains('stay') || t.contains('hostel')) {
+    if (t.contains('airbnb') ||
+        t.contains('hotel') ||
+        t.contains('accommodation') ||
+        t.contains('stay') ||
+        t.contains('hostel')) {
       return '🏨';
     }
-    if (t.contains('food') || t.contains('restaurant') || t.contains('dinner') || t.contains('lunch') || t.contains('thai') || t.contains('pizza') || t.contains('burger')) {
+    if (t.contains('food') ||
+        t.contains('restaurant') ||
+        t.contains('dinner') ||
+        t.contains('lunch') ||
+        t.contains('thai') ||
+        t.contains('pizza') ||
+        t.contains('burger')) {
       return '🍕';
     }
-    if (codePoint == Icons.restaurant_rounded.codePoint || codePoint == Icons.restaurant.codePoint || codePoint == 0xe567) {
-      return '🍕';
-    } else if (codePoint == Icons.flight_takeoff_rounded.codePoint || codePoint == Icons.flight.codePoint) {
-      return '✈️';
-    } else if (codePoint == Icons.home_rounded.codePoint || codePoint == Icons.home.codePoint) {
-      return '🏠';
-    } else if (codePoint == Icons.shopping_cart_rounded.codePoint || codePoint == Icons.shopping_cart.codePoint) {
-      return '🛍️';
-    } else if (codePoint == Icons.bolt_rounded.codePoint || codePoint == Icons.bolt.codePoint) {
-      return '⚡';
-    } else if (codePoint == Icons.theater_comedy_rounded.codePoint || codePoint == Icons.theater_comedy.codePoint) {
-      return '🎭';
+    if (t.contains('settle')) {
+      return '🤝';
     }
     return '🍕';
   }
@@ -521,6 +662,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
     if (emoji == '🛍️') return '🛍️ Shop';
     if (emoji == '⚡') return '⚡ Bills';
     if (emoji == '🎭') return '🎭 Fun';
+    if (emoji == '🤝') return '🤝 Settle';
     return '🍕 Food';
   }
 
@@ -559,6 +701,249 @@ class ExpenseDetailScreen extends ConsumerWidget {
       fontWeight: FontWeight.w700,
       color: AppColors.white.withValues(alpha: 0.4),
       letterSpacing: 1.0,
+    );
+  }
+
+  void _showDigitalReceipt(
+    BuildContext context,
+    Expense expense,
+    Map<String, String> memberMap,
+    String currentUserId,
+    String payerName,
+  ) {
+    bool isDownloading = false;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                padding: EdgeInsets.all(20.w),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1B3A),
+                  borderRadius: BorderRadius.circular(20.r),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.receipt_long_rounded,
+                      color: AppColors.onboardingViolet,
+                      size: 40.sp,
+                    ),
+                    SizedBox(height: 12.h),
+                    const AppText(
+                      'DIGITAL RECEIPT',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textGrey,
+                      letterSpacing: 1.5,
+                    ),
+                    SizedBox(height: 16.h),
+                    AppText(
+                      expense.title,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.white,
+                      align: TextAlign.center,
+                    ),
+                    SizedBox(height: 4.h),
+                    AppText(
+                      DateFormat('MMMM dd, yyyy · hh:mm a').format(expense.date),
+                      fontSize: 11,
+                      color: AppColors.textGrey,
+                    ),
+                    SizedBox(height: 16.h),
+                    Row(
+                      children: List.generate(
+                        30,
+                        (index) => Expanded(
+                          child: Container(
+                            color: index % 2 == 0
+                                ? Colors.transparent
+                                : AppColors.textGrey.withValues(alpha: 0.3),
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const AppText('Paid By',
+                            fontSize: 13, color: AppColors.textGrey),
+                        AppText(payerName,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.white),
+                      ],
+                    ),
+                    SizedBox(height: 16.h),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: AppText(
+                        'SPLIT DETAILS',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textGrey,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+                    ...expense.splitAmong.entries.map((entry) {
+                      final name = entry.key == currentUserId
+                          ? 'You'
+                          : (memberMap[entry.key] ?? 'Member');
+                      return Padding(
+                        padding: EdgeInsets.symmetric(vertical: 4.h),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            AppText(name,
+                                fontSize: 13,
+                                color: AppColors.white.withValues(alpha: 0.7)),
+                            AppText(
+                                '${expense.currency} ${entry.value.toStringAsFixed(2)}',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.white),
+                          ],
+                        ),
+                      );
+                    }),
+                    SizedBox(height: 16.h),
+                    Row(
+                      children: List.generate(
+                        30,
+                        (index) => Expanded(
+                          child: Container(
+                            color: index % 2 == 0
+                                ? Colors.transparent
+                                : AppColors.textGrey.withValues(alpha: 0.3),
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const AppText('Total Amount',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.white),
+                        AppText(
+                            '${expense.currency} ${expense.amount.toStringAsFixed(2)}',
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.white),
+                      ],
+                    ),
+                    SizedBox(height: 24.h),
+                    Container(
+                      height: 40.h,
+                      width: 180.w,
+                      decoration: const BoxDecoration(
+                        color: Colors.transparent,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          25,
+                          (i) => Container(
+                            width: (i % 3 == 0)
+                                ? 2.w
+                                : (i % 5 == 0)
+                                    ? 4.w
+                                    : 1.w,
+                            color: i % 2 == 0
+                                ? Colors.white.withValues(alpha: 0.7)
+                                : Colors.transparent,
+                            margin: EdgeInsets.symmetric(horizontal: 1.w),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+                    AppText(
+                      'TXN-${expense.expenseId.hashCode.abs().toString().padLeft(8, '0')}',
+                      fontSize: 10,
+                      color: AppColors.textGrey,
+                      letterSpacing: 2.0,
+                    ),
+                    SizedBox(height: 24.h),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.12)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10.r)),
+                              padding: EdgeInsets.symmetric(vertical: 12.h),
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            child: const AppText('Close',
+                                fontSize: 13, color: AppColors.white),
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.onboardingViolet,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10.r)),
+                              padding: EdgeInsets.symmetric(vertical: 12.h),
+                            ),
+                            onPressed: isDownloading
+                                ? null
+                                : () async {
+                                    setState(() {
+                                      isDownloading = true;
+                                    });
+                                    await Future.delayed(
+                                        const Duration(milliseconds: 1500));
+                                    if (context.mounted) {
+                                      Navigator.pop(context);
+                                      AppSnackBar.showSuccess(
+                                        context,
+                                        'Receipt PDF downloaded to device!',
+                                      );
+                                    }
+                                  },
+                            child: isDownloading
+                                ? SizedBox(
+                                    height: 16.w,
+                                    width: 16.w,
+                                    child: const CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const AppText('Download PDF',
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

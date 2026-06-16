@@ -4,11 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/models/group.dart';
 import '../../../core/widgets/app_text.dart';
 import '../../../core/router/app_router.dart';
 import '../../../providers/group_provider.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../providers/expense_provider.dart';
+import '../../../providers/settings_provider.dart';
 import '../../providers/tab_providers.dart';
+import '../../../core/utils/group_icon_helper.dart';
 
 class GroupsTab extends ConsumerWidget {
   const GroupsTab({super.key});
@@ -24,45 +27,59 @@ class GroupsTab extends ConsumerWidget {
     }
   }
 
-  // Helper to map a Group to our static data format
-  Map<String, dynamic> _groupToMap(Group group) {
-    final isOwed =
-        group.groupId == 'barcelona-trip' || group.groupId == 'grove-apartment';
-    return {
-      'id': group.groupId,
-      'name': group.name.replaceFirst(' ', '\n'),
-      'rawName': group.name,
-      'members': group.members,
-      'memberCount': group.members.length,
-      'amount': isOwed ? 337.0 : 41.0,
-      'statusText': isOwed ? 'You are owed' : 'You owe',
-      'isOwed': isOwed,
-      'timeText':
-          'Active · ${DateTime.now().difference(group.createdAt).inDays} days ago',
-      'icon': group.groupId == 'barcelona-trip'
-          ? Icons.flight_takeoff_rounded
-          : group.groupId == 'grove-apartment'
-              ? Icons.home_rounded
-              : Icons.local_pizza_rounded,
-    };
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final searchQuery = ref.watch(groupSearchQueryProvider);
     final activeFilter = ref.watch(groupFilterProvider);
     final searchController = ref.watch(groupSearchControllerProvider);
     final groupState = ref.watch(groupProvider);
+    final currentUserId = ref.watch(supabaseUserProvider)?.id;
+    final defaultCurrency = ref.watch(defaultCurrencyProvider);
+    final currencyCode = defaultCurrency.length >= 3
+        ? defaultCurrency.substring(0, 3)
+        : 'PKR';
 
-    final allGroups = groupState.groups.map(_groupToMap).toList();
+    double totalOwed = 0.0;
+    double totalOwe = 0.0;
+    final List<Map<String, dynamic>> mappedGroups = [];
 
-    final filteredGroups = allGroups.where((group) {
+    for (final group in groupState.groups) {
+      final balances = ref.watch(balancesForGroupProvider(group.groupId));
+      final myBalance = currentUserId != null ? (balances[currentUserId] ?? 0.0) : 0.0;
+
+      if (myBalance > 0) {
+        totalOwed += myBalance;
+      } else if (myBalance < 0) {
+        totalOwe += myBalance.abs();
+      }
+
+      mappedGroups.add({
+        'id': group.groupId,
+        'name': GroupIconHelper.getCleanGroupName(group.name).replaceFirst(' ', '\n'),
+        'rawName': GroupIconHelper.getCleanGroupName(group.name),
+        'members': group.members,
+        'memberCount': group.members.length,
+        'amount': myBalance.abs(),
+        'myBalance': myBalance,
+        'statusText': myBalance == 0
+            ? 'Settled up'
+            : myBalance > 0
+                ? 'You are owed'
+                : 'You owe',
+        'isOwed': myBalance > 0,
+        'currency': group.currency,
+        'timeText': 'Active · ${DateTime.now().difference(group.createdAt).inDays} days ago',
+        'icon': GroupIconHelper.getGroupIcon(group.name),
+      });
+    }
+
+    final filteredGroups = mappedGroups.where((group) {
       final matchesSearch = (group['rawName'] as String)
           .toLowerCase()
           .contains(searchQuery.toLowerCase());
       if (!matchesSearch) return false;
       if (activeFilter == 'Owed') return group['isOwed'] == true;
-      if (activeFilter == 'Owe') return group['isOwed'] == false;
+      if (activeFilter == 'Owe') return (group['myBalance'] as double) < 0;
       return true;
     }).toList();
 
@@ -121,7 +138,7 @@ class GroupsTab extends ConsumerWidget {
               children: [
                 _buildStatChip(
                   ref: ref,
-                  label: '3 Groups',
+                  label: '${mappedGroups.length} Groups',
                   filterKey: 'All',
                   activeFilter: activeFilter,
                   selectedColor: AppColors.onboardingViolet,
@@ -131,7 +148,7 @@ class GroupsTab extends ConsumerWidget {
                 SizedBox(width: 8.w),
                 _buildStatChip(
                   ref: ref,
-                  label: 'Owed \$1,077',
+                  label: 'Owed $currencyCode ${totalOwed.toStringAsFixed(0)}',
                   filterKey: 'Owed',
                   activeFilter: activeFilter,
                   selectedColor: const Color(0xFF10B981),
@@ -141,7 +158,7 @@ class GroupsTab extends ConsumerWidget {
                 SizedBox(width: 8.w),
                 _buildStatChip(
                   ref: ref,
-                  label: 'Owe \$41',
+                  label: 'Owe $currencyCode ${totalOwe.toStringAsFixed(0)}',
                   filterKey: 'Owe',
                   activeFilter: activeFilter,
                   selectedColor: AppColors.balanceOwed,
@@ -208,126 +225,135 @@ class GroupsTab extends ConsumerWidget {
     final bool isOwed = group['isOwed'] == true;
     final List<Color> gradients = _gradientForId(group['id'] as String);
 
-    return Container(
-      margin: EdgeInsets.only(bottom: 16.h),
-      decoration: BoxDecoration(
-        color: AppColors.cardDark,
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: AppColors.white.withValues(alpha: 0.05)),
+    return GestureDetector(
+      onTap: () => context.push(
+        '${AppRouter.groupDetail}?groupId=${group['id']}',
       ),
-      child: Column(
-        children: [
-          // ── Header — gradient banner ──
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(16.w),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: gradients,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      child: Container(
+        margin: EdgeInsets.only(bottom: 16.h),
+        decoration: BoxDecoration(
+          color: AppColors.cardDark,
+          borderRadius: BorderRadius.circular(20.r),
+          border: Border.all(color: AppColors.white.withValues(alpha: 0.05)),
+        ),
+        child: Column(
+          children: [
+            // ── Header — gradient banner ──
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: gradients,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20.r),
+                  topRight: Radius.circular(20.r),
+                ),
               ),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20.r),
-                topRight: Radius.circular(20.r),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(group['icon'] as IconData,
-                    color: AppColors.white, size: 28.sp),
-                SizedBox(width: 14.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AppText(
-                        group['name'] as String,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.white,
-                      ),
-                      SizedBox(height: 4.h),
-                      AppText(
-                        group['timeText'] as String,
-                        fontSize: 11,
-                        color: AppColors.white.withValues(alpha: 0.7),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Body — members + balance ──
-          Padding(
-            padding: EdgeInsets.all(16.w),
-            child: Row(
-              children: [
-                _buildAvatars(group['members'] as List<String>),
-                SizedBox(width: 8.w),
-                AppText(
-                  '${group['memberCount']} members',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.white.withValues(alpha: 0.5),
-                ),
-                const Spacer(),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    AppText(
-                      group['statusText'] as String,
-                      fontSize: 11,
-                      color: AppColors.white.withValues(alpha: 0.4),
-                    ),
-                    SizedBox(height: 4.h),
-                    AppText(
-                      '\$${(group['amount'] as double).toStringAsFixed(0)}',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: isOwed
-                          ? const Color(0xFF10B981)
-                          : AppColors.balanceOwed,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // ── Footer — View + Remind buttons ──
-          if (isOwed)
-            Padding(
-              padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 16.h),
               child: Row(
                 children: [
+                  Icon(group['icon'] as IconData,
+                      color: AppColors.white, size: 28.sp),
+                  SizedBox(width: 14.w),
                   Expanded(
-                    child: _buildFooterButton(
-                      label: 'View',
-                      onTap: () => context.push(
-                        '${AppRouter.groupDetail}?groupId=${group['id']}',
-                      ),
-                      textColor: AppColors.white,
-                      borderColor: AppColors.white.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: _buildFooterButton(
-                      label: 'Remind',
-                      onTap: () {},
-                      textColor: const Color(0xFF10B981),
-                      borderColor:
-                          const Color(0xFF10B981).withValues(alpha: 0.25),
-                      bgColor: const Color(0xFF10B981).withValues(alpha: 0.08),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppText(
+                          group['rawName'] as String,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.white,
+                        ),
+                        SizedBox(height: 4.h),
+                        AppText(
+                          group['timeText'] as String,
+                          fontSize: 11,
+                          color: AppColors.white.withValues(alpha: 0.7),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-        ],
+
+            // ── Body — members + balance ──
+            Padding(
+              padding: EdgeInsets.all(16.w),
+              child: Row(
+                children: [
+                  GroupAvatarsWidget(groupId: group['id'] as String),
+                  SizedBox(width: 8.w),
+                  AppText(
+                    '${group['memberCount']} members',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.white.withValues(alpha: 0.5),
+                  ),
+                  const Spacer(),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      AppText(
+                        group['statusText'] as String,
+                        fontSize: 11,
+                        color: AppColors.white.withValues(alpha: 0.4),
+                      ),
+                      SizedBox(height: 4.h),
+                      AppText(
+                        group['myBalance'] == 0
+                            ? '${group['currency']} 0'
+                            : '${group['currency']} ${(group['amount'] as double).toStringAsFixed(0)}',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: group['myBalance'] == 0
+                            ? AppColors.white
+                            : group['myBalance'] > 0
+                                ? const Color(0xFF10B981)
+                                : AppColors.balanceOwed,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Footer — View + Remind buttons ──
+            if (isOwed)
+              Padding(
+                padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 16.h),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildFooterButton(
+                        label: 'View',
+                        onTap: () => context.push(
+                          '${AppRouter.groupDetail}?groupId=${group['id']}',
+                        ),
+                        textColor: AppColors.white,
+                        borderColor: AppColors.white.withValues(alpha: 0.1),
+                      ),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: _buildFooterButton(
+                        label: 'Remind',
+                        onTap: () {},
+                        textColor: const Color(0xFF10B981),
+                        borderColor:
+                            const Color(0xFF10B981).withValues(alpha: 0.25),
+                        bgColor: const Color(0xFF10B981).withValues(alpha: 0.08),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -359,44 +385,6 @@ class GroupsTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildAvatars(List<String> initials) {
-    const Map<String, Color> avatarColors = {
-      'AJ': AppColors.onboardingViolet,
-      'SC': AppColors.groupBlue,
-      'MT': AppColors.groupOrange,
-      'PP': Color(0xFF10B981),
-      'KW': Color(0xFF8B5CF6),
-    };
-    return SizedBox(
-      height: 24.h,
-      width: (initials.length - 1) * 14.w + 24.h,
-      child: Stack(
-        children: List.generate(initials.length, (i) {
-          final color = avatarColors[initials[i]] ?? AppColors.onboardingViolet;
-          return Positioned(
-            left: i * 14.w,
-            child: Container(
-              width: 24.h,
-              height: 24.h,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.backgroundDark, width: 2.w),
-              ),
-              alignment: Alignment.center,
-              child: AppText(
-                initials[i],
-                fontSize: 9,
-                fontWeight: FontWeight.w800,
-                color: AppColors.white,
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -413,6 +401,84 @@ class GroupsTab extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class GroupAvatarsWidget extends ConsumerWidget {
+  final String groupId;
+  const GroupAvatarsWidget({super.key, required this.groupId});
+
+  static const List<Color> _avatarColors = [
+    Color(0xFF818CF8), // violet
+    Color(0xFFEC4899), // pink
+    Color(0xFFF59E0B), // amber
+    Color(0xFF10B981), // green
+    Color(0xFF8B5CF6), // purple
+    Color(0xFF38BDF8), // cyan
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final membersAsync = ref.watch(groupMembersProvider(groupId));
+
+    return membersAsync.when(
+      loading: () => SizedBox(
+        height: 24.h,
+        width: 40.w,
+        child: const Center(
+          child: SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white24),
+          ),
+        ),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (members) {
+        if (members.isEmpty) return const SizedBox.shrink();
+
+        // Take up to 4 members for avatar display
+        final displayMembers = members.take(4).toList();
+
+        return SizedBox(
+          height: 24.h,
+          width: (displayMembers.length - 1) * 14.w + 24.h,
+          child: Stack(
+            children: List.generate(displayMembers.length, (i) {
+              final member = displayMembers[i];
+              final nameParts = member.fullName.trim().split(' ');
+              final initials = nameParts.length >= 2
+                  ? '${nameParts[0][0]}${nameParts[1][0]}'
+                  : nameParts.isNotEmpty && nameParts[0].isNotEmpty
+                      ? nameParts[0][0]
+                      : 'U';
+
+              final avatarColor = _avatarColors[member.id.hashCode.abs() % _avatarColors.length];
+
+              return Positioned(
+                left: i * 14.w,
+                child: Container(
+                  width: 24.h,
+                  height: 24.h,
+                  decoration: BoxDecoration(
+                    color: avatarColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.backgroundDark, width: 2.w),
+                  ),
+                  alignment: Alignment.center,
+                  child: AppText(
+                    initials.toUpperCase(),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.white,
+                  ),
+                ),
+              );
+            }),
+          ),
+        );
+      },
     );
   }
 }

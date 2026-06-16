@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/utils/app_snackbar.dart';
 import 'group_provider.dart';
+import 'settings_provider.dart';
 
 // Create Group State
 class CreateGroupState {
@@ -63,10 +64,15 @@ class CreateGroupNotifier extends StateNotifier<CreateGroupState> {
     state = state.copyWith(isLoading: true);
 
     try {
+      final defaultCurrency = ref.read(defaultCurrencyProvider);
+      final currencyCode = defaultCurrency.length >= 3
+          ? defaultCurrency.substring(0, 3)
+          : 'USD';
+
       await ref.read(groupProvider.notifier).addGroup(
             name: name.trim(),
             members: members,
-            currency: 'PKR',
+            currency: currencyCode,
           );
       AppSnackBar.showSuccess(context, 'Group created successfully');
       context.pop();
