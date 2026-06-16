@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_text.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../providers/settings_provider.dart';
 
 final statsPeriodProvider = StateProvider.autoDispose<String>((ref) => '6M');
 final selectedStatsMonthProvider =
@@ -16,23 +17,24 @@ class StatsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activePeriod = ref.watch(statsPeriodProvider);
     final selectedMonth = ref.watch(selectedStatsMonthProvider);
+    final defaultCurrency = ref.watch(defaultCurrencyProvider);
 
     // Dynamic metrics based on active period selection
-    String spentVal = '\$2070';
-    String receivedVal = '\$2590';
-    String netVal = '+\$520';
+    String spentVal = '$defaultCurrency 2070';
+    String receivedVal = '$defaultCurrency 2590';
+    String netVal = '+$defaultCurrency 520';
     if (activePeriod == '1M') {
-      spentVal = '\$412';
-      receivedVal = '\$620';
-      netVal = '+\$208';
+      spentVal = '$defaultCurrency 412';
+      receivedVal = '$defaultCurrency 620';
+      netVal = '+$defaultCurrency 208';
     } else if (activePeriod == '3M') {
-      spentVal = '\$1180';
-      receivedVal = '\$1450';
-      netVal = '+\$270';
+      spentVal = '$defaultCurrency 1180';
+      receivedVal = '$defaultCurrency 1450';
+      netVal = '+$defaultCurrency 270';
     } else if (activePeriod == '1Y') {
-      spentVal = '\$4310';
-      receivedVal = '\$5100';
-      netVal = '+\$790';
+      spentVal = '$defaultCurrency 4310';
+      receivedVal = '$defaultCurrency 5100';
+      netVal = '+$defaultCurrency 790';
     }
 
     return SafeArea(
@@ -191,7 +193,7 @@ class StatsTab extends ConsumerWidget {
                                   ref, 'Apr', 88.h, 50.h, selectedMonth),
                               _buildDualBar(
                                   ref, 'May', 75.h, 100.h, selectedMonth,
-                                  showBadge: true, badgeText: '\$620'),
+                                  showBadge: true, badgeText: '$defaultCurrency 620'),
                               _buildDualBar(
                                   ref, 'Jun', 35.h, 120.h, selectedMonth),
                             ],
@@ -219,7 +221,7 @@ class StatsTab extends ConsumerWidget {
                             icon: Icons.restaurant_rounded,
                             iconColor: const Color(0xFF6366F1),
                             title: 'Food & Dining',
-                            amount: '\$412',
+                            amount: '$defaultCurrency 412',
                             percentage: '38%',
                             progress: 0.38,
                             themeColor: const Color(0xFF6366F1),
@@ -229,7 +231,7 @@ class StatsTab extends ConsumerWidget {
                             icon: Icons.flight_takeoff_rounded,
                             iconColor: const Color(0xFF0EA5E9),
                             title: 'Travel',
-                            amount: '\$324',
+                            amount: '$defaultCurrency 324',
                             percentage: '30%',
                             progress: 0.30,
                             themeColor: const Color(0xFF0EA5E9),
@@ -239,7 +241,7 @@ class StatsTab extends ConsumerWidget {
                             icon: Icons.home_filled,
                             iconColor: const Color(0xFF10B981),
                             title: 'Rent & Bills',
-                            amount: '\$216',
+                            amount: '$defaultCurrency 216',
                             percentage: '20%',
                             progress: 0.20,
                             themeColor: const Color(0xFF10B981),
@@ -249,7 +251,7 @@ class StatsTab extends ConsumerWidget {
                             icon: Icons.theater_comedy_rounded,
                             iconColor: const Color(0xFFF59E0B),
                             title: 'Entertainment',
-                            amount: '\$130',
+                            amount: '$defaultCurrency 130',
                             percentage: '12%',
                             progress: 0.12,
                             themeColor: const Color(0xFFF59E0B),

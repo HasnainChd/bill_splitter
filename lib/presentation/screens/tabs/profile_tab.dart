@@ -9,6 +9,7 @@ import '../../../core/widgets/app_text.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/router/app_router.dart';
 import '../../../providers/profile_provider.dart';
+import '../../../providers/settings_provider.dart';
 
 class ProfileTab extends ConsumerWidget {
   const ProfileTab({super.key});
@@ -26,6 +27,7 @@ class ProfileTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profileState = ref.watch(profileProvider);
     final profile = profileState.profile;
+    final defaultCurrency = ref.watch(defaultCurrencyProvider);
 
     if (profile == null) {
       if (profileState.error != null) {
@@ -243,7 +245,7 @@ class ProfileTab extends ConsumerWidget {
               _buildStatCard(
                 icon: Icons.check_box_outlined,
                 iconColor: const Color(0xFF10B981),
-                value: '\$3.2k',
+                value: '${defaultCurrency}3.2k',
                 label: 'Settled',
               ),
             ],
@@ -290,21 +292,21 @@ class ProfileTab extends ConsumerWidget {
                 _buildActiveGroupItem(
                   emoji: '✈️',
                   name: 'Barcelona Trip',
-                  amount: '+\$337',
+                  amount: '+$defaultCurrency 337',
                   amountColor: const Color(0xFF00C896),
                 ),
                 _buildDivider(),
                 _buildActiveGroupItem(
                   emoji: '🏠',
                   name: 'Grove Apt',
-                  amount: '+\$740',
+                  amount: '+$defaultCurrency 740',
                   amountColor: const Color(0xFF00C896),
                 ),
                 _buildDivider(),
                 _buildActiveGroupItem(
                   emoji: '🍕',
                   name: 'Dinner Crew',
-                  amount: '-\$41',
+                  amount: '-$defaultCurrency 41',
                   amountColor: AppColors.coralRed,
                 ),
               ],
@@ -339,11 +341,11 @@ class ProfileTab extends ConsumerWidget {
                       color: const Color(0xFF10B981).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8.r),
                     ),
-                    child: const AppText(
-                      'Get \$5',
+                    child: AppText(
+                      'Get $defaultCurrency 5',
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF10B981),
+                      color: const Color(0xFF10B981),
                     ),
                   ),
                   onTap: () {},
@@ -369,7 +371,6 @@ class ProfileTab extends ConsumerWidget {
     );
   }
 
-  // Helper: Stat Card
   Widget _buildStatCard({
     required IconData icon,
     required Color iconColor,
@@ -387,11 +388,20 @@ class ProfileTab extends ConsumerWidget {
               size: 20.sp,
             ),
             SizedBox(height: 8.h),
-            AppText(
-              value,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.white,
+            SizedBox(
+              height: 22.h,
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: AppText(
+                    value,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.white,
+                    maxLines: 1,
+                  ),
+                ),
+              ),
             ),
             SizedBox(height: 4.h),
             AppText(

@@ -3,115 +3,324 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_text.dart';
+import '../../../core/utils/app_dialog.dart';
+import '../../../core/utils/app_snackbar.dart';
+import '../../../providers/settings_provider.dart';
 import '../../providers/tab_providers.dart';
+
+import '../../../providers/auth_provider.dart';
+import '../../../providers/group_provider.dart';
+import '../../../providers/expense_provider.dart';
+import '../../../providers/profile_provider.dart';
+import '../../../core/utils/debt_calculator.dart';
+import '../../../core/utils/group_icon_helper.dart';
+import '../../../core/models/group.dart';
+
+class GlobalSettlement {
+  final Group group;
+  final Settlement settlement;
+  GlobalSettlement({required this.group, required this.settlement});
+}
+
+final settleLoadingProvider = StateProvider.autoDispose<Set<String>>((ref) => {});
+final settleAllLoadingProvider = StateProvider.autoDispose<bool>((ref) => false);
 
 class SettleTab extends ConsumerWidget {
   const SettleTab({super.key});
 
+  String _getInitials(String name) {
+    if (name.isEmpty) return '?';
+    final parts = name.trim().split(' ');
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
+  }
+
+  Color _getAvatarColor(String name) {
+    final colors = [
+      AppColors.avatarAmber,
+      AppColors.avatarRose,
+      AppColors.avatarEmerald,
+      AppColors.onboardingCyan,
+      AppColors.primaryPurple,
+    ];
+    if (name.isEmpty) return colors[0];
+    final index = name.codeUnits.fold<int>(0, (sum, next) => sum + next) % colors.length;
+    return colors[index];
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settleFilter = ref.watch(settleFilterProvider);
+    final defaultCurrency = ref.watch(defaultCurrencyProvider);
+    final currentUserId = ref.watch(supabaseUserProvider)?.id;
+    final groups = ref.watch(groupProvider).groups;
+    final loadingSettlements = ref.watch(settleLoadingProvider);
+    final isSettleAllLoading = ref.watch(settleAllLoadingProvider);
+
+    if (currentUserId == null) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: AppColors.onboardingViolet,
+        ),
+      );
+    }
+
+    final List<GlobalSettlement> globalSettlements = [];
+    final Map<String, UserProfile> userProfiles = {};
+
+    for (final group in groups) {
+      final balances = ref.watch(balancesForGroupProvider(group.groupId));
+      final membersAsync = ref.watch(groupMembersProvider(group.groupId));
+
+      membersAsync.whenData((members) {
+        for (final m in members) {
+          userProfiles[m.id] = m;
+        }
+      });
+
+      // Map balances to Member list for debt calculator
+      final membersList = balances.entries.map((entry) {
+        final balance = entry.value;
+        return Member(
+          name: entry.key,
+          totalPaid: balance > 0 ? balance : 0,
+          totalShare: balance < 0 ? balance.abs() : 0,
+        );
+      }).toList();
+
+      final groupSettlements = DebtCalculator.calculate(membersList);
+      for (final s in groupSettlements) {
+        globalSettlements.add(GlobalSettlement(group: group, settlement: s));
+      }
+    }
+
+    // Filter settlements where current user is involved
+    final myOwe = globalSettlements.where((gs) {
+      return gs.settlement.fromMember == currentUserId && gs.settlement.amount > 0.01;
+    }).toList();
+
+    final myOwed = globalSettlements.where((gs) {
+      return gs.settlement.toMember == currentUserId && gs.settlement.amount > 0.01;
+    }).toList();
+
+    // Summarize amounts
+    final totalOwe = myOwe.fold<double>(0.0, (sum, gs) => sum + gs.settlement.amount);
+    final totalOwedTo = myOwed.fold<double>(0.0, (sum, gs) => sum + gs.settlement.amount);
+
+    final owePeopleCount = myOwe.map((gs) => gs.settlement.toMember).toSet().length;
+    final owedPeopleCount = myOwed.map((gs) => gs.settlement.fromMember).toSet().length;
+
+    final hasSettlements = myOwe.isNotEmpty || myOwed.isNotEmpty;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          SizedBox(height: 16.h),
+          // Title
+          const AppText(
+            'Settle Up',
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            color: AppColors.white,
+          ),
+          SizedBox(height: 16.h),
+
+          // ── Summary Cards ──
+          Row(
             children: [
-              SizedBox(height: 16.h),
-              // Title
-              const AppText(
-                'Settle Up',
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: AppColors.white,
+              _buildSummaryCard(
+                'You Owe',
+                '$defaultCurrency ${totalOwe.toStringAsFixed(0)}',
+                '$owePeopleCount ${owePeopleCount == 1 ? 'person' : 'people'}',
+                AppColors.balanceOwed,
               ),
-              SizedBox(height: 16.h),
-
-              // ── Summary Cards ──
-              Row(
-                children: [
-                  _buildSummaryCard('You Owe', '\$41', '1 person',
-                      AppColors.balanceOwed),
-                  SizedBox(width: 12.w),
-                  _buildSummaryCard('Owed to You', '\$908', '2 people',
-                      AppColors.balanceOwedTo),
-                ],
-              ),
-              SizedBox(height: 16.h),
-
-              // ── Filter Chips ──
-              Row(
-                children: [
-                  _buildChip(ref, 'All', settleFilter),
-                  SizedBox(width: 8.w),
-                  _buildChip(ref, 'I Owe', settleFilter),
-                  SizedBox(width: 8.w),
-                  _buildChip(ref, 'Owed to Me', settleFilter),
-                ],
-              ),
-              SizedBox(height: 16.h),
-
-              // ── Person Cards ──
-              Expanded(
-                child: ListView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.only(bottom: 80.h),
-                  children: [
-                    if (settleFilter == 'All' || settleFilter == 'I Owe') ...[
-                      _buildSectionLabel('YOU OWE'),
-                      _buildPersonCard(
-                        name: 'Marcus Thompson',
-                        sub: 'Friday Crew • 3 days ago',
-                        amount: '-\$41',
-                        amountColor: AppColors.balanceOwed,
-                        buttonLabel: 'Pay',
-                        isOwe: true,
-                        initials: 'MT',
-                        avatarColor: AppColors.avatarAmber,
-                      ),
-                      SizedBox(height: 16.h),
-                    ],
-                    if (settleFilter == 'All' ||
-                        settleFilter == 'Owed to Me') ...[
-                      _buildSectionLabel('OWED TO YOU'),
-                      _buildPersonCard(
-                        name: 'Sarah Chen',
-                        sub: 'Barcelona Trip • 5 days ago',
-                        amount: '+\$168',
-                        amountColor: AppColors.balanceOwedTo,
-                        buttonLabel: 'Remind',
-                        isOwe: false,
-                        initials: 'SC',
-                        avatarColor: AppColors.avatarRose,
-                      ),
-                      SizedBox(height: 12.h),
-                      _buildPersonCard(
-                        name: 'Priya Patel',
-                        sub: 'Grove Apt • 1 month ago',
-                        amount: '+\$740',
-                        amountColor: AppColors.balanceOwedTo,
-                        buttonLabel: 'Remind',
-                        isOwe: false,
-                        initials: 'PP',
-                        avatarColor: AppColors.avatarEmerald,
-                      ),
-                    ],
-                  ],
-                ),
+              SizedBox(width: 12.w),
+              _buildSummaryCard(
+                'Owed to You',
+                '$defaultCurrency ${totalOwedTo.toStringAsFixed(0)}',
+                '$owedPeopleCount ${owedPeopleCount == 1 ? 'person' : 'people'}',
+                AppColors.balanceOwedTo,
               ),
             ],
           ),
+          SizedBox(height: 16.h),
 
-          // ── Pinned "Settle All" button ──
-          if (settleFilter == 'All' || settleFilter == 'I Owe')
-            Positioned(
-              bottom: 16.h,
-              left: 0,
-              right: 0,
+          // ── Filter Chips ──
+          Row(
+            children: [
+              _buildChip(ref, 'All', settleFilter),
+              SizedBox(width: 8.w),
+              _buildChip(ref, 'I Owe', settleFilter),
+              SizedBox(width: 8.w),
+              _buildChip(ref, 'Owed to Me', settleFilter),
+            ],
+          ),
+          SizedBox(height: 16.h),
+
+          // ── Person Cards / List ──
+          Expanded(
+            child: !hasSettlements
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 64.w,
+                          height: 64.w,
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.check_circle_outline_rounded,
+                            color: AppColors.success,
+                            size: 32.sp,
+                          ),
+                        ),
+                        SizedBox(height: 16.h),
+                        const AppText(
+                          'All Squared Up!',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.white,
+                        ),
+                        SizedBox(height: 6.h),
+                        AppText(
+                          'You have no pending settlements.',
+                          fontSize: 12,
+                          color: AppColors.white.withValues(alpha: 0.4),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.only(bottom: 16.h),
+                    children: [
+                      if (settleFilter == 'All' || settleFilter == 'I Owe') ...[
+                        if (myOwe.isNotEmpty) ...[
+                          _buildSectionLabel('YOU OWE'),
+                          ...myOwe.map((gs) {
+                            final otherUserId = gs.settlement.toMember;
+                            final otherName = userProfiles[otherUserId]?.fullName ?? 'Other User';
+                            final key = '${gs.group.groupId}_${otherUserId}_${gs.settlement.amount}';
+                            final isLoading = loadingSettlements.contains(key);
+
+                            return Padding(
+                              padding: EdgeInsets.only(bottom: 12.h),
+                              child: _buildPersonCard(
+                                context,
+                                name: otherName,
+                                sub: GroupIconHelper.getCleanGroupName(gs.group.name),
+                                amount: '-$defaultCurrency ${gs.settlement.amount.toStringAsFixed(0)}',
+                                amountColor: AppColors.balanceOwed,
+                                buttonLabel: 'Pay',
+                                isOwe: true,
+                                initials: _getInitials(otherName),
+                                avatarColor: _getAvatarColor(otherName),
+                                isLoading: isLoading,
+                                onTapButton: () async {
+                                  final confirm = await AppDialog.showConfirm(
+                                    context,
+                                    title: 'Confirm Payment',
+                                    message: 'Settle your debt of $defaultCurrency ${gs.settlement.amount.toStringAsFixed(0)} with $otherName?',
+                                    confirmText: 'Settle',
+                                    cancelText: 'Cancel',
+                                  );
+                                  if (confirm == true) {
+                                    ref.read(settleLoadingProvider.notifier).update((state) => {...state, key});
+                                    try {
+                                      await ref.read(expenseProvider.notifier).addExpense(
+                                        groupId: gs.group.groupId,
+                                        title: 'Settle Payment',
+                                        amount: gs.settlement.amount,
+                                        currency: gs.group.currency,
+                                        paidBy: currentUserId,
+                                        splitAmong: {otherUserId: gs.settlement.amount},
+                                        categoryIconCodePoint: Icons.handshake_rounded.codePoint,
+                                      );
+                                      if (context.mounted) {
+                                        AppSnackBar.showSuccess(
+                                          context,
+                                          'Payment of $defaultCurrency ${gs.settlement.amount.toStringAsFixed(0)} to $otherName registered!',
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        AppSnackBar.showError(
+                                          context,
+                                          'Failed to record payment: $e',
+                                        );
+                                      }
+                                    } finally {
+                                      ref.read(settleLoadingProvider.notifier).update(
+                                        (state) => state.where((k) => k != key).toSet(),
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                            );
+                          }),
+                        ],
+                      ],
+                      if (settleFilter == 'All' || settleFilter == 'Owed to Me') ...[
+                        if (myOwed.isNotEmpty) ...[
+                          _buildSectionLabel('OWED TO YOU'),
+                          ...myOwed.map((gs) {
+                            final otherUserId = gs.settlement.fromMember;
+                            final otherName = userProfiles[otherUserId]?.fullName ?? 'Other User';
+
+                            return Padding(
+                              padding: EdgeInsets.only(bottom: 12.h),
+                              child: _buildPersonCard(
+                                context,
+                                name: otherName,
+                                sub: GroupIconHelper.getCleanGroupName(gs.group.name),
+                                amount: '+$defaultCurrency ${gs.settlement.amount.toStringAsFixed(0)}',
+                                amountColor: AppColors.balanceOwedTo,
+                                buttonLabel: 'Remind',
+                                isOwe: false,
+                                initials: _getInitials(otherName),
+                                avatarColor: _getAvatarColor(otherName),
+                                isLoading: false,
+                                onTapButton: () async {
+                                  final confirm = await AppDialog.showConfirm(
+                                    context,
+                                    title: 'Send Reminder',
+                                    message: 'Send a payment reminder to $otherName for $defaultCurrency ${gs.settlement.amount.toStringAsFixed(0)}?',
+                                    confirmText: 'Send',
+                                    cancelText: 'Cancel',
+                                  );
+                                  if (confirm == true) {
+                                    if (context.mounted) {
+                                      AppSnackBar.showSuccess(
+                                        context,
+                                        'Reminder sent to $otherName!',
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                            );
+                          }),
+                        ],
+                      ],
+                    ],
+                  ),
+          ),
+
+          // ── Settle All button ──
+          if ((settleFilter == 'All' || settleFilter == 'I Owe') && myOwe.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(bottom: 16.h, top: 8.h),
               child: Container(
                 height: 48.h,
+                width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [AppColors.success, AppColors.successDark],
@@ -126,18 +335,68 @@ class SettleTab extends ConsumerWidget {
                   ],
                 ),
                 child: ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.check_circle_rounded,
-                      color: AppColors.white, size: 20),
-                  label: const AppText(
-                    'Settle All — Pay \$41',
+                  onPressed: isSettleAllLoading
+                      ? null
+                      : () async {
+                          final confirm = await AppDialog.showConfirm(
+                            context,
+                            title: 'Confirm Settlement',
+                            message: 'Settle all your pending debts totaling $defaultCurrency ${totalOwe.toStringAsFixed(0)}?',
+                            confirmText: 'Settle All',
+                            cancelText: 'Cancel',
+                          );
+                          if (confirm == true) {
+                            ref.read(settleAllLoadingProvider.notifier).state = true;
+                            try {
+                              for (final gs in myOwe) {
+                                final otherUserId = gs.settlement.toMember;
+                                await ref.read(expenseProvider.notifier).addExpense(
+                                  groupId: gs.group.groupId,
+                                  title: 'Settle Payment',
+                                  amount: gs.settlement.amount,
+                                  currency: gs.group.currency,
+                                  paidBy: currentUserId,
+                                  splitAmong: {otherUserId: gs.settlement.amount},
+                                  categoryIconCodePoint: Icons.handshake_rounded.codePoint,
+                                );
+                              }
+                              if (context.mounted) {
+                                AppSnackBar.showSuccess(
+                                  context,
+                                  'All pending debts marked as settled!',
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                AppSnackBar.showError(
+                                  context,
+                                  'Failed to settle debts: $e',
+                                );
+                              }
+                            } finally {
+                              ref.read(settleAllLoadingProvider.notifier).state = false;
+                            }
+                          }
+                        },
+                  icon: isSettleAllLoading
+                      ? SizedBox(
+                          width: 20.w,
+                          height: 20.w,
+                          child: const CircularProgressIndicator(
+                            color: AppColors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Icon(Icons.check_circle_rounded, color: AppColors.white, size: 20),
+                  label: AppText(
+                    'Settle All — Pay $defaultCurrency ${totalOwe.toStringAsFixed(0)}',
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppColors.white,
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
+                    backgroundColor: AppColors.transparent,
+                    shadowColor: AppColors.transparent,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(24.r),
                     ),
@@ -152,28 +411,33 @@ class SettleTab extends ConsumerWidget {
 
   // ── Helpers ──
 
-  Widget _buildSummaryCard(
-      String label, String value, String subtitle, Color color) {
+  Widget _buildSummaryCard(String label, String value, String subtitle, Color color) {
     return Expanded(
       child: Container(
         padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
           color: AppColors.cardDark,
           borderRadius: BorderRadius.circular(16.r),
-          border:
-              Border.all(color: AppColors.white.withValues(alpha: 0.05)),
+          border: Border.all(color: AppColors.white.withValues(alpha: 0.05)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AppText(label, fontSize: 12,
-                color: AppColors.white.withValues(alpha: 0.5)),
+            AppText(label, fontSize: 12, color: AppColors.white.withValues(alpha: 0.5)),
             SizedBox(height: 6.h),
-            AppText(value, fontSize: 24,
-                fontWeight: FontWeight.w800, color: color),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: AppText(
+                value,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: color,
+                maxLines: 1,
+              ),
+            ),
             SizedBox(height: 4.h),
-            AppText(subtitle, fontSize: 11,
-                color: AppColors.white.withValues(alpha: 0.3)),
+            AppText(subtitle, fontSize: 11, color: AppColors.white.withValues(alpha: 0.3)),
           ],
         ),
       ),
@@ -183,27 +447,21 @@ class SettleTab extends ConsumerWidget {
   Widget _buildChip(WidgetRef ref, String label, String current) {
     final isSelected = current == label;
     return GestureDetector(
-      onTap: () =>
-          ref.read(settleFilterProvider.notifier).state = label,
+      onTap: () => ref.read(settleFilterProvider.notifier).state = label,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color:
-              isSelected ? AppColors.onboardingViolet : AppColors.cardDark,
+          color: isSelected ? AppColors.onboardingViolet : AppColors.cardDark,
           borderRadius: BorderRadius.circular(20.r),
           border: Border.all(
-            color: isSelected
-                ? Colors.transparent
-                : AppColors.white.withValues(alpha: 0.06),
+            color: isSelected ? AppColors.transparent : AppColors.white.withValues(alpha: 0.06),
           ),
         ),
         child: AppText(
           label,
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: isSelected
-              ? AppColors.white
-              : AppColors.white.withValues(alpha: 0.6),
+          color: isSelected ? AppColors.white : AppColors.white.withValues(alpha: 0.6),
         ),
       ),
     );
@@ -222,7 +480,8 @@ class SettleTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildPersonCard({
+  Widget _buildPersonCard(
+    BuildContext context, {
     required String name,
     required String sub,
     required String amount,
@@ -231,88 +490,86 @@ class SettleTab extends ConsumerWidget {
     required bool isOwe,
     required String initials,
     required Color avatarColor,
+    required bool isLoading,
+    required VoidCallback onTapButton,
   }) {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: AppColors.cardDark,
         borderRadius: BorderRadius.circular(16.r),
-        border:
-            Border.all(color: AppColors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: AppColors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
         children: [
           Container(
             width: 40.w,
             height: 40.w,
-            decoration: BoxDecoration(
-                color: avatarColor, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: avatarColor, shape: BoxShape.circle),
             alignment: Alignment.center,
-            child: AppText(initials, fontSize: 13,
-                fontWeight: FontWeight.w700, color: AppColors.white),
+            child: AppText(initials, fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.white),
           ),
           SizedBox(width: 14.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AppText(name, fontSize: 14,
-                    fontWeight: FontWeight.w700, color: AppColors.white),
+                AppText(name, fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.white),
                 SizedBox(height: 4.h),
-                AppText(sub, fontSize: 11,
-                    color: AppColors.white.withValues(alpha: 0.4)),
+                AppText(sub, fontSize: 11, color: AppColors.white.withValues(alpha: 0.4)),
               ],
             ),
           ),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AppText(amount, fontSize: 14,
-                  fontWeight: FontWeight.w800, color: amountColor),
-              SizedBox(width: 12.w),
+              AppText(amount, fontSize: 14, fontWeight: FontWeight.w800, color: amountColor),
+              SizedBox(height: 8.h),
               SizedBox(
                 height: 28.h,
-                child: isOwe
-                    ? ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.onboardingViolet,
-                          elevation: 0,
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 14.w),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14.r),
-                          ),
+                child: isLoading
+                    ? SizedBox(
+                        width: 28.w,
+                        height: 28.w,
+                        child: const CircularProgressIndicator(
+                          color: AppColors.onboardingViolet,
+                          strokeWidth: 2,
                         ),
-                        child: AppText(buttonLabel, fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.white),
                       )
-                    : OutlinedButton(
-                        onPressed: () {},
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color:
-                                AppColors.white.withValues(alpha: 0.15),
+                    : isOwe
+                        ? ElevatedButton(
+                            onPressed: onTapButton,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.onboardingViolet,
+                              elevation: 0,
+                              padding: EdgeInsets.symmetric(horizontal: 14.w),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14.r),
+                              ),
+                            ),
+                            child: AppText(buttonLabel, fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.white),
+                          )
+                        : OutlinedButton(
+                            onPressed: onTapButton,
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: AppColors.white.withValues(alpha: 0.15),
+                              ),
+                              padding: EdgeInsets.symmetric(horizontal: 12.w),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14.r),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.notifications_none_rounded, color: AppColors.white.withValues(alpha: 0.6), size: 12.sp),
+                                SizedBox(width: 4.w),
+                                AppText(buttonLabel, fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.white),
+                              ],
+                            ),
                           ),
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 12.w),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14.r),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.notifications_none_rounded,
-                                color:
-                                    AppColors.white.withValues(alpha: 0.6),
-                                size: 12.sp),
-                            SizedBox(width: 4.w),
-                            AppText(buttonLabel, fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.white),
-                          ],
-                        ),
-                      ),
               ),
             ],
           ),
@@ -321,3 +578,4 @@ class SettleTab extends ConsumerWidget {
     );
   }
 }
+

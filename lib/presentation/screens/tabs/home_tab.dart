@@ -7,16 +7,55 @@ import '../../../core/models/group.dart';
 import '../../../core/widgets/app_text.dart';
 import '../../../core/router/app_router.dart';
 import '../../../providers/group_provider.dart';
+import '../../../providers/settings_provider.dart';
 import '../../providers/tab_providers.dart';
+
+import '../../../providers/auth_provider.dart';
+import '../../../providers/expense_provider.dart';
+import '../../../providers/profile_provider.dart';
+import '../../../providers/notifications_provider.dart';
+import '../../../core/utils/group_icon_helper.dart';
 
 class HomeTab extends ConsumerWidget {
   const HomeTab({super.key});
+
+  Color _getAvatarColorForInitials(String initials) {
+    final colors = [
+      AppColors.avatarAmber,
+      AppColors.avatarRose,
+      AppColors.avatarEmerald,
+      AppColors.onboardingCyan,
+      AppColors.primaryPurple,
+    ];
+    if (initials.isEmpty) return colors[0];
+    final index = initials.codeUnits.fold<int>(0, (sum, next) => sum + next) % colors.length;
+    return colors[index];
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final groupState = ref.watch(groupProvider);
     final groups = groupState.groups;
     final defaultGroup = groups.isNotEmpty ? groups.first : null;
+    final defaultCurrency = ref.watch(defaultCurrencyProvider);
+    final currentUserId = ref.watch(supabaseUserProvider)?.id;
+    final profile = ref.watch(profileProvider).profile;
+    final notifications = ref.watch(dynamicNotificationsProvider);
+    final recentNotifications = notifications.take(4).toList();
+
+    // Calculate dynamic balance totals across all groups
+    double totalOwed = 0.0;
+    double totalOwe = 0.0;
+    for (final group in groups) {
+      final balances = ref.watch(balancesForGroupProvider(group.groupId));
+      final myBalance = currentUserId != null ? (balances[currentUserId] ?? 0.0) : 0.0;
+      if (myBalance > 0) {
+        totalOwed += myBalance;
+      } else if (myBalance < 0) {
+        totalOwe += myBalance.abs();
+      }
+    }
+    final netBalance = totalOwed - totalOwe;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -38,8 +77,8 @@ class HomeTab extends ConsumerWidget {
                       color: AppColors.white.withValues(alpha: 0.5),
                     ),
                     SizedBox(height: 4.h),
-                    const AppText(
-                      'Nain',
+                    AppText(
+                      profile?.fullName.split(' ').first ?? 'User',
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
                       color: AppColors.white,
@@ -55,7 +94,7 @@ class HomeTab extends ConsumerWidget {
                     _buildHeaderIconButton(
                       Icons.notifications_none_rounded,
                       () => context.push(AppRouter.notifications),
-                      hasBadge: true,
+                      hasBadge: notifications.isNotEmpty,
                     ),
                   ],
                 ),
@@ -90,8 +129,8 @@ class HomeTab extends ConsumerWidget {
                     color: AppColors.white.withValues(alpha: 0.8),
                   ),
                   SizedBox(height: 8.h),
-                  const AppText(
-                    '\$1,077.00',
+                  AppText(
+                    '$defaultCurrency ${totalOwed.toStringAsFixed(0)}',
                     fontSize: 36,
                     fontWeight: FontWeight.w800,
                     color: AppColors.white,
@@ -100,13 +139,23 @@ class HomeTab extends ConsumerWidget {
                   Row(
                     children: [
                       _buildBalanceSubCol(
-                          'You owe', '\$41', AppColors.balanceOwed),
+                          'You owe', '$defaultCurrency ${totalOwe.toStringAsFixed(0)}', AppColors.balanceOwed),
                       _buildBalanceDivider(),
                       _buildBalanceSubCol(
-                          'Owed to you', '\$1,077', AppColors.balanceOwedTo),
+                          'Owed to you', '$defaultCurrency ${totalOwed.toStringAsFixed(0)}', AppColors.balanceOwedTo),
                       _buildBalanceDivider(),
                       _buildBalanceSubCol(
-                          'Net balance', '\$1,036', AppColors.white),
+                          'Net balance',
+                          netBalance > 0
+                              ? '+$defaultCurrency ${netBalance.toStringAsFixed(0)}'
+                              : netBalance < 0
+                                  ? '-$defaultCurrency ${netBalance.abs().toStringAsFixed(0)}'
+                                  : '$defaultCurrency 0',
+                          netBalance > 0
+                              ? AppColors.balanceOwedTo
+                              : netBalance < 0
+                                  ? AppColors.balanceOwed
+                                  : AppColors.white),
                     ],
                   ),
                 ],
@@ -169,58 +218,71 @@ class HomeTab extends ConsumerWidget {
           SizedBox(height: 12.h),
           SizedBox(
             height: 156.h,
-            child: ListView(
+            child: ListView.separated(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.symmetric(horizontal: 20.w),
-              children: [
-                if (groups.isNotEmpty)
-                  _buildGroupCard(
-                    context: context,
-                    group: groups[0],
-                    icon: Icons.flight_takeoff_rounded,
-                    gradient: const [
-                      AppColors.onboardingViolet,
-                      AppColors.onboardingVioletDark
-                    ],
-                    expenses: '8 expenses',
-                    amount: '+\$337',
-                    amountColor: AppColors.balanceOwedTo,
-                    avatars: ['AJ', 'SC', 'MT'],
-                  ),
-                if (groups.length > 1) SizedBox(width: 12.w),
-                if (groups.length > 1)
-                  _buildGroupCard(
-                    context: context,
-                    group: groups[1],
-                    icon: Icons.home_filled,
-                    gradient: const [
-                      AppColors.groupBlue,
-                      AppColors.groupBlueDark
-                    ],
-                    expenses: '24 expenses',
-                    amount: '+\$740',
-                    amountColor: AppColors.balanceOwedTo,
-                    avatars: ['AJ', 'PP', 'KW'],
-                  ),
-                if (groups.length > 2) SizedBox(width: 12.w),
-                if (groups.length > 2)
-                  _buildGroupCard(
-                    context: context,
-                    group: groups[2],
-                    icon: Icons.local_pizza_rounded,
-                    gradient: const [
-                      AppColors.groupOrange,
-                      AppColors.groupOrangeDark
-                    ],
-                    expenses: '5 expenses',
-                    amount: '-\$41',
-                    amountColor: AppColors.balanceOwed,
-                    avatars: ['AJ', 'SC', 'MT', 'PP'],
-                  ),
-                SizedBox(width: 12.w),
-                _buildNewGroupCard(context),
-              ],
+              itemCount: groups.length + 1,
+              separatorBuilder: (context, index) => SizedBox(width: 12.w),
+              itemBuilder: (context, index) {
+                if (index == groups.length) {
+                  return _buildNewGroupCard(context);
+                }
+
+                final group = groups[index];
+                final balances = ref.watch(balancesForGroupProvider(group.groupId));
+                final myBalance = currentUserId != null ? (balances[currentUserId] ?? 0.0) : 0.0;
+                final membersAsync = ref.watch(groupMembersProvider(group.groupId));
+                final expenseState = ref.watch(expenseProvider);
+                final groupExpenses = expenseState.expenses.where((e) => e.groupId == group.groupId).toList();
+
+                final groupIcon = GroupIconHelper.getGroupIcon(group.name);
+
+                final gradients = [
+                  [AppColors.onboardingViolet, AppColors.onboardingVioletDark],
+                  [AppColors.groupBlue, AppColors.groupBlueDark],
+                  [AppColors.groupOrange, AppColors.groupOrangeDark],
+                ];
+                final gradient = gradients[index % gradients.length];
+
+                final String balanceText;
+                final Color balanceColor;
+                if (myBalance > 0) {
+                  balanceText = '+$defaultCurrency ${myBalance.toStringAsFixed(0)}';
+                  balanceColor = AppColors.balanceOwedTo;
+                } else if (myBalance < 0) {
+                  balanceText = '-$defaultCurrency ${myBalance.abs().toStringAsFixed(0)}';
+                  balanceColor = AppColors.balanceOwed;
+                } else {
+                  balanceText = 'Settled';
+                  balanceColor = AppColors.white.withValues(alpha: 0.5);
+                }
+
+                final List<String> initialsList = membersAsync.when(
+                  data: (members) => members.map((m) {
+                    final name = m.fullName.trim();
+                    if (name.isEmpty) return 'U';
+                    final parts = name.split(' ');
+                    if (parts.length > 1) {
+                      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+                    }
+                    return parts[0][0].toUpperCase();
+                  }).toList(),
+                  loading: () => ['?'],
+                  error: (_, __) => ['?'],
+                );
+
+                return _buildGroupCard(
+                  context: context,
+                  group: group,
+                  icon: groupIcon,
+                  gradient: gradient,
+                  expenses: '${groupExpenses.length} ${groupExpenses.length == 1 ? 'expense' : 'expenses'}',
+                  amount: balanceText,
+                  amountColor: balanceColor,
+                  avatars: initialsList,
+                );
+              },
             ),
           ),
           SizedBox(height: 28.h),
@@ -260,44 +322,35 @@ class HomeTab extends ConsumerWidget {
                   color: AppColors.white.withValues(alpha: 0.05),
                 ),
               ),
-              child: ListView(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(vertical: 8.h),
-                children: [
-                  _buildActivityRow(
-                    title: 'Sarah paid you back',
-                    sub: 'Barcelona Trip • 2 min ago',
-                    amount: '+\$168',
-                    isPositive: true,
-                    icon: Icons.payments_outlined,
-                  ),
-                  _buildActivityDivider(),
-                  _buildActivityRow(
-                    title: 'Marcus added Thai dinner',
-                    sub: 'Friday Crew • 12 min ago',
-                    amount: '\$164',
-                    isPositive: false,
-                    icon: Icons.restaurant_rounded,
-                  ),
-                  _buildActivityDivider(),
-                  _buildActivityRow(
-                    title: 'Electricity bill',
-                    sub: 'Grove Apt • 2 hours ago',
-                    amount: '\$60',
-                    isPositive: false,
-                    icon: Icons.bolt_rounded,
-                  ),
-                  _buildActivityDivider(),
-                  _buildActivityRow(
-                    title: 'Kai settled up',
-                    sub: 'Grove Apt • Yesterday',
-                    amount: '+\$800',
-                    isPositive: true,
-                    icon: Icons.check_circle_outline_rounded,
-                  ),
-                ],
-              ),
+              child: recentNotifications.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24.h),
+                        child: AppText(
+                          'No recent activity yet.',
+                          fontSize: 13,
+                          color: AppColors.white.withValues(alpha: 0.4),
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                      itemCount: recentNotifications.length,
+                      separatorBuilder: (context, index) => _buildActivityDivider(),
+                      itemBuilder: (context, index) {
+                        final item = recentNotifications[index];
+                        final isPositive = item.amount?.startsWith('+') ?? false;
+                        return _buildActivityRow(
+                          title: item.title,
+                          sub: '${GroupIconHelper.getCleanGroupName(item.groupName)} • ${item.subtitle}',
+                          amount: item.amount ?? '',
+                          isPositive: isPositive,
+                          icon: item.badgeIcon,
+                        );
+                      },
+                    ),
             ),
           ),
           SizedBox(height: 32.h),
@@ -421,7 +474,7 @@ class HomeTab extends ConsumerWidget {
     required List<String> avatars,
   }) {
     return Container(
-      width: 136.w,
+      width: 148.w,
       padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -442,7 +495,7 @@ class HomeTab extends ConsumerWidget {
             Icon(icon, color: AppColors.white, size: 24.sp),
             const Spacer(),
             AppText(
-              group.name,
+              GroupIconHelper.getCleanGroupName(group.name),
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.white,
@@ -455,16 +508,27 @@ class HomeTab extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                AppText(
-                  expenses,
-                  fontSize: 10,
-                  color: AppColors.white.withValues(alpha: 0.7),
+                Expanded(
+                  child: AppText(
+                    expenses,
+                    fontSize: 10,
+                    color: AppColors.white.withValues(alpha: 0.7),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                AppText(
-                  amount,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: amountColor,
+                SizedBox(width: 4.w),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: AppText(
+                      amount,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: amountColor,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -477,7 +541,7 @@ class HomeTab extends ConsumerWidget {
   // Helper: Dotted New Group Card
   Widget _buildNewGroupCard(BuildContext context) {
     return Container(
-      width: 136.w,
+      width: 148.w,
       decoration: BoxDecoration(
         color: AppColors.white.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(20.r),
@@ -520,15 +584,11 @@ class HomeTab extends ConsumerWidget {
   Widget _buildOverlappingAvatars(List<String> initials) {
     return SizedBox(
       height: 20.h,
-      width: (initials.length - 1) * 12.w + 20.h,
+      width: initials.isEmpty ? 0 : (initials.length - 1) * 12.w + 20.h,
       child: Stack(
         children: List.generate(initials.length, (index) {
           final initial = initials[index];
-          Color avatarBg = AppColors.onboardingViolet;
-          if (initial == 'SC') avatarBg = AppColors.groupBlue;
-          if (initial == 'MT') avatarBg = AppColors.groupOrange;
-          if (initial == 'PP') avatarBg = const Color(0xFF10B981);
-          if (initial == 'KW') avatarBg = Colors.purple;
+          final Color avatarBg = _getAvatarColorForInitials(initial);
 
           return Positioned(
             left: index * 12.w,

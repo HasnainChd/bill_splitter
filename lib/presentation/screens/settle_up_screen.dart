@@ -8,31 +8,41 @@ import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/settlement_card.dart';
 import '../../core/utils/app_snackbar.dart';
-import '../../providers/firebase_group_provider.dart';
-import '../../providers/firebase_expense_provider.dart';
+import '../../providers/group_provider.dart';
+import '../../providers/expense_provider.dart';
 import '../../core/models/group.dart';
+import '../../providers/profile_provider.dart';
+import '../../core/utils/group_icon_helper.dart';
 
-class SettleUpScreen extends ConsumerWidget {
+class SettleUpScreen extends ConsumerStatefulWidget {
   final String groupId;
 
   const SettleUpScreen({super.key, required this.groupId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final groupState = ref.watch(firebaseGroupProvider);
+  ConsumerState<SettleUpScreen> createState() => _SettleUpScreenState();
+}
+
+class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
+  final Set<String> _loadingSettlements = {};
+
+  @override
+  Widget build(BuildContext context) {
+    final groupState = ref.watch(groupProvider);
+    final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
 
     try {
       final group = groupState.groups.firstWhere(
-        (g) => g.groupId == groupId,
+        (g) => g.groupId == widget.groupId,
         orElse: () => Group(
-          groupId: groupId,
-          name: 'Friday Dinner Crew',
-          members: const ['You', 'Sarah', 'Marcus', 'Priya'],
-          currency: 'USD',
+          groupId: widget.groupId,
+          name: 'Group Detail',
+          members: const [],
+          currency: 'PKR',
           createdAt: DateTime.now(),
         ),
       );
-      final balances = ref.watch(balancesForGroupProvider(groupId));
+      final balances = ref.watch(balancesForGroupProvider(widget.groupId));
 
       // Convert balances to Member list for debt calculator
       final members = balances.entries.map((entry) {
@@ -47,6 +57,11 @@ class SettleUpScreen extends ConsumerWidget {
       final settlements = DebtCalculator.calculate(members);
       final allSettled = settlements.every((s) => s.isPaid);
       final paidSettlements = settlements.where((s) => s.isPaid).toList();
+
+      // Lookup names map from UUIDs
+      final memberMap = {
+        for (final m in membersAsync.value ?? <UserProfile>[]) m.id: m.fullName,
+      };
 
       return Scaffold(
         backgroundColor: AppColors.backgroundDark,
@@ -72,7 +87,7 @@ class SettleUpScreen extends ConsumerWidget {
                 color: AppColors.white,
               ),
               AppText(
-                group.name,
+                GroupIconHelper.getCleanGroupName(group.name),
                 fontSize: 12,
                 color: AppColors.white.withValues(alpha: 0.4),
               ),
@@ -88,85 +103,48 @@ class SettleUpScreen extends ConsumerWidget {
               children: [
                 // Top summary card
                 AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      AppText(
-                        "Minimum transactions to clear all debts",
-                        fontSize: 12,
-                        color: AppColors.white.withValues(alpha: 0.4),
-                        align: TextAlign.center,
-                      ),
-                      SizedBox(height: 8.h),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.swap_horiz_rounded,
-                            color: AppColors.onboardingViolet,
-                            size: 20.sp,
-                          ),
-                          SizedBox(width: 6.w),
-                          AppText(
-                            "${settlements.length} transactions needed",
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.white,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 20.h),
-
-                // Settlement cards or all settled message
-                if (allSettled)
-                  AppCard(
+                  child: SizedBox(
+                    width: double.infinity,
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.celebration,
-                          size: 72.sp,
-                          color: AppColors.onboardingViolet,
+                        Container(
+                          width: 48.w,
+                          height: 48.w,
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.handshake_rounded,
+                            color: AppColors.success,
+                            size: 24.sp,
+                          ),
                         ),
                         SizedBox(height: 16.h),
-                        const AppText(
-                          'All Settled Up! 🎉',
+                        AppText(
+                          allSettled ? 'All Settled!' : 'Pending Settlements',
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                           color: AppColors.white,
                         ),
                         SizedBox(height: 6.h),
                         AppText(
-                          'Everyone is even',
-                          fontSize: 13,
+                          allSettled
+                              ? 'Everyone in ${GroupIconHelper.getCleanGroupName(group.name)} is squared up!'
+                              : 'Resolve balances below to square up the group.',
+                          fontSize: 12,
                           color: AppColors.white.withValues(alpha: 0.4),
-                        ),
-                        SizedBox(height: 20.h),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 44.h,
-                          child: ElevatedButton(
-                            onPressed: () => context.pop(),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.success,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14.r),
-                              ),
-                            ),
-                            child: const AppText(
-                              'Back to Group',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.white,
-                            ),
-                          ),
+                          align: TextAlign.center,
                         ),
                       ],
                     ),
-                  )
-                else
+                  ),
+                ),
+                SizedBox(height: 24.h),
+
+                // Active settlements
+                if (settlements.isNotEmpty)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -179,16 +157,59 @@ class SettleUpScreen extends ConsumerWidget {
                       ),
                       SizedBox(height: 12.h),
                       ...settlements.map((settlement) {
+                        final fromName = memberMap[settlement.fromMember] ??
+                            settlement.fromMember;
+                        final toName = memberMap[settlement.toMember] ??
+                            settlement.toMember;
+
+                        final key =
+                            '${settlement.fromMember}_${settlement.toMember}_${settlement.amount}';
+                        final isLoading = _loadingSettlements.contains(key);
+
                         return Padding(
                           padding: EdgeInsets.only(bottom: 12.h),
                           child: SettlementCard(
-                            fromMember: settlement.fromMember,
-                            toMember: settlement.toMember,
+                            fromMember: fromName,
+                            toMember: toName,
                             amount: settlement.amount,
                             isPaid: settlement.isPaid,
-                            onMarkAsPaid: () {
-                              AppSnackBar.showSuccess(
-                                  context, 'Payment recorded');
+                            currency: group.currency,
+                            isLoading: isLoading,
+                            onMarkAsPaid: () async {
+                              setState(() {
+                                _loadingSettlements.add(key);
+                              });
+                              try {
+                                await ref
+                                    .read(expenseProvider.notifier)
+                                    .addExpense(
+                                      groupId: widget.groupId,
+                                      title: 'Settle Payment',
+                                      amount: settlement.amount,
+                                      currency: group.currency,
+                                      paidBy: settlement.fromMember,
+                                      splitAmong: {
+                                        settlement.toMember: settlement.amount
+                                      },
+                                      categoryIconCodePoint:
+                                          Icons.handshake_rounded.codePoint,
+                                    );
+                                if (context.mounted) {
+                                  AppSnackBar.showSuccess(
+                                      context, 'Payment recorded!');
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  AppSnackBar.showError(
+                                      context, 'Failed to record payment: $e');
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() {
+                                    _loadingSettlements.remove(key);
+                                  });
+                                }
+                              }
                             },
                           ),
                         );
@@ -198,7 +219,7 @@ class SettleUpScreen extends ConsumerWidget {
 
                 if (!allSettled) SizedBox(height: 16.h),
 
-                // Recent settlements - only show if there are paid settlements
+                // Recent settlements
                 if (paidSettlements.isNotEmpty) ...[
                   SizedBox(height: 24.h),
                   AppText(
@@ -210,11 +231,17 @@ class SettleUpScreen extends ConsumerWidget {
                   ),
                   SizedBox(height: 12.h),
                   ...paidSettlements.map((settlement) {
+                    final fromName = memberMap[settlement.fromMember] ??
+                        settlement.fromMember;
+                    final toName =
+                        memberMap[settlement.toMember] ?? settlement.toMember;
+
                     return SettlementCard(
-                      fromMember: settlement.fromMember,
-                      toMember: settlement.toMember,
+                      fromMember: fromName,
+                      toMember: toName,
                       amount: settlement.amount,
                       isPaid: settlement.isPaid,
+                      currency: group.currency,
                     );
                   }),
                 ],
