@@ -13,16 +13,7 @@ import '../../core/utils/group_icon_helper.dart';
 class CreateGroupScreen extends ConsumerWidget {
   const CreateGroupScreen({super.key});
 
-  static const List<Color> _colors = [
-    Color(0xFF818CF8), // violet
-    Color(0xFF38BDF8), // cyan
-    Color(0xFF10B981), // green
-    Color(0xFFF59E0B), // amber
-    Color(0xFFEC4899), // pink
-    Color(0xFFEF4444), // red
-    Color(0xFF8B5CF6), // purple
-    Color(0xFFF97316), // orange
-  ];
+
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -35,7 +26,7 @@ class CreateGroupScreen extends ConsumerWidget {
     final groupState = ref.watch(createGroupProvider);
 
     final groupName = nameCtrl.text.isEmpty ? 'New Group' : nameCtrl.text;
-    final selectedColor = _colors[colorIndex];
+    final selectedColor = AppColors.groupThemeColors[colorIndex];
 
     final usersAsync = ref.watch(allUsersProvider);
     final usersList = usersAsync.value ?? [];
@@ -198,7 +189,7 @@ class CreateGroupScreen extends ConsumerWidget {
                     _label('COLOR'),
                     SizedBox(height: 12.h),
                     Row(
-                      children: List.generate(_colors.length, (i) {
+                      children: List.generate(AppColors.groupThemeColors.length, (i) {
                         final isSelected = i == colorIndex;
                         return Padding(
                           padding: EdgeInsets.only(right: 10.w),
@@ -211,19 +202,19 @@ class CreateGroupScreen extends ConsumerWidget {
                               width: 30.w,
                               height: 30.w,
                               decoration: BoxDecoration(
-                                color: _colors[i],
+                                color: AppColors.groupThemeColors[i],
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: isSelected
                                       ? AppColors.white
-                                      : Colors.transparent,
+                                      : AppColors.transparent,
                                   width: 2.5,
                                 ),
                                 boxShadow: isSelected
                                     ? [
                                         BoxShadow(
                                           color:
-                                              _colors[i].withValues(alpha: 0.5),
+                                              AppColors.groupThemeColors[i].withValues(alpha: 0.5),
                                           blurRadius: 8,
                                         )
                                       ]
@@ -308,8 +299,8 @@ class CreateGroupScreen extends ConsumerWidget {
                                       : 'U';
 
                               // Compute color based on ID hash
-                              final color = _colors[
-                                  contact.id.hashCode.abs() % _colors.length];
+                              final color = AppColors.avatarColors[
+                                  contact.id.hashCode.abs() % AppColors.avatarColors.length];
                               final isLast = i == filteredUsers.length - 1;
 
                               return Column(
@@ -389,11 +380,23 @@ class CreateGroupScreen extends ConsumerWidget {
                         ),
                         alignment: Alignment.center,
                         child: groupState.isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                    color: AppColors.white, strokeWidth: 2),
+                            ? Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 18.w,
+                                    height: 18.w,
+                                    child: const CircularProgressIndicator(
+                                        color: AppColors.white, strokeWidth: 2),
+                                  ),
+                                  SizedBox(width: 12.w),
+                                  const AppText(
+                                    'Creating...',
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.white,
+                                  ),
+                                ],
                               )
                             : AppText(
                                 'Create Group with ${selectedMembers.length} member${selectedMembers.length == 1 ? '' : 's'}',

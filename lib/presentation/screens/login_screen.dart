@@ -73,7 +73,7 @@ class LoginScreen extends ConsumerWidget {
                           'Welcome back',
                           fontSize: 32,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: AppColors.white,
                           height: 1.15,
                         ),
                         SizedBox(height: 6.h),
@@ -105,7 +105,7 @@ class LoginScreen extends ConsumerWidget {
                           children: [
                             Expanded(
                               child: Divider(
-                                color: Colors.white.withValues(alpha: 0.1),
+                                color: AppColors.white.withValues(alpha: 0.1),
                                 thickness: 1,
                               ),
                             ),
@@ -120,7 +120,7 @@ class LoginScreen extends ConsumerWidget {
                             ),
                             Expanded(
                               child: Divider(
-                                color: Colors.white.withValues(alpha: 0.1),
+                                color: AppColors.white.withValues(alpha: 0.1),
                                 thickness: 1,
                               ),
                             ),
@@ -188,7 +188,7 @@ class LoginScreen extends ConsumerWidget {
                           },
                           isLoading: authState.isLoading,
                           color: AppColors.onboardingViolet,
-                          textColor: Colors.white,
+                          textColor: AppColors.white,
                         ),
                         SizedBox(height: 24.h),
 

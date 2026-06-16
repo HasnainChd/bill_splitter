@@ -29,14 +29,7 @@ class AddExpenseScreen extends ConsumerWidget {
     {'label': 'Fun', 'icon': Icons.theater_comedy_rounded},
   ];
 
-  static const List<Color> _avatarColors = [
-    Color(0xFF818CF8), // violet
-    Color(0xFFEC4899), // pink
-    Color(0xFFF59E0B), // amber
-    Color(0xFF10B981), // green
-    Color(0xFF8B5CF6), // purple
-    Color(0xFF38BDF8), // cyan
-  ];
+
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -48,6 +41,7 @@ class AddExpenseScreen extends ConsumerWidget {
     final membersAsync = ref.watch(groupMembersProvider(group.groupId));
     final members = membersAsync.value ?? [];
     final currentUserId = ref.watch(supabaseUserProvider)?.id;
+    final expenseState = ref.watch(expenseProvider);
 
     // Init from expenseToEdit once or default initialization
     if (expenseToEdit != null && selectedMembers.isEmpty && members.isNotEmpty) {
@@ -434,9 +428,9 @@ class AddExpenseScreen extends ConsumerWidget {
 
                               final isSelected =
                                   selectedMembers.contains(member.id);
-                              final avatarColor = _avatarColors[
+                              final avatarColor = AppColors.avatarColors[
                                   member.id.hashCode.abs() %
-                                      _avatarColors.length];
+                                      AppColors.avatarColors.length];
                               final isLast = i == members.length - 1;
 
                               return Column(
@@ -466,39 +460,67 @@ class AddExpenseScreen extends ConsumerWidget {
                     ),
                     SizedBox(height: 28.h),
 
-                    // ── Add Expense Button (scrollable) ──
+                    // ── Add/Update Expense Button (scrollable) ──
                     GestureDetector(
-                      onTap: () => _saveExpense(context, ref, amountCtrl,
-                          titleCtrl, selectedMembers, perPerson, currentUserId),
+                      onTap: expenseState.isLoading
+                          ? null
+                          : () => _saveExpense(context, ref, amountCtrl,
+                              titleCtrl, selectedMembers, perPerson, currentUserId),
                       child: Container(
                         width: double.infinity,
                         height: 54.h,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [
-                              AppColors.onboardingViolet,
-                              AppColors.primaryPurpleDarker,
-                            ],
+                          gradient: LinearGradient(
+                            colors: expenseState.isLoading
+                                ? [
+                                    AppColors.onboardingViolet.withValues(alpha: 0.5),
+                                    AppColors.primaryPurpleDarker.withValues(alpha: 0.5),
+                                  ]
+                                : [
+                                    AppColors.onboardingViolet,
+                                    AppColors.primaryPurpleDarker,
+                                  ],
                           ),
                           borderRadius: BorderRadius.circular(28.r),
                           boxShadow: [
                             BoxShadow(
                               color: AppColors.onboardingViolet
-                                  .withValues(alpha: 0.35),
+                                  .withValues(alpha: expenseState.isLoading ? 0.15 : 0.35),
                               blurRadius: 16,
                               offset: const Offset(0, 6),
                             ),
                           ],
                         ),
                         alignment: Alignment.center,
-                        child: AppText(
-                          expenseToEdit != null
-                              ? 'Update Expense · ${group.currency} ${amountValue.toStringAsFixed(2)}'
-                              : 'Add Expense · ${group.currency} ${amountValue.toStringAsFixed(2)}',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.white,
-                        ),
+                        child: expenseState.isLoading
+                            ? Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 18.w,
+                                    height: 18.w,
+                                    child: const CircularProgressIndicator(
+                                        color: AppColors.white, strokeWidth: 2),
+                                  ),
+                                  SizedBox(width: 12.w),
+                                  AppText(
+                                    expenseToEdit != null
+                                        ? 'Updating...'
+                                        : 'Saving...',
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.white,
+                                  ),
+                                ],
+                              )
+                            : AppText(
+                                expenseToEdit != null
+                                    ? 'Update Expense · ${group.currency} ${amountValue.toStringAsFixed(2)}'
+                                    : 'Add Expense · ${group.currency} ${amountValue.toStringAsFixed(2)}',
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.white,
+                              ),
                       ),
                     ),
                     SizedBox(height: 32.h),

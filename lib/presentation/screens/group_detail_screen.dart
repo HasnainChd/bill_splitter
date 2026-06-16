@@ -943,7 +943,7 @@ class _AddMemberBottomSheetContentState
                                     // Invalidate group members future
                                     ref.invalidate(groupMembersProvider(widget.groupId));
 
-                                    if (mounted) {
+                                    if (context.mounted) {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
                                         SnackBar(
@@ -957,7 +957,7 @@ class _AddMemberBottomSheetContentState
                                       Navigator.pop(context);
                                     }
                                   } catch (e) {
-                                    if (mounted) {
+                                    if (context.mounted) {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
                                         SnackBar(

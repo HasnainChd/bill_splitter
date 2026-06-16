@@ -39,7 +39,7 @@ class EditProfileFormState {
       phoneCtrl: phoneCtrl,
       bioCtrl: bioCtrl,
       selectedCurrency: selectedCurrency ?? this.selectedCurrency,
-      selectedImagePath: selectedImagePath != null ? selectedImagePath : this.selectedImagePath,
+      selectedImagePath: selectedImagePath ?? this.selectedImagePath,
       isRemovingAvatar: isRemovingAvatar ?? this.isRemovingAvatar,
       isSaving: isSaving ?? this.isSaving,
     );

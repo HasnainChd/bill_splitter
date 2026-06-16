@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
-import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/utils/app_snackbar.dart';
@@ -255,11 +254,13 @@ class ReportBugScreen extends ConsumerWidget {
                           ref.read(bugSubmittingProvider.notifier).state = false;
                           titleController.clear();
                           descriptionController.clear();
-                          AppSnackBar.showSuccess(
-                            context,
-                            'Thank you! Bug report submitted successfully.',
-                          );
-                          context.pop();
+                          if (context.mounted) {
+                            AppSnackBar.showSuccess(
+                              context,
+                              'Thank you! Bug report submitted successfully.',
+                            );
+                            context.pop();
+                          }
                         });
                       },
                     ),

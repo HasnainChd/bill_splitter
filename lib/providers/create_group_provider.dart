@@ -74,11 +74,15 @@ class CreateGroupNotifier extends StateNotifier<CreateGroupState> {
             members: members,
             currency: currencyCode,
           );
-      AppSnackBar.showSuccess(context, 'Group created successfully');
-      context.pop();
+      if (context.mounted) {
+        AppSnackBar.showSuccess(context, 'Group created successfully');
+        context.pop();
+      }
     } catch (e) {
       state = state.copyWith(error: 'Failed to create group: $e');
-      AppSnackBar.showError(context, 'Failed to create group: $e');
+      if (context.mounted) {
+        AppSnackBar.showError(context, 'Failed to create group: $e');
+      }
     } finally {
       state = state.copyWith(isLoading: false);
     }

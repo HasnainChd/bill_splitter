@@ -207,6 +207,7 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
     String? notes,
   }) async {
     try {
+      state = state.copyWith(isLoading: true);
       final user = _supabase.auth.currentUser;
       if (user == null) {
         throw Exception('No user logged in');
@@ -238,7 +239,7 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
       // 3. Reload from remote
       await loadExpensesForGroup(groupId);
     } catch (e) {
-      state = state.copyWith(error: 'Failed to add expense: $e');
+      state = state.copyWith(error: 'Failed to add expense: $e', isLoading: false);
       rethrow;
     }
   }
@@ -253,6 +254,7 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
   // Update an expense
   Future<void> updateExpense(Expense updatedExpense) async {
     try {
+      state = state.copyWith(isLoading: true);
       // 1. Update expenses table
       await _supabase.from('expenses').update({
         'amount': updatedExpense.amount,
@@ -279,7 +281,7 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
       // 3. Reload
       await loadExpensesForGroup(updatedExpense.groupId);
     } catch (e) {
-      state = state.copyWith(error: 'Failed to update expense: $e');
+      state = state.copyWith(error: 'Failed to update expense: $e', isLoading: false);
       rethrow;
     }
   }
@@ -287,10 +289,11 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
   // Delete an expense
   Future<void> deleteExpense(String groupId, String expenseId) async {
     try {
+      state = state.copyWith(isLoading: true);
       await _supabase.from('expenses').delete().eq('id', expenseId);
       await loadExpensesForGroup(groupId);
     } catch (e) {
-      state = state.copyWith(error: 'Failed to delete expense: $e');
+      state = state.copyWith(error: 'Failed to delete expense: $e', isLoading: false);
       rethrow;
     }
   }

@@ -3,16 +3,23 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'auth_provider.dart';
 
 // Preferences Providers
-final defaultCurrencyProvider = StateProvider<String>((ref) {
+class DefaultCurrencyNotifier extends StateNotifier<String> {
+  DefaultCurrencyNotifier() : super('USD (\$)') {
+    final box = Hive.box('settings');
+    state = box.get('default_currency', defaultValue: 'USD (\$)') as String;
+  }
+
+  @override
+  set state(String value) {
+    super.state = value;
+    Hive.box('settings').put('default_currency', value);
+  }
+}
+
+final defaultCurrencyProvider =
+    StateNotifierProvider<DefaultCurrencyNotifier, String>((ref) {
   ref.watch(supabaseUserProvider);
-  final box = Hive.box('settings');
-  final initial = box.get('default_currency', defaultValue: 'USD (\$)') as String;
-  
-  ref.listenSelf((previous, next) {
-    box.put('default_currency', next);
-  });
-  
-  return initial;
+  return DefaultCurrencyNotifier();
 });
 
 final languageProvider = StateProvider<String>((ref) {

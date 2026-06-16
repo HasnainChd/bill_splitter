@@ -41,7 +41,7 @@ class RegisterScreen extends ConsumerWidget {
                       child: LinearProgressIndicator(
                         value: 1.0,
                         minHeight: 4.h,
-                        backgroundColor: Colors.white.withValues(alpha: 0.1),
+                        backgroundColor: AppColors.white.withValues(alpha: 0.1),
                         valueColor: AlwaysStoppedAnimation<Color>(
                           AppColors.onboardingViolet,
                         ),
@@ -73,7 +73,7 @@ class RegisterScreen extends ConsumerWidget {
                       'Create account',
                       fontSize: 32,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: AppColors.white,
                       height: 1.15,
                     ),
                     SizedBox(height: 6.h),
@@ -119,7 +119,7 @@ class RegisterScreen extends ConsumerWidget {
                                       alignment: Alignment.center,
                                       child: const Icon(
                                         Icons.person_rounded,
-                                        color: Colors.white,
+                                        color: AppColors.white,
                                         size: 28,
                                       ),
                                     ),
@@ -135,7 +135,7 @@ class RegisterScreen extends ConsumerWidget {
                                   ),
                                   child: Icon(
                                     Icons.add_rounded,
-                                    color: Colors.white,
+                                    color: AppColors.white,
                                     size: 14,
                                   ),
                                 ),
@@ -150,7 +150,7 @@ class RegisterScreen extends ConsumerWidget {
                                 'Profile photo',
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                                color: AppColors.white,
                               ),
                               SizedBox(height: 2.h),
                               AppText(
@@ -274,7 +274,7 @@ class RegisterScreen extends ConsumerWidget {
                       },
                       isLoading: registerState.isLoading,
                       color: AppColors.onboardingViolet,
-                      textColor: Colors.white,
+                      textColor: AppColors.white,
                     ),
                     SizedBox(height: 24.h),
 
@@ -324,12 +324,12 @@ class _BackButton extends ConsumerWidget {
           color: AppColors.cardDark,
           borderRadius: BorderRadius.circular(12.r),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: AppColors.white.withValues(alpha: 0.08),
           ),
         ),
         child: Icon(
           Icons.arrow_back_ios_new_rounded,
-          color: Colors.white,
+          color: AppColors.white,
           size: 16,
         ),
       ),
@@ -358,27 +358,27 @@ class _PasswordStrengthBar extends ConsumerWidget {
       activeSegments = 0;
     } else if (strength <= 0.25) {
       label = 'Weak';
-      labelColor = const Color(0xFFEF4444); // Red
+      labelColor = AppColors.error; // Red
       activeSegments = 1;
     } else if (strength <= 0.5) {
       label = 'Fair';
-      labelColor = const Color(0xFFF59E0B); // Orange
+      labelColor = AppColors.warning; // Orange
       activeSegments = 2;
     } else if (strength <= 0.75) {
       label = 'Medium';
-      labelColor = const Color(0xFFF59E0B); // Orange/Amber
+      labelColor = AppColors.warning; // Orange/Amber
       activeSegments = 3;
     } else {
       label = 'Strong';
-      labelColor = const Color(0xFF10B981); // Emerald Green
+      labelColor = AppColors.success; // Emerald Green
       activeSegments = 4;
     }
 
     final colors = [
-      const Color(0xFFEF4444), // Red
-      const Color(0xFFF59E0B), // Orange
-      const Color(0xFF6366F1), // Indigo/Violet
-      const Color(0xFF10B981), // Emerald
+      AppColors.error, // Red
+      AppColors.warning, // Orange
+      AppColors.onboardingViolet, // Indigo/Violet
+      AppColors.success, // Emerald
     ];
 
     return Column(
@@ -444,7 +444,7 @@ class _TermsRow extends StatelessWidget {
             onChanged: onChanged,
             activeColor: AppColors.onboardingViolet,
             side: BorderSide(
-              color: Colors.white.withValues(alpha: 0.2),
+              color: AppColors.white.withValues(alpha: 0.2),
               width: 1.5,
             ),
             shape: RoundedRectangleBorder(

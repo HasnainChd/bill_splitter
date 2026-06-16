@@ -17,14 +17,8 @@ class GroupsTab extends ConsumerWidget {
   const GroupsTab({super.key});
 
   static List<Color> _gradientForId(String id) {
-    switch (id) {
-      case 'barcelona-trip':
-        return [const Color(0xFF818CF8), const Color(0xFF6366F1)];
-      case 'grove-apartment':
-        return [const Color(0xFF38BDF8), const Color(0xFF0EA5E9)];
-      default:
-        return [const Color(0xFFFB923C), const Color(0xFFF97316)];
-    }
+    final index = id.hashCode.abs() % AppColors.cardGradients.length;
+    return AppColors.cardGradients[index];
   }
 
   @override

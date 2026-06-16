@@ -58,6 +58,29 @@ class AppColors {
   static const Color groupOrange = Color(0xFFF97316);
   static const Color groupOrangeDark = Color(0xFFEA580C);
 
+  // Premium Card Gradient Colors
+  static const Color gradIndigoStart = Color(0xFF818CF8);
+  static const Color gradIndigoEnd = Color(0xFF6366F1);
+  static const Color gradCyanStart = Color(0xFF38BDF8);
+  static const Color gradCyanEnd = Color(0xFF0EA5E9);
+  static const Color gradPinkStart = Color(0xFFF472B6);
+  static const Color gradPinkEnd = Color(0xFFEC4899);
+  static const Color gradEmeraldStart = Color(0xFF34D399);
+  static const Color gradEmeraldEnd = Color(0xFF059669);
+  static const Color gradAmberStart = Color(0xFFFBBF24);
+  static const Color gradAmberEnd = Color(0xFFD97706);
+  static const Color gradPurpleStart = Color(0xFFA78BFA);
+  static const Color gradPurpleEnd = Color(0xFF7C3AED);
+
+  static const List<List<Color>> cardGradients = [
+    [gradIndigoStart, gradIndigoEnd],
+    [gradCyanStart, gradCyanEnd],
+    [gradPinkStart, gradPinkEnd],
+    [gradEmeraldStart, gradEmeraldEnd],
+    [gradAmberStart, gradAmberEnd],
+    [gradPurpleStart, gradPurpleEnd],
+  ];
+
   // Navigation
   static const Color navBarDark =
       Color(0xFF131318); // Bottom nav bar background
@@ -96,5 +119,17 @@ class AppColors {
     Color(0xFFFF4757),
     Color(0xFF00B4D8),
     Color(0xFFFF6B35),
+  ];
+
+  // Group Create Theme Colors
+  static const List<Color> groupThemeColors = [
+    Color(0xFF818CF8), // violet
+    Color(0xFF38BDF8), // cyan
+    Color(0xFF10B981), // green
+    Color(0xFFF59E0B), // amber
+    Color(0xFFEC4899), // pink
+    Color(0xFFEF4444), // red
+    Color(0xFF8B5CF6), // purple
+    Color(0xFFF97316), // orange
   ];
 }

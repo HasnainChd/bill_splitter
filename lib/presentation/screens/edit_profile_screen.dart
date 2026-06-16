@@ -47,7 +47,9 @@ class EditProfileScreen extends ConsumerWidget {
             .updateSelectedImagePath(pickedFile.path);
       }
     } catch (e) {
-      AppSnackBar.showError(context, 'Failed to pick image: $e');
+      if (context.mounted) {
+        AppSnackBar.showError(context, 'Failed to pick image: $e');
+      }
     }
   }
 
@@ -303,7 +305,7 @@ class EditProfileScreen extends ConsumerWidget {
                             '✓ divvy.app/${formState.usernameCtrl.text.isNotEmpty ? formState.usernameCtrl.text : "username"}',
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF00C896),
+                            color: AppColors.success,
                           ),
                         ),
                         SizedBox(height: 20.h),
@@ -366,7 +368,7 @@ class EditProfileScreen extends ConsumerWidget {
                                   border: Border.all(
                                     color: isSelected
                                         ? AppColors.onboardingViolet
-                                        : Colors.white.withValues(alpha: 0.08),
+                                        : AppColors.white.withValues(alpha: 0.08),
                                     width: 1.2,
                                   ),
                                 ),
@@ -415,7 +417,7 @@ class EditProfileScreen extends ConsumerWidget {
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
                   child: Container(
-                    color: Colors.black.withValues(alpha: 0.5),
+                    color: AppColors.black.withValues(alpha: 0.5),
                     child: Center(
                       child: Container(
                         padding: EdgeInsets.all(24.w),
@@ -423,7 +425,7 @@ class EditProfileScreen extends ConsumerWidget {
                           color: AppColors.cardDark.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(16.r),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.08),
+                            color: AppColors.white.withValues(alpha: 0.08),
                           ),
                         ),
                         child: Column(

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -24,18 +25,10 @@ class ExpenseDetailScreen extends ConsumerWidget {
 
   const ExpenseDetailScreen({super.key, required this.expense});
 
-  static const List<Color> _avatarColors = [
-    Color(0xFF818CF8), // violet
-    Color(0xFFEC4899), // pink
-    Color(0xFFF59E0B), // amber
-    Color(0xFF10B981), // green
-    Color(0xFF8B5CF6), // purple
-    Color(0xFF38BDF8), // cyan
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final groupState = ref.watch(groupProvider);
+    final expenseState = ref.watch(expenseProvider);
     final currentUserId = ref.watch(supabaseUserProvider)?.id;
     final membersAsync = ref.watch(groupMembersProvider(this.expense.groupId));
     final members = membersAsync.value ?? [];
@@ -347,8 +340,8 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                     ? nameParts[0][0].toUpperCase()
                                     : 'U';
 
-                            final avatarColor = _avatarColors[
-                                m.id.hashCode.abs() % _avatarColors.length];
+                            final avatarColor = AppColors.avatarColors[
+                                m.id.hashCode.abs() % AppColors.avatarColors.length];
 
                             // Calculations
                             final double paidAmt = isPayer ? totalAmount : 0.0;
@@ -569,6 +562,42 @@ class ExpenseDetailScreen extends ConsumerWidget {
                 ],
               ),
             ),
+            if (expenseState.isLoading)
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                  child: Container(
+                    color: AppColors.black.withValues(alpha: 0.5),
+                    child: Center(
+                      child: Container(
+                        padding: EdgeInsets.all(24.w),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardDark.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(16.r),
+                          border: Border.all(
+                            color: AppColors.white.withValues(alpha: 0.08),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CircularProgressIndicator(
+                              color: AppColors.onboardingViolet,
+                            ),
+                            SizedBox(height: 16.h),
+                            const AppText(
+                              'Deleting...',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.white,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
