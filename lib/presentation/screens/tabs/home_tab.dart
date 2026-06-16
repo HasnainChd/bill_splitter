@@ -9,6 +9,7 @@ import '../../../core/router/app_router.dart';
 import '../../../providers/group_provider.dart';
 import '../../../providers/settings_provider.dart';
 import '../../providers/tab_providers.dart';
+import '../../../core/widgets/app_shimmer.dart';
 
 import '../../../providers/auth_provider.dart';
 import '../../../providers/expense_provider.dart';
@@ -129,28 +130,43 @@ class HomeTab extends ConsumerWidget {
                     color: AppColors.white.withValues(alpha: 0.8),
                   ),
                   SizedBox(height: 8.h),
-                  AppText(
-                    '$defaultCurrency ${totalOwed.toStringAsFixed(0)}',
-                    fontSize: 36,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.white,
-                  ),
+                  (groupState.isLoading && groups.isEmpty)
+                      ? Padding(
+                          padding: EdgeInsets.symmetric(vertical: 6.h),
+                          child: AppShimmer(width: 120.w, height: 28.h),
+                        )
+                      : AppText(
+                          '$defaultCurrency ${totalOwed.toStringAsFixed(0)}',
+                          fontSize: 36,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.white,
+                        ),
                   SizedBox(height: 24.h),
                   Row(
                     children: [
                       _buildBalanceSubCol(
-                          'You owe', '$defaultCurrency ${totalOwe.toStringAsFixed(0)}', AppColors.balanceOwed),
+                          'You owe',
+                          (groupState.isLoading && groups.isEmpty)
+                              ? null
+                              : '$defaultCurrency ${totalOwe.toStringAsFixed(0)}',
+                          AppColors.balanceOwed),
                       _buildBalanceDivider(),
                       _buildBalanceSubCol(
-                          'Owed to you', '$defaultCurrency ${totalOwed.toStringAsFixed(0)}', AppColors.balanceOwedTo),
+                          'Owed to you',
+                          (groupState.isLoading && groups.isEmpty)
+                              ? null
+                              : '$defaultCurrency ${totalOwed.toStringAsFixed(0)}',
+                          AppColors.balanceOwedTo),
                       _buildBalanceDivider(),
                       _buildBalanceSubCol(
                           'Net balance',
-                          netBalance > 0
-                              ? '+$defaultCurrency ${netBalance.toStringAsFixed(0)}'
-                              : netBalance < 0
-                                  ? '-$defaultCurrency ${netBalance.abs().toStringAsFixed(0)}'
-                                  : '$defaultCurrency 0',
+                          (groupState.isLoading && groups.isEmpty)
+                              ? null
+                              : (netBalance > 0
+                                  ? '+$defaultCurrency ${netBalance.toStringAsFixed(0)}'
+                                  : netBalance < 0
+                                      ? '-$defaultCurrency ${netBalance.abs().toStringAsFixed(0)}'
+                                      : '$defaultCurrency 0'),
                           netBalance > 0
                               ? AppColors.balanceOwedTo
                               : netBalance < 0
@@ -218,72 +234,87 @@ class HomeTab extends ConsumerWidget {
           SizedBox(height: 12.h),
           SizedBox(
             height: 156.h,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
-              itemCount: groups.length + 1,
-              separatorBuilder: (context, index) => SizedBox(width: 12.w),
-              itemBuilder: (context, index) {
-                if (index == groups.length) {
-                  return _buildNewGroupCard(context);
-                }
+            child: (groupState.isLoading && groups.isEmpty)
+                ? ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    itemCount: 3,
+                    separatorBuilder: (context, index) => SizedBox(width: 12.w),
+                    itemBuilder: (context, index) {
+                      return AppShimmer(
+                        width: 148.w,
+                        height: 156.h,
+                        borderRadius: BorderRadius.circular(20.r),
+                      );
+                    },
+                  )
+                : ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    itemCount: groups.length + 1,
+                    separatorBuilder: (context, index) => SizedBox(width: 12.w),
+                    itemBuilder: (context, index) {
+                      if (index == groups.length) {
+                        return _buildNewGroupCard(context);
+                      }
 
-                final group = groups[index];
-                final balances = ref.watch(balancesForGroupProvider(group.groupId));
-                final myBalance = currentUserId != null ? (balances[currentUserId] ?? 0.0) : 0.0;
-                final membersAsync = ref.watch(groupMembersProvider(group.groupId));
-                final expenseState = ref.watch(expenseProvider);
-                final groupExpenses = expenseState.expenses.where((e) => e.groupId == group.groupId).toList();
+                      final group = groups[index];
+                      final balances = ref.watch(balancesForGroupProvider(group.groupId));
+                      final myBalance = currentUserId != null ? (balances[currentUserId] ?? 0.0) : 0.0;
+                      final membersAsync = ref.watch(groupMembersProvider(group.groupId));
+                      final expenseState = ref.watch(expenseProvider);
+                      final groupExpenses = expenseState.expenses.where((e) => e.groupId == group.groupId).toList();
 
-                final groupIcon = GroupIconHelper.getGroupIcon(group.name);
+                      final groupIcon = GroupIconHelper.getGroupIcon(group.name);
 
-                final gradients = [
-                  [AppColors.onboardingViolet, AppColors.onboardingVioletDark],
-                  [AppColors.groupBlue, AppColors.groupBlueDark],
-                  [AppColors.groupOrange, AppColors.groupOrangeDark],
-                ];
-                final gradient = gradients[index % gradients.length];
+                      final gradients = [
+                        [AppColors.onboardingViolet, AppColors.onboardingVioletDark],
+                        [AppColors.groupBlue, AppColors.groupBlueDark],
+                        [AppColors.groupOrange, AppColors.groupOrangeDark],
+                      ];
+                      final gradient = gradients[index % gradients.length];
 
-                final String balanceText;
-                final Color balanceColor;
-                if (myBalance > 0) {
-                  balanceText = '+$defaultCurrency ${myBalance.toStringAsFixed(0)}';
-                  balanceColor = AppColors.balanceOwedTo;
-                } else if (myBalance < 0) {
-                  balanceText = '-$defaultCurrency ${myBalance.abs().toStringAsFixed(0)}';
-                  balanceColor = AppColors.balanceOwed;
-                } else {
-                  balanceText = 'Settled';
-                  balanceColor = AppColors.white.withValues(alpha: 0.5);
-                }
+                      final String balanceText;
+                      final Color balanceColor;
+                      if (myBalance > 0) {
+                        balanceText = '+$defaultCurrency ${myBalance.toStringAsFixed(0)}';
+                        balanceColor = AppColors.balanceOwedTo;
+                      } else if (myBalance < 0) {
+                        balanceText = '-$defaultCurrency ${myBalance.abs().toStringAsFixed(0)}';
+                        balanceColor = AppColors.balanceOwed;
+                      } else {
+                        balanceText = 'Settled';
+                        balanceColor = AppColors.white.withValues(alpha: 0.5);
+                      }
 
-                final List<String> initialsList = membersAsync.when(
-                  data: (members) => members.map((m) {
-                    final name = m.fullName.trim();
-                    if (name.isEmpty) return 'U';
-                    final parts = name.split(' ');
-                    if (parts.length > 1) {
-                      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-                    }
-                    return parts[0][0].toUpperCase();
-                  }).toList(),
-                  loading: () => ['?'],
-                  error: (_, __) => ['?'],
-                );
+                      final List<String> initialsList = membersAsync.when(
+                        data: (members) => members.map((m) {
+                          final name = m.fullName.trim();
+                          if (name.isEmpty) return 'U';
+                          final parts = name.split(' ');
+                          if (parts.length > 1) {
+                            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+                          }
+                          return parts[0][0].toUpperCase();
+                        }).toList(),
+                        loading: () => ['?'],
+                        error: (_, __) => ['?'],
+                      );
 
-                return _buildGroupCard(
-                  context: context,
-                  group: group,
-                  icon: groupIcon,
-                  gradient: gradient,
-                  expenses: '${groupExpenses.length} ${groupExpenses.length == 1 ? 'expense' : 'expenses'}',
-                  amount: balanceText,
-                  amountColor: balanceColor,
-                  avatars: initialsList,
-                );
-              },
-            ),
+                      return _buildGroupCard(
+                        context: context,
+                        group: group,
+                        icon: groupIcon,
+                        gradient: gradient,
+                        expenses: '${groupExpenses.length} ${groupExpenses.length == 1 ? 'expense' : 'expenses'}',
+                        amount: balanceText,
+                        amountColor: balanceColor,
+                        avatars: initialsList,
+                      );
+                    },
+                  ),
           ),
           SizedBox(height: 28.h),
 
@@ -322,35 +353,66 @@ class HomeTab extends ConsumerWidget {
                   color: AppColors.white.withValues(alpha: 0.05),
                 ),
               ),
-              child: recentNotifications.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 24.h),
-                        child: AppText(
-                          'No recent activity yet.',
-                          fontSize: 13,
-                          color: AppColors.white.withValues(alpha: 0.4),
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
+              child: (groupState.isLoading && groups.isEmpty)
+                  ? ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       padding: EdgeInsets.symmetric(vertical: 8.h),
-                      itemCount: recentNotifications.length,
+                      itemCount: 3,
                       separatorBuilder: (context, index) => _buildActivityDivider(),
                       itemBuilder: (context, index) {
-                        final item = recentNotifications[index];
-                        final isPositive = item.amount?.startsWith('+') ?? false;
-                        return _buildActivityRow(
-                          title: item.title,
-                          sub: '${GroupIconHelper.getCleanGroupName(item.groupName)} • ${item.subtitle}',
-                          amount: item.amount ?? '',
-                          isPositive: isPositive,
-                          icon: item.badgeIcon,
+                        return Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                          child: Row(
+                            children: [
+                              AppShimmer(width: 38.w, height: 38.w, borderRadius: BorderRadius.circular(10.r)),
+                              SizedBox(width: 12.w),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    AppShimmer(width: 120.w, height: 12.h),
+                                    SizedBox(height: 6.h),
+                                    AppShimmer(width: 80.w, height: 10.h),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(width: 12.w),
+                              AppShimmer(width: 45.w, height: 14.h),
+                            ],
+                          ),
                         );
                       },
-                    ),
+                    )
+                  : recentNotifications.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24.h),
+                            child: AppText(
+                              'No recent activity yet.',
+                              fontSize: 13,
+                              color: AppColors.white.withValues(alpha: 0.4),
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: EdgeInsets.symmetric(vertical: 8.h),
+                          itemCount: recentNotifications.length,
+                          separatorBuilder: (context, index) => _buildActivityDivider(),
+                          itemBuilder: (context, index) {
+                            final item = recentNotifications[index];
+                            final isPositive = item.amount?.startsWith('+') ?? false;
+                            return _buildActivityRow(
+                              title: item.title,
+                              sub: '${GroupIconHelper.getCleanGroupName(item.groupName)} • ${item.subtitle}',
+                              amount: item.amount ?? '',
+                              isPositive: isPositive,
+                              icon: item.badgeIcon,
+                            );
+                          },
+                        ),
             ),
           ),
           SizedBox(height: 32.h),
@@ -398,7 +460,7 @@ class HomeTab extends ConsumerWidget {
   }
 
   // Helper: Balance Summary Columns
-  Widget _buildBalanceSubCol(String label, String value, Color valueColor) {
+  Widget _buildBalanceSubCol(String label, String? value, Color valueColor) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,12 +471,17 @@ class HomeTab extends ConsumerWidget {
             color: AppColors.white.withValues(alpha: 0.6),
           ),
           SizedBox(height: 4.h),
-          AppText(
-            value,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: valueColor,
-          ),
+          value == null
+              ? Padding(
+                  padding: EdgeInsets.symmetric(vertical: 2.h),
+                  child: AppShimmer(width: 60.w, height: 14.h),
+                )
+              : AppText(
+                  value,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: valueColor,
+                ),
         ],
       ),
     );
