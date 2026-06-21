@@ -19,11 +19,23 @@ class Group {
   @HiveField(4)
   final DateTime createdAt;
 
+  @HiveField(5)
+  final int? iconCodePoint;
+
+  @HiveField(6)
+  final String? iconFontFamily;
+
+  @HiveField(7)
+  final String? createdBy;
+
   const Group({
     required this.groupId,
     required this.name,
     required this.members,
     required this.currency,
     required this.createdAt,
+    this.iconCodePoint,
+    this.iconFontFamily,
+    this.createdBy,
   });
 }

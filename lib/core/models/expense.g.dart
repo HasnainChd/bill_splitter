@@ -27,13 +27,17 @@ class ExpenseAdapter extends TypeAdapter<Expense> {
       notes: fields[7] as String?,
       groupId: fields[8] as String,
       categoryIconCodePoint: fields[9] as int,
+      splitType: fields[10] as String? ?? 'Equal',
+      receiptUrl: fields[11] as String?,
+      createdAt: fields[12] as DateTime?,
+      updatedAt: fields[13] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Expense obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.expenseId)
       ..writeByte(1)
@@ -53,7 +57,15 @@ class ExpenseAdapter extends TypeAdapter<Expense> {
       ..writeByte(8)
       ..write(obj.groupId)
       ..writeByte(9)
-      ..write(obj.categoryIconCodePoint);
+      ..write(obj.categoryIconCodePoint)
+      ..writeByte(10)
+      ..write(obj.splitType)
+      ..writeByte(11)
+      ..write(obj.receiptUrl)
+      ..writeByte(12)
+      ..write(obj.createdAt)
+      ..writeByte(13)
+      ..write(obj.updatedAt);
   }
 
   @override

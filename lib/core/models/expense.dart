@@ -35,6 +35,18 @@ class Expense {
   @HiveField(9)
   final int categoryIconCodePoint;
 
+  @HiveField(10)
+  final String splitType;
+
+  @HiveField(11)
+  final String? receiptUrl;
+
+  @HiveField(12)
+  final DateTime? createdAt;
+
+  @HiveField(13)
+  final DateTime? updatedAt;
+
   const Expense({
     required this.expenseId,
     required this.title,
@@ -46,6 +58,10 @@ class Expense {
     this.notes,
     required this.groupId,
     required this.categoryIconCodePoint,
+    this.splitType = 'Equal',
+    this.receiptUrl,
+    this.createdAt,
+    this.updatedAt,
   });
 
   // Helper getter for IconData
@@ -66,6 +82,10 @@ class Expense {
     String? notes,
     required String groupId,
     required IconData categoryIcon,
+    String splitType = 'Equal',
+    String? receiptUrl,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return Expense(
       expenseId: expenseId,
@@ -78,6 +98,10 @@ class Expense {
       notes: notes,
       groupId: groupId,
       categoryIconCodePoint: categoryIcon.codePoint,
+      splitType: splitType,
+      receiptUrl: receiptUrl,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
     );
   }
 }

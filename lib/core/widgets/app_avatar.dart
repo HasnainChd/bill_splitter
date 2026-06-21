@@ -6,12 +6,14 @@ class AppAvatar extends StatelessWidget {
   final String name;
   final double? size;
   final Color? backgroundColor;
+  final String? avatarUrl;
 
   const AppAvatar({
     super.key,
     required this.name,
     this.size,
     this.backgroundColor,
+    this.avatarUrl,
   });
 
   @override
@@ -26,14 +28,19 @@ class AppAvatar extends StatelessWidget {
     return CircleAvatar(
       radius: avatarSize / 2,
       backgroundColor: color,
-      child: Text(
-        initials,
-        style: TextStyle(
-          color: AppColors.white,
-          fontSize: avatarSize * 0.4,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
+          ? NetworkImage(avatarUrl!)
+          : null,
+      child: avatarUrl == null || avatarUrl!.isEmpty
+          ? Text(
+              initials,
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: avatarSize * 0.4,
+                fontWeight: FontWeight.w600,
+              ),
+            )
+          : null,
     );
   }
 }

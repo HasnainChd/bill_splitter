@@ -118,9 +118,9 @@ class GroupCard extends StatelessWidget {
                           SizedBox(height: 3.h),
                           AppText(
                             balance > 0
-                                ? 'you are owed'
+                                ? 'others owe you'
                                 : balance < 0
-                                    ? 'you owe'
+                                    ? 'you owe others'
                                     : 'settled',
                             fontSize: 11,
                             color: AppColors.textHint,

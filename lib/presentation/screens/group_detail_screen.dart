@@ -37,6 +37,18 @@ class GroupDetailScreen extends ConsumerWidget {
     final balances = ref.watch(balancesForGroupProvider(groupId));
     final membersAsync = ref.watch(groupMembersProvider(groupId));
     final currentUserId = ref.watch(supabaseUserProvider)?.id;
+    final group = groupState.groups.firstWhere(
+      (g) => g.groupId == groupId,
+      orElse: () => Group(
+        groupId: groupId,
+        name: 'Group Detail',
+        members: const [],
+        currency: 'PKR',
+        createdAt: DateTime.now(),
+      ),
+    );
+
+    final currencyCode = group.currency;
 
     // Load latest remote expenses once per screen mount using Riverpod state
     final loadedGroups = ref.watch(loadedGroupExpensesProvider);
@@ -48,17 +60,6 @@ class GroupDetailScreen extends ConsumerWidget {
         ref.read(expenseProvider.notifier).loadExpensesForGroup(groupId);
       });
     }
-
-    final group = groupState.groups.firstWhere(
-      (g) => g.groupId == groupId,
-      orElse: () => Group(
-        groupId: groupId,
-        name: 'Group Detail',
-        members: const [],
-        currency: 'PKR',
-        createdAt: DateTime.now(),
-      ),
-    );
 
     final totalExpenses = expenses
         .where((e) =>
@@ -77,7 +78,7 @@ class GroupDetailScreen extends ConsumerWidget {
           slivers: [
             // ── Gradient Header ──
             SliverToBoxAdapter(
-              child: _buildGradientHeader(context, ref, group, myBalance),
+              child: _buildGradientHeader(context, ref, group, myBalance, currencyCode),
             ),
 
             // ── Members Section ──
@@ -152,7 +153,8 @@ class GroupDetailScreen extends ConsumerWidget {
                                     initials: initials,
                                     avatarColor: avatarColor,
                                     balance: balance,
-                                    currency: group.currency,
+                                    currency: currencyCode,
+                                    avatarUrl: m.avatarUrl,
                                   ),
                                   if (!isLast)
                                     Divider(
@@ -228,6 +230,7 @@ class GroupDetailScreen extends ConsumerWidget {
                               m.id: m.fullName,
                           },
                           currentUserId ?? '',
+                          currencyCode,
                         ),
                       ),
                       childCount: expenses.length,
@@ -260,7 +263,7 @@ class GroupDetailScreen extends ConsumerWidget {
                             color: AppColors.white.withValues(alpha: 0.6),
                           ),
                           AppText(
-                            '${group.currency} ${totalExpenses.toStringAsFixed(2)}',
+                            '${currencyCode} ${totalExpenses.toStringAsFixed(2)}',
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: AppColors.white,
@@ -280,12 +283,12 @@ class GroupDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildGradientHeader(
-      BuildContext context, WidgetRef ref, Group group, double myBalance) {
+      BuildContext context, WidgetRef ref, Group group, double myBalance, String currencyCode) {
     final String balanceStr = myBalance == 0
-        ? '${group.currency} 0.00'
+        ? '$currencyCode 0.00'
         : myBalance > 0
-            ? '+${group.currency} ${myBalance.toStringAsFixed(2)}'
-            : '-${group.currency} ${myBalance.abs().toStringAsFixed(2)}';
+            ? '+$currencyCode ${myBalance.toStringAsFixed(2)}'
+            : '-$currencyCode ${myBalance.abs().toStringAsFixed(2)}';
 
     final Color balanceColor = myBalance == 0
         ? AppColors.white
@@ -296,8 +299,8 @@ class GroupDetailScreen extends ConsumerWidget {
     final String subText = myBalance == 0
         ? 'No outstanding balance'
         : myBalance > 0
-            ? 'You are owed'
-            : 'You owe';
+            ? 'Others owe you'
+            : 'You owe others';
 
     return Container(
       decoration: const BoxDecoration(
@@ -432,7 +435,7 @@ class GroupDetailScreen extends ConsumerWidget {
                       color: AppColors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(14.r),
                     ),
-                    child: Icon(GroupIconHelper.getGroupIcon(group.name),
+                    child: Icon(GroupIconHelper.getIconForGroup(group),
                         color: AppColors.white, size: 26.sp),
                   ),
                   SizedBox(width: 14.w),
@@ -522,12 +525,13 @@ class GroupDetailScreen extends ConsumerWidget {
     required Color avatarColor,
     required double balance,
     required String currency,
+    String? avatarUrl,
   }) {
     final bool isPositive = balance > 0;
     final String subText = balance == 0
         ? 'settled up'
         : isMe
-            ? (isPositive ? 'you are owed' : 'you owe')
+            ? (isPositive ? 'others owe you' : 'you owe others')
             : (isPositive ? 'is owed' : 'owes');
 
     return Padding(
@@ -537,13 +541,23 @@ class GroupDetailScreen extends ConsumerWidget {
           Container(
             width: 38.w,
             height: 38.w,
-            decoration:
-                BoxDecoration(color: avatarColor, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: avatarColor,
+              shape: BoxShape.circle,
+              image: avatarUrl != null && avatarUrl.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(avatarUrl),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
             alignment: Alignment.center,
-            child: AppText(initials,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: AppColors.white),
+            child: avatarUrl == null || avatarUrl.isEmpty
+                ? AppText(initials,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.white)
+                : null,
           ),
           SizedBox(width: 12.w),
           Expanded(
@@ -603,6 +617,7 @@ class GroupDetailScreen extends ConsumerWidget {
     Expense expense,
     Map<String, String> memberMap,
     String currentUserId,
+    String currencyCode,
   ) {
     final isSettlement = expense.title == 'Settle Payment' ||
         expense.categoryIconCodePoint == Icons.handshake_rounded.codePoint;
@@ -665,14 +680,14 @@ class GroupDetailScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             AppText(
-              '${expense.currency} ${expense.amount.toStringAsFixed(2)}',
+              '${currencyCode} ${expense.amount.toStringAsFixed(2)}',
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.white,
             ),
             if (!isSettlement)
               AppText(
-                '${expense.currency} ${perPerson.toStringAsFixed(0)}/person',
+                '${currencyCode} ${perPerson.toStringAsFixed(0)}/person',
                 fontSize: 11,
                 color: AppColors.white.withValues(alpha: 0.4),
               ),

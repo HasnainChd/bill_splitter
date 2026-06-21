@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/group.dart';
 
 class GroupIconItem {
   final String title;
@@ -65,6 +66,17 @@ class GroupIconHelper {
       return match.group(1)!.trim();
     }
     return rawName.trim();
+  }
+
+  // Gets correct IconData, prioritizing database columns iconCodePoint and iconFontFamily
+  static IconData getIconForGroup(Group group) {
+    if (group.iconCodePoint != null) {
+      return IconData(
+        group.iconCodePoint!,
+        fontFamily: group.iconFontFamily ?? 'MaterialIcons',
+      );
+    }
+    return getGroupIcon(group.name);
   }
 
   // Parses raw group name and returns correct IconData

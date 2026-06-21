@@ -314,6 +314,7 @@ class CreateGroupScreen extends ConsumerWidget {
                                     avatarColor: color,
                                     isSelected: isSelected,
                                     selectedMembers: selectedMembers,
+                                    avatarUrl: contact.avatarUrl,
                                   ),
                                   if (!isLast)
                                     Divider(
@@ -474,6 +475,7 @@ class CreateGroupScreen extends ConsumerWidget {
     required Color avatarColor,
     required bool isSelected,
     required Set<String> selectedMembers,
+    String? avatarUrl,
   }) {
     return GestureDetector(
       onTap: () {
@@ -494,12 +496,21 @@ class CreateGroupScreen extends ConsumerWidget {
               height: 40.w,
               decoration: BoxDecoration(
                   color: avatarColor,
-                  borderRadius: BorderRadius.circular(12.r)),
+                  borderRadius: BorderRadius.circular(12.r),
+                  image: avatarUrl != null && avatarUrl.isNotEmpty
+                      ? DecorationImage(
+                          image: NetworkImage(avatarUrl),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+              ),
               alignment: Alignment.center,
-              child: AppText(initials,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.white),
+              child: avatarUrl == null || avatarUrl.isEmpty
+                  ? AppText(initials,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.white)
+                  : null,
             ),
             SizedBox(width: 12.w),
             Expanded(
@@ -559,17 +570,13 @@ class CreateGroupScreen extends ConsumerWidget {
     int selectedIconCodePoint,
   ) {
     final notifier = ref.read(createGroupProvider.notifier);
-    final selectedIcon =
-        IconData(selectedIconCodePoint, fontFamily: 'MaterialIcons');
-    final nameWithIcon = GroupIconHelper.buildNameWithIcon(
-      nameCtrl.text.trim(),
-      selectedIcon,
-    );
     notifier.createGroup(
-      nameWithIcon,
-      selectedMembers.toList(),
-      ref,
-      context,
+      name: nameCtrl.text.trim(),
+      members: selectedMembers.toList(),
+      iconCodePoint: selectedIconCodePoint,
+      iconFontFamily: 'MaterialIcons',
+      ref: ref,
+      context: context,
     );
   }
 
