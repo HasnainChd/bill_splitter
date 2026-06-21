@@ -1,25 +1,38 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'auth_provider.dart';
+import 'profile_provider.dart';
 
 // Preferences Providers
 class DefaultCurrencyNotifier extends StateNotifier<String> {
-  DefaultCurrencyNotifier() : super('USD (\$)') {
+  final String? _userId;
+
+  DefaultCurrencyNotifier(this._userId) : super('USD (\$)') {
     final box = Hive.box('settings');
-    state = box.get('default_currency', defaultValue: 'USD (\$)') as String;
+    final key = _userId != null ? 'default_currency_$_userId' : 'default_currency';
+    state = box.get(key, defaultValue: 'USD (\$)') as String;
   }
 
   @override
   set state(String value) {
     super.state = value;
-    Hive.box('settings').put('default_currency', value);
+    final box = Hive.box('settings');
+    final key = _userId != null ? 'default_currency_$_userId' : 'default_currency';
+    box.put(key, value);
   }
 }
 
 final defaultCurrencyProvider =
     StateNotifierProvider<DefaultCurrencyNotifier, String>((ref) {
-  ref.watch(supabaseUserProvider);
-  return DefaultCurrencyNotifier();
+  final user = ref.watch(supabaseUserProvider);
+  final profileCurrency = ref.watch(profileProvider.select((s) => s.profile?.currency));
+  final notifier = DefaultCurrencyNotifier(user?.id);
+
+  if (profileCurrency != null && profileCurrency.isNotEmpty) {
+    notifier.state = profileCurrency;
+  }
+
+  return notifier;
 });
 
 final languageProvider = StateProvider<String>((ref) {

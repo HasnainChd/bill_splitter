@@ -7,6 +7,7 @@ import 'group_provider.dart';
 import 'expense_provider.dart';
 import 'profile_provider.dart';
 import '../presentation/providers/screen_providers.dart';
+import '../core/utils/group_icon_helper.dart';
 
 class NotificationItem {
   final String id;
@@ -76,16 +77,23 @@ final dynamicNotificationsProvider = Provider<List<NotificationItem>>((ref) {
 
     final avatarColor = avatarColors[group.groupId.hashCode.abs() % avatarColors.length];
 
+    final isCreator = group.createdBy == null || group.createdBy!.isEmpty || group.createdBy == currentUser.id;
+    final creatorName = usersMap[group.createdBy]?.fullName ?? 'Someone';
+    final cleanGroupName = GroupIconHelper.getCleanGroupName(group.name);
+    final title = isCreator
+        ? 'You created the group "$cleanGroupName"'
+        : '$creatorName added you to "$cleanGroupName"';
+
     notifications.add(
       NotificationItem(
         id: 'group-${group.groupId}',
         category: 'Groups',
         groupName: group.name,
-        title: 'You were added to ${group.name}',
+        title: title,
         subtitle: _formatTimeAgo(group.createdAt),
         avatarText: initials,
         avatarColor: avatarColor,
-        badgeIcon: Icons.group_add_rounded,
+        badgeIcon: GroupIconHelper.getIconForGroup(group),
         badgeColor: const Color(0xFF38BDF8),
         isUnread: false,
         date: group.createdAt,
@@ -133,7 +141,7 @@ final dynamicNotificationsProvider = Provider<List<NotificationItem>>((ref) {
           : '';
       final receiverProfile = usersMap[receiverId];
       final String receiverName = receiverId == currentUser.id
-          ? 'You'
+          ? 'you'
           : (receiverProfile?.fullName ?? 'Someone');
 
       final String title = '$payerName paid $receiverName';
@@ -142,7 +150,7 @@ final dynamicNotificationsProvider = Provider<List<NotificationItem>>((ref) {
         NotificationItem(
           id: 'settlement-${expense.expenseId}',
           category: 'Payments',
-          groupName: group.name,
+          groupName: GroupIconHelper.getCleanGroupName(group.name),
           title: title,
           subtitle: _formatTimeAgo(expense.date),
           amount: '+${expense.currency} ${expense.amount.toStringAsFixed(2)}',
@@ -156,13 +164,14 @@ final dynamicNotificationsProvider = Provider<List<NotificationItem>>((ref) {
         ),
       );
     } else {
-      final String title = '$payerName added "${expense.title}" to ${group.name}';
+      final cleanGroupName = GroupIconHelper.getCleanGroupName(group.name);
+      final String title = '$payerName added "${expense.title}" to "$cleanGroupName"';
 
       notifications.add(
         NotificationItem(
           id: 'expense-${expense.expenseId}',
           category: 'Expenses',
-          groupName: group.name,
+          groupName: cleanGroupName,
           title: title,
           subtitle: _formatTimeAgo(expense.date),
           amount: '${expense.currency} ${expense.amount.toStringAsFixed(2)}',
@@ -178,14 +187,32 @@ final dynamicNotificationsProvider = Provider<List<NotificationItem>>((ref) {
     }
   }
 
-  // Sort by date, descending (newest first)
-  notifications.sort((a, b) => b.date.compareTo(a.date));
+  // Deduplicate by notification ID
+  final Map<String, NotificationItem> uniqueNotifications = {};
+  for (final n in notifications) {
+    uniqueNotifications[n.id] = n;
+  }
+  
+  final resultList = uniqueNotifications.values.toList();
 
-  return notifications;
+  // Sort by date, descending (newest first)
+  resultList.sort((a, b) => b.date.compareTo(a.date));
+
+  return resultList;
 });
 
 String _formatTimeAgo(DateTime dateTime) {
-  final difference = DateTime.now().difference(dateTime);
+  final localDateTime = dateTime.toLocal();
+  final now = DateTime.now();
+  var difference = now.difference(localDateTime);
+  
+  if (difference.isNegative) {
+    if (difference.abs().inMinutes < 60) {
+      return 'Just now';
+    }
+    difference = difference.abs();
+  }
+  
   if (difference.inSeconds < 60) {
     return 'Just now';
   } else if (difference.inMinutes < 60) {
@@ -198,6 +225,6 @@ String _formatTimeAgo(DateTime dateTime) {
     return '${difference.inDays} $dayText ago';
   } else {
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${months[dateTime.month - 1]} ${dateTime.day}';
+    return '${months[localDateTime.month - 1]} ${localDateTime.day}';
   }
 }

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../core/utils/app_snackbar.dart';
 import '../core/router/app_router.dart';
+import 'profile_provider.dart';
 
 // Registration State
 class RegisterState {
@@ -28,9 +29,10 @@ class RegisterState {
 }
 
 class RegisterNotifier extends StateNotifier<RegisterState> {
+  final Ref _ref;
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  RegisterNotifier() : super(const RegisterState());
+  RegisterNotifier(this._ref) : super(const RegisterState());
 
   Future<void> signUp({
     required String fullName,
@@ -69,38 +71,18 @@ class RegisterNotifier extends StateNotifier<RegisterState> {
 
       final user = response.user;
       if (user != null) {
-        String? avatarUrl;
-
-        // Upload profile photo to storage if provided
-        if (profilePhotoPath != null && profilePhotoPath.isNotEmpty) {
-          try {
-            final file = File(profilePhotoPath);
-            final fileExt = profilePhotoPath.split('.').last;
-            final fileName = '${user.id}_avatar.$fileExt';
-
-            await _supabase.storage.from('avatars').upload(
-              fileName,
-              file,
-              fileOptions: const FileOptions(upsert: true),
-            );
-
-            avatarUrl = _supabase.storage.from('avatars').getPublicUrl(fileName);
-          } catch (storageError) {
-            debugPrint('Storage upload failed: $storageError');
-          }
-        }
-
-        // The public profile row is automatically created in the 'users' table
-        // by the database trigger on auth.users.
-        // We only need to update the avatarUrl in the public.users table if we uploaded a photo.
-        if (avatarUrl != null) {
-          try {
-            await _supabase.from('users').update({
-              'avatarUrl': avatarUrl,
-            }).eq('id', user.id);
-          } catch (dbError) {
-            debugPrint('Failed to update avatarUrl in database: $dbError');
-          }
+        // Initialize/update the user profile using the profile provider
+        try {
+          await _ref.read(profileProvider.notifier).updateProfile(
+                fullName: fullName.trim(),
+                username: username.trim(),
+                phone: '',
+                bio: '',
+                currency: 'USD (\$)',
+                avatarFilePath: profilePhotoPath,
+              );
+        } catch (profileError) {
+          debugPrint('Failed to initialize profile after signup: $profileError');
         }
       }
 
@@ -128,7 +110,7 @@ class RegisterNotifier extends StateNotifier<RegisterState> {
 
 // Providers
 final registerProvider = StateNotifierProvider.autoDispose<RegisterNotifier, RegisterState>((ref) {
-  return RegisterNotifier();
+  return RegisterNotifier(ref);
 });
 
 // Terms Acceptance Provider

@@ -45,12 +45,14 @@ class CreateGroupNotifier extends StateNotifier<CreateGroupState> {
         members: state.members.where((m) => m != member).toList());
   }
 
-  Future<void> createGroup(
-    String name,
-    List<String> members,
-    WidgetRef ref,
-    BuildContext context,
-  ) async {
+  Future<void> createGroup({
+    required String name,
+    required List<String> members,
+    required int iconCodePoint,
+    required String iconFontFamily,
+    required WidgetRef ref,
+    required BuildContext context,
+  }) async {
     if (name.trim().isEmpty) {
       AppSnackBar.showError(context, 'Please enter a group name');
       return;
@@ -72,6 +74,8 @@ class CreateGroupNotifier extends StateNotifier<CreateGroupState> {
       await ref.read(groupProvider.notifier).addGroup(
             name: name.trim(),
             members: members,
+            iconCodePoint: iconCodePoint,
+            iconFontFamily: iconFontFamily,
             currency: currencyCode,
           );
       if (context.mounted) {

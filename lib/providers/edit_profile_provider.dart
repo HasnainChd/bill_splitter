@@ -68,6 +68,8 @@ class EditProfileFormNotifier extends StateNotifier<EditProfileFormState> {
           isSaving: false,
         ));
 
+  String get selectedCurrency => state.selectedCurrency;
+
   void updateSelectedCurrency(String currency) {
     state = state.copyWith(selectedCurrency: currency);
   }
@@ -149,7 +151,7 @@ final editProfileFormProvider =
     bioCtrl.dispose();
   });
 
-  return EditProfileFormNotifier(
+  final notifier = EditProfileFormNotifier(
     nameCtrl: nameCtrl,
     usernameCtrl: usernameCtrl,
     emailCtrl: emailCtrl,
@@ -158,4 +160,21 @@ final editProfileFormProvider =
     currency: currency,
     ref: ref,
   );
+
+  // Sync with profile provider updates if the form fields are empty (e.g. after async profile fetch completes)
+  ref.listen<ProfileState>(profileProvider, (previous, next) {
+    final p = next.profile;
+    if (p != null) {
+      if (nameCtrl.text.isEmpty) nameCtrl.text = p.fullName;
+      if (usernameCtrl.text.isEmpty) usernameCtrl.text = p.username;
+      if (emailCtrl.text.isEmpty) emailCtrl.text = p.email;
+      if (phoneCtrl.text.isEmpty) phoneCtrl.text = p.phone;
+      if (bioCtrl.text.isEmpty) bioCtrl.text = p.bio;
+      if (notifier.selectedCurrency == 'USD (\$)' || notifier.selectedCurrency.isEmpty) {
+        notifier.updateSelectedCurrency(p.currency);
+      }
+    }
+  });
+
+  return notifier;
 });

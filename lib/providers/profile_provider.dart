@@ -50,22 +50,38 @@ class UserProfile {
     );
   }
 
+  static String _getString(Map<String, dynamic> data, List<String> keys, {String defaultValue = ''}) {
+    for (final key in keys) {
+      if (data.containsKey(key) && data[key] != null) {
+        return data[key].toString();
+      }
+    }
+    for (final key in keys) {
+      final lowercaseKey = key.toLowerCase();
+      for (final entry in data.entries) {
+        if (entry.key.toLowerCase() == lowercaseKey && entry.value != null) {
+          return entry.value.toString();
+        }
+      }
+    }
+    return defaultValue;
+  }
+
   factory UserProfile.fromMap(Map<String, dynamic> data, String authEmail) {
     final box = Hive.box('settings');
-    final localCurrency =
-        box.get('default_currency', defaultValue: 'USD (\$)') as String;
+    final id = _getString(data, ['id']);
+    final key = id.isNotEmpty ? 'default_currency_$id' : 'default_currency';
+    final localCurrency = box.get(key, defaultValue: 'USD (\$)') as String;
+
     return UserProfile(
-      id: data['id'] ?? '',
-      fullName: data['fullName'] ?? data['full_name'] ?? '',
-      username: data['username'] ?? '',
-      email: data['email'] ?? authEmail,
-      phone: data['phone'] ?? '',
-      bio: data['bio'] ?? '',
-      currency: data['currency'] ??
-          data['default_currency'] ??
-          data['defaultCurrency'] ??
-          localCurrency,
-      avatarUrl: data['avatarUrl'] ?? data['avatar_url'] ?? '',
+      id: id,
+      fullName: _getString(data, ['fullName', 'full_name']),
+      username: _getString(data, ['username']),
+      email: _getString(data, ['email'], defaultValue: authEmail),
+      phone: _getString(data, ['phone']),
+      bio: _getString(data, ['bio']),
+      currency: _getString(data, ['currency', 'default_currency', 'defaultCurrency'], defaultValue: localCurrency),
+      avatarUrl: _getString(data, ['avatarUrl', 'avatar_url']),
     );
   }
 }
@@ -115,11 +131,14 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
           .maybeSingle();
 
       if (response != null) {
-        // _dbColumns = response.keys.toList();
-        // debugPrint('👤 Profile response from Supabase: $response');
-        // debugPrint('👤 Available database columns: $_dbColumns');
+        _dbColumns.clear();
+        _dbColumns.addAll(response.keys);
+        debugPrint('👤 Profile response from Supabase: $response');
+        debugPrint('👤 Available database columns: $_dbColumns');
+        final profile = UserProfile.fromMap(response, user.email ?? '');
+        debugPrint('👤 Parsed avatarUrl: ${profile.avatarUrl}');
         state = state.copyWith(
-          profile: UserProfile.fromMap(response, user.email ?? ''),
+          profile: profile,
           isLoading: false,
         );
       } else {
@@ -151,7 +170,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     required String bio,
     required String currency,
     String? avatarFilePath,
-    required BuildContext context,
+    BuildContext? context,
   }) async {
     final user = _supabase.auth.currentUser;
     if (user == null) return false;
@@ -212,7 +231,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       // Save currency locally to Hive box immediately so fetchProfile falls back to it
       try {
         final box = Hive.box('settings');
-        await box.put('default_currency', currency);
+        await box.put('default_currency_${user.id}', currency);
       } catch (e) {
         debugPrint('Error saving default_currency locally: $e');
       }
@@ -224,7 +243,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       return true;
     } catch (e) {
       state = state.copyWith(error: e.toString(), isLoading: false);
-      if (context.mounted) {
+      if (context != null && context.mounted) {
         AppSnackBar.showError(context, 'Failed to update profile: $e');
       }
       return false;

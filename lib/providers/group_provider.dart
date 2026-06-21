@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/models/group.dart';
+import '../core/utils/date_helper.dart';
 import 'auth_provider.dart';
 import 'expense_provider.dart';
 import 'profile_provider.dart';
@@ -128,8 +129,11 @@ class GroupNotifier extends StateNotifier<GroupState> {
           members: memberList,
           currency: groupRow['currency'] as String? ?? 'PKR',
           createdAt: groupRow['created_at'] != null
-              ? DateTime.parse(groupRow['created_at'] as String)
+              ? parseUtcDateTime(groupRow['created_at'] as String)
               : DateTime.now(),
+          iconCodePoint: groupRow['icon_code_point'] as int?,
+          iconFontFamily: groupRow['icon_font_family'] as String?,
+          createdBy: groupRow['created_by']?.toString(),
         );
 
         groupsList.add(group);
@@ -159,6 +163,8 @@ class GroupNotifier extends StateNotifier<GroupState> {
   Future<void> addGroup({
     required String name,
     required List<String> members,
+    required int iconCodePoint,
+    required String iconFontFamily,
     String currency = 'PKR',
   }) async {
     try {
@@ -172,6 +178,8 @@ class GroupNotifier extends StateNotifier<GroupState> {
         'name': name,
         'currency': currency,
         'created_by': user.id,
+        'icon_code_point': iconCodePoint,
+        'icon_font_family': iconFontFamily,
       }).select().single();
 
       final String groupId = groupData['id'] as String;
@@ -270,7 +278,6 @@ final groupBalanceProvider = Provider.family<double, String>((ref, groupId) {
   return balances.values.fold(0.0, (sum, b) => sum + b);
 });
 
-// Fetch user profiles of all members in a specific group
 final groupMembersProvider =
     FutureProvider.family<List<UserProfile>, String>((ref, groupId) async {
   final supabase = Supabase.instance.client;
@@ -278,26 +285,24 @@ final groupMembersProvider =
   try {
     final data = await supabase
         .from('group_members')
-        .select('users(*)')
+        .select('user_id')
         .eq('group_id', groupId);
 
-    final List<UserProfile> profiles = [];
-    for (final row in data as List) {
-      final userRow = row['users'];
-      if (userRow != null) {
-        profiles.add(UserProfile(
-          id: userRow['id']?.toString() ?? '',
-          fullName: userRow['fullName'] as String? ?? 'Unknown',
-          username: userRow['username'] as String? ?? '',
-          email: userRow['email'] as String? ?? '',
-          phone: userRow['phone'] as String? ?? '',
-          bio: userRow['bio'] as String? ?? '',
-          currency: userRow['currency'] as String? ?? 'USD',
-          avatarUrl: userRow['avatarUrl'] as String? ?? '',
-        ));
-      }
-    }
-    return profiles;
+    final userIds = (data as List)
+        .map((row) => row['user_id']?.toString())
+        .whereType<String>()
+        .toList();
+
+    if (userIds.isEmpty) return [];
+
+    final usersData = await supabase
+        .from('users')
+        .select()
+        .inFilter('id', userIds);
+
+    return (usersData as List)
+        .map((row) => UserProfile.fromMap(row, ''))
+        .toList();
   } catch (e) {
     debugPrint('Error fetching group members for $groupId: $e');
     return [];

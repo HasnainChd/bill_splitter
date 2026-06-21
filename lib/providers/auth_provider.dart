@@ -282,25 +282,26 @@ final authStateListenerProvider = Provider<void>((ref) {
   final client = Supabase.instance.client;
   final subscription = client.auth.onAuthStateChange.listen((data) async {
     final event = data.event;
-    if (event == AuthChangeEvent.signedOut) {
-      debugPrint('👤 Supabase Auth event: signedOut. Clearing Hive boxes...');
+    final currentUser = client.auth.currentUser;
+    debugPrint('👤 Supabase Auth event: $event. Current user: ${currentUser?.email}');
+
+    if (event == AuthChangeEvent.signedOut || currentUser == null) {
+      debugPrint('👤 User is signed out or session is null. Clearing Hive boxes...');
       try {
-        if (Hive.isBoxOpen('groups')) {
-          await Hive.box<Group>('groups').clear();
-        }
-        if (Hive.isBoxOpen('expenses')) {
-          await Hive.box<Expense>('expenses').clear();
-        }
-        if (Hive.isBoxOpen('settings')) {
-          await Hive.box('settings').clear();
-        }
+        final groupsBox = await Hive.openBox<Group>('groups');
+        await groupsBox.clear();
+        final expensesBox = await Hive.openBox<Expense>('expenses');
+        await expensesBox.clear();
+        final settingsBox = await Hive.openBox('settings');
+        await settingsBox.clear();
+        debugPrint('🧹 Cache cleared successfully on signout!');
       } catch (e) {
         debugPrint('Error clearing Hive boxes on sign out: $e');
       }
       ref.read(supabaseUserProvider.notifier).state = null;
-    } else if (event == AuthChangeEvent.signedIn) {
-      debugPrint('👤 Supabase Auth event: signedIn. Setting current user...');
-      ref.read(supabaseUserProvider.notifier).state = client.auth.currentUser;
+    } else {
+      debugPrint('👤 User is logged in. Updating user provider to ${currentUser.email}...');
+      ref.read(supabaseUserProvider.notifier).state = currentUser;
     }
   });
 
