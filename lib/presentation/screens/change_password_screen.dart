@@ -18,6 +18,8 @@ final changePasswordNewObscureProvider =
     StateProvider.autoDispose<bool>((ref) => true);
 final changePasswordConfirmObscureProvider =
     StateProvider.autoDispose<bool>((ref) => true);
+final changePasswordLoadingProvider =
+    StateProvider.autoDispose<bool>((ref) => false);
 
 final currentPasswordControllerProvider =
     Provider.autoDispose<TextEditingController>((ref) {
@@ -59,6 +61,7 @@ class ChangePasswordScreen extends ConsumerWidget {
     final obscureCurrent = ref.watch(changePasswordCurrentObscureProvider);
     final obscureNew = ref.watch(changePasswordNewObscureProvider);
     final obscureConfirm = ref.watch(changePasswordConfirmObscureProvider);
+    final isLoading = ref.watch(changePasswordLoadingProvider);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
@@ -340,6 +343,7 @@ class ChangePasswordScreen extends ConsumerWidget {
                                     ? 'Set New Password'
                                     : 'Update Password',
                                 color: AppColors.onboardingViolet,
+                                isLoading: isLoading,
                                 onTap: () async {
                                   final newPass = newPasswordController.text;
                                   final confirm =
@@ -381,6 +385,7 @@ class ChangePasswordScreen extends ConsumerWidget {
                                     return;
                                   }
 
+                                  ref.read(changePasswordLoadingProvider.notifier).state = true;
                                   try {
                                     await Supabase.instance.client.auth
                                         .updateUser(
@@ -409,6 +414,8 @@ class ChangePasswordScreen extends ConsumerWidget {
                                         'Failed to update password: $e',
                                       );
                                     }
+                                  } finally {
+                                    ref.read(changePasswordLoadingProvider.notifier).state = false;
                                   }
                                 },
                               ),

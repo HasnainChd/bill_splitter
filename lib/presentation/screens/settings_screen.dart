@@ -371,9 +371,21 @@ class SettingsScreen extends ConsumerWidget {
                     // Sign Out Button
                     GestureDetector(
                       onTap: () async {
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.onboardingViolet,
+                            ),
+                          ),
+                        );
                         final router = GoRouter.of(context);
                         await Supabase.instance.client.auth.signOut();
                         ref.read(homeTabIndexProvider.notifier).state = 0;
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                        }
                         router.go(AppRouter.login);
                       },
                       child: Container(

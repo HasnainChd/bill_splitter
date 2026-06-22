@@ -42,6 +42,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
           createdAt: DateTime.now(),
         ),
       );
+      final currencyCode = group.currency;
       final balances = ref.watch(balancesForGroupProvider(widget.groupId));
 
       // Convert balances to Member list for debt calculator
@@ -157,10 +158,33 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                       ),
                       SizedBox(height: 12.h),
                       ...settlements.map((settlement) {
-                        final fromName = memberMap[settlement.fromMember] ??
-                            settlement.fromMember;
-                        final toName = memberMap[settlement.toMember] ??
-                            settlement.toMember;
+                        final fromProfile = (membersAsync.value ?? <UserProfile>[])
+                            .firstWhere((m) => m.id == settlement.fromMember,
+                                orElse: () => UserProfile(
+                                      id: settlement.fromMember,
+                                      fullName: settlement.fromMember,
+                                      username: '',
+                                      email: '',
+                                      phone: '',
+                                      bio: '',
+                                      currency: '',
+                                      avatarUrl: '',
+                                    ));
+                        final toProfile = (membersAsync.value ?? <UserProfile>[])
+                            .firstWhere((m) => m.id == settlement.toMember,
+                                orElse: () => UserProfile(
+                                      id: settlement.toMember,
+                                      fullName: settlement.toMember,
+                                      username: '',
+                                      email: '',
+                                      phone: '',
+                                      bio: '',
+                                      currency: '',
+                                      avatarUrl: '',
+                                    ));
+
+                        final fromName = fromProfile.fullName;
+                        final toName = toProfile.fullName;
 
                         final key =
                             '${settlement.fromMember}_${settlement.toMember}_${settlement.amount}';
@@ -171,9 +195,11 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                           child: SettlementCard(
                             fromMember: fromName,
                             toMember: toName,
+                            fromAvatarUrl: fromProfile.avatarUrl,
+                            toAvatarUrl: toProfile.avatarUrl,
                             amount: settlement.amount,
                             isPaid: settlement.isPaid,
-                            currency: group.currency,
+                            currency: currencyCode,
                             isLoading: isLoading,
                             onMarkAsPaid: () async {
                               setState(() {
@@ -193,6 +219,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                                       },
                                       categoryIconCodePoint:
                                           Icons.handshake_rounded.codePoint,
+                                      splitType: 'Equal',
                                     );
                                 if (context.mounted) {
                                   AppSnackBar.showSuccess(
@@ -241,7 +268,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                       toMember: toName,
                       amount: settlement.amount,
                       isPaid: settlement.isPaid,
-                      currency: group.currency,
+                      currency: currencyCode,
                     );
                   }),
                 ],

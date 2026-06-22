@@ -18,7 +18,8 @@ import '../../core/utils/app_dialog.dart';
 import '../../providers/profile_provider.dart';
 import '../../core/router/app_router.dart';
 import '../../core/utils/group_icon_helper.dart';
-
+import '../../core/utils/debt_calculator.dart';
+import '../../providers/settings_provider.dart';
 
 class ExpenseDetailScreen extends ConsumerWidget {
   final Expense expense;
@@ -30,11 +31,15 @@ class ExpenseDetailScreen extends ConsumerWidget {
     final groupState = ref.watch(groupProvider);
     final expenseState = ref.watch(expenseProvider);
     final currentUserId = ref.watch(supabaseUserProvider)?.id;
+    final defaultCurrency = ref.watch(defaultCurrencyProvider);
+    final currencyCode =
+        defaultCurrency.length >= 3 ? defaultCurrency.substring(0, 3) : 'PKR';
     final membersAsync = ref.watch(groupMembersProvider(this.expense.groupId));
     final members = membersAsync.value ?? [];
 
     // Watch list of expenses reactively to handle live updates from edit screen
-    final groupExpenses = ref.watch(expensesForGroupProvider(this.expense.groupId));
+    final groupExpenses =
+        ref.watch(expensesForGroupProvider(this.expense.groupId));
     final resolvedExpense = groupExpenses.firstWhere(
       (e) => e.expenseId == this.expense.expenseId,
       orElse: () => this.expense,
@@ -78,7 +83,72 @@ class ExpenseDetailScreen extends ConsumerWidget {
         avatarUrl: '',
       ),
     );
-    final payerName = currentUserId == expense.paidBy ? 'You' : payerProfile.fullName;
+    final payerName =
+        currentUserId == expense.paidBy ? 'You' : payerProfile.fullName;
+
+    final displaySplitType = (() {
+      if (expense.splitType == '%') return 'Percentage';
+      if (expense.splitType == 'Custom') return 'Exact Amount';
+      
+      // Dynamic fallback for legacy data:
+      final splits = expense.splitAmong.values.toList();
+      if (splits.isEmpty) return 'Equal';
+      if (members.isNotEmpty && expense.splitAmong.length != members.length) {
+        return 'Exact Amount';
+      }
+      final first = splits.first;
+      for (final s in splits) {
+        if ((s - first).abs() > 0.05) {
+          return 'Exact Amount';
+        }
+      }
+      return 'Equal';
+    })();
+
+    final balances = ref.watch(balancesForGroupProvider(group.groupId));
+
+    // Map balances to Member list for debt calculator
+    final membersList = balances.entries.map((entry) {
+      final balance = entry.value;
+      return Member(
+        name: entry.key,
+        totalPaid: balance > 0 ? balance : 0,
+        totalShare: balance < 0 ? balance.abs() : 0,
+      );
+    }).toList();
+
+    final groupSettlements = DebtCalculator.calculate(membersList);
+
+    // Calculate original amount owed by others
+    final originalOwedByOthers = expense.splitAmong.entries
+        .where((entry) => entry.key != expense.paidBy)
+        .fold<double>(0.0, (sum, entry) => sum + entry.value);
+
+    // Calculate total remaining owed by others for this expense
+    double totalRemaining = 0.0;
+    final isSettlement = expense.title == 'Settle Payment' || expense.categoryIconCodePoint == Icons.handshake_rounded.codePoint;
+
+    if (!isSettlement) {
+      expense.splitAmong.forEach((userId, originalShare) {
+        if (userId != expense.paidBy) {
+          final currentDebtToPayer = groupSettlements.firstWhere(
+            (s) => s.fromMember == userId && s.toMember == expense.paidBy,
+            orElse: () => Settlement(fromMember: userId, toMember: expense.paidBy, amount: 0.0),
+          ).amount;
+          totalRemaining += (originalShare < currentDebtToPayer) ? originalShare : currentDebtToPayer;
+        }
+      });
+    }
+
+    final String expenseStatus = (() {
+      if (isSettlement || totalRemaining <= 0.05) {
+        return 'Settled';
+      }
+      if ((totalRemaining - originalOwedByOthers).abs() < 0.05) {
+        return 'Unsettled';
+      }
+      return 'Partially Settled';
+    })();
 
     final memberMap = {
       for (final m in members) m.id: m.fullName,
@@ -197,7 +267,8 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                 final confirm = await AppDialog.showConfirm(
                                   context,
                                   title: 'Delete Expense',
-                                  message: 'Are you sure you want to delete this expense?',
+                                  message:
+                                      'Are you sure you want to delete this expense?',
                                   confirmText: 'Delete',
                                   cancelText: 'Cancel',
                                   isDanger: true,
@@ -252,7 +323,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
                         ),
                         SizedBox(height: 20.h),
                         AppText(
-                          '${expense.currency} ${totalAmount.toStringAsFixed(2)}',
+                          '$currencyCode ${totalAmount.toStringAsFixed(2)}',
                           fontSize: 44,
                           fontWeight: FontWeight.w900,
                           color: AppColors.white,
@@ -279,23 +350,48 @@ class ExpenseDetailScreen extends ConsumerWidget {
                   ),
                   SizedBox(height: 28.h),
 
-                  // Info Cards Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildInfoCard(
-                        label: 'Category',
-                        content: categoryLabel,
-                      ),
-                      _buildInfoCard(
-                        label: 'Split',
-                        content: '⚖️ Equal',
-                      ),
-                      _buildInfoCard(
-                        label: 'Date',
-                        content: '📅 $shortDateStr',
-                      ),
-                    ],
+                  // Summary Details Card
+                  AppCard(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                    child: Column(
+                      children: [
+                        _buildDetailRow('Paid by', payerName),
+                        _buildDivider(),
+                        _buildDetailRow('Split Type', displaySplitType),
+                        _buildDivider(),
+                        _buildDetailRow('Group', GroupIconHelper.getCleanGroupName(group.name)),
+                        _buildDivider(),
+                        _buildDetailRow('Category', categoryLabel),
+                        _buildDivider(),
+                        _buildDetailRow('Date', dateStr),
+                        if (expense.createdAt != null) ...[
+                          _buildDivider(),
+                          _buildDetailRow('Added On', DateFormat('MMM d, yyyy h:mm a').format(expense.createdAt!)),
+                        ],
+                        if (expense.updatedAt != null) ...[
+                          _buildDivider(),
+                          _buildDetailRow('Updated On', DateFormat('MMM d, yyyy h:mm a').format(expense.updatedAt!)),
+                        ],
+                        _buildDivider(),
+                        _buildDetailRow(
+                          'Status',
+                          expenseStatus,
+                          valueColor: expenseStatus == 'Settled'
+                              ? const Color(0xFF00C896)
+                              : expenseStatus == 'Partially Settled'
+                                  ? const Color(0xFFFFA500)
+                                  : const Color(0xFFFF5252),
+                        ),
+                        if (expenseStatus != 'Settled') ...[
+                          _buildDivider(),
+                          _buildDetailRow(
+                            'Remaining Balance',
+                            '$currencyCode ${totalRemaining.toStringAsFixed(2)}',
+                            valueColor: const Color(0xFFFF5252),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                   SizedBox(height: 32.h),
 
@@ -341,7 +437,8 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                     : 'U';
 
                             final avatarColor = AppColors.avatarColors[
-                                m.id.hashCode.abs() % AppColors.avatarColors.length];
+                                m.id.hashCode.abs() %
+                                    AppColors.avatarColors.length];
 
                             // Calculations
                             final double paidAmt = isPayer ? totalAmount : 0.0;
@@ -365,14 +462,22 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                           color: avatarColor,
                                           borderRadius:
                                               BorderRadius.circular(12.r),
+                                          image: m.avatarUrl.isNotEmpty
+                                              ? DecorationImage(
+                                                  image: NetworkImage(m.avatarUrl),
+                                                  fit: BoxFit.cover,
+                                                )
+                                              : null,
                                         ),
                                         alignment: Alignment.center,
-                                        child: AppText(
-                                          initials,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.white,
-                                        ),
+                                        child: m.avatarUrl.isEmpty
+                                            ? AppText(
+                                                initials,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.white,
+                                              )
+                                            : null,
                                       ),
                                       SizedBox(width: 12.w),
                                       Expanded(
@@ -395,8 +500,8 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                             SizedBox(height: 4.h),
                                             AppText(
                                               isPayer
-                                                  ? 'Paid ${expense.currency} ${totalAmount.toStringAsFixed(0)}'
-                                                  : 'Owes ${expense.currency} ${owedAmt.toStringAsFixed(0)}',
+                                                  ? 'Paid $currencyCode ${totalAmount.toStringAsFixed(0)}'
+                                                  : 'Owes $currencyCode ${owedAmt.toStringAsFixed(0)}',
                                               fontSize: 11,
                                               color: AppColors.white
                                                   .withValues(alpha: 0.4),
@@ -407,7 +512,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                       AppText(
                                         netAmt == 0
                                             ? '0'
-                                            : '${netAmt > 0 ? '+' : '-'}${expense.currency}${netAmt.abs().toStringAsFixed(0)}',
+                                            : '${netAmt > 0 ? '+' : '-'}$currencyCode${netAmt.abs().toStringAsFixed(0)}',
                                         fontSize: 15,
                                         fontWeight: FontWeight.w800,
                                         color: netAmt == 0
@@ -435,63 +540,111 @@ class ExpenseDetailScreen extends ConsumerWidget {
                   SizedBox(height: 28.h),
 
                   // Receipt Box
-                  _sectionLabel('RECEIPT'),
-                  SizedBox(height: 12.h),
-                  AppCard(
-                    padding: EdgeInsets.all(16.w),
-                    onTap: () {
-                      _showDigitalReceipt(
-                        context,
-                        expense,
-                        memberMap,
-                        currentUserId ?? '',
-                        payerName,
-                      );
-                    },
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44.w,
-                          height: 44.w,
-                          decoration: BoxDecoration(
-                            color: AppColors.coralRed.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12.r),
+                  if (expense.receiptUrl != null && expense.receiptUrl!.isNotEmpty) ...[
+                    _sectionLabel('RECEIPT'),
+                    SizedBox(height: 12.h),
+                    AppCard(
+                      padding: EdgeInsets.zero,
+                      onTap: () {
+                        // Open full screen image
+                        showDialog(
+                          context: context,
+                          builder: (context) => Dialog(
+                            backgroundColor: Colors.transparent,
+                            insetPadding: EdgeInsets.all(16.w),
+                            child: Stack(
+                              alignment: Alignment.topRight,
+                              children: [
+                                InteractiveViewer(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16.r),
+                                    child: Image.network(
+                                      expense.receiptUrl!,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                                  onPressed: () => Navigator.of(context).pop(),
+                                ),
+                              ],
+                            ),
                           ),
-                          child: Icon(
-                            Icons.picture_as_pdf_rounded,
-                            color: AppColors.coralRed,
-                            size: 24.sp,
-                          ),
-                        ),
-                        SizedBox(width: 12.w),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              AppText(
-                                'receipt_${expense.title.toLowerCase().replaceAll(' ', '_')}.pdf',
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.white,
-                              ),
-                              SizedBox(height: 2.h),
-                              AppText(
-                                '${((expense.amount * 7) % 5 + 1.2).toStringAsFixed(1)} MB',
-                                fontSize: 12,
-                                color: AppColors.white.withValues(alpha: 0.4),
-                              ),
-                            ],
+                        );
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24.r),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Image.network(
+                            expense.receiptUrl!,
+                            fit: BoxFit.cover,
                           ),
                         ),
-                        Icon(
-                          Icons.download_rounded,
-                          color: AppColors.white.withValues(alpha: 0.4),
-                          size: 20.sp,
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 28.h),
+                    SizedBox(height: 28.h),
+                  ] else ...[
+                    _sectionLabel('RECEIPT'),
+                    SizedBox(height: 12.h),
+                    AppCard(
+                      padding: EdgeInsets.all(16.w),
+                      onTap: () {
+                        _showDigitalReceipt(
+                          context,
+                          expense,
+                          memberMap,
+                          currentUserId ?? '',
+                          payerName,
+                          currencyCode,
+                        );
+                      },
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44.w,
+                            height: 44.w,
+                            decoration: BoxDecoration(
+                              color: AppColors.coralRed.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            child: Icon(
+                              Icons.picture_as_pdf_rounded,
+                              color: AppColors.coralRed,
+                              size: 24.sp,
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                AppText(
+                                  'receipt_${expense.title.toLowerCase().replaceAll(' ', '_')}.pdf',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.white,
+                                ),
+                                SizedBox(height: 2.h),
+                                AppText(
+                                  'Generated Digital Receipt',
+                                  fontSize: 12,
+                                  color: AppColors.white.withValues(alpha: 0.4),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.download_rounded,
+                            color: AppColors.white.withValues(alpha: 0.4),
+                            size: 20.sp,
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 28.h),
+                  ],
 
                   // Notes Box
                   if (expense.notes != null && expense.notes!.isNotEmpty) ...[
@@ -501,28 +654,31 @@ class ExpenseDetailScreen extends ConsumerWidget {
                       padding: EdgeInsets.all(16.w),
                       child: AppText(
                         expense.notes!,
-                        fontSize: 13,
-                        color: AppColors.white.withValues(alpha: 0.7),
-                        height: 1.4,
+                        fontSize: 14,
+                        color: AppColors.white.withValues(alpha: 0.8),
+                        height: 1.5,
                       ),
                     ),
-                    SizedBox(height: 32.h),
+                    SizedBox(height: 28.h),
                   ],
 
                   // Reminder Button (only show for non-settlements)
                   if (expense.title != 'Settle Payment' &&
-                      expense.categoryIconCodePoint != Icons.handshake_rounded.codePoint) ...[
+                      expense.categoryIconCodePoint !=
+                          Icons.handshake_rounded.codePoint) ...[
                     if (isUserPayer) ...[
                       if (totalAmount - myOwedAmt > 0)
                         AppButton(
-                          label: 'Remind members · ${expense.currency} ${(totalAmount - myOwedAmt).toStringAsFixed(0)}',
+                          label:
+                              'Remind members · $currencyCode ${(totalAmount - myOwedAmt).toStringAsFixed(0)}',
                           color: AppColors.onboardingViolet,
                           textColor: AppColors.white,
                           onTap: () async {
                             final confirm = await AppDialog.showConfirm(
                               context,
                               title: 'Send Reminder',
-                              message: 'Are you sure you want to send a payment reminder to other members?',
+                              message:
+                                  'Are you sure you want to send a payment reminder to other members?',
                               confirmText: 'Send',
                               cancelText: 'Cancel',
                             );
@@ -537,14 +693,16 @@ class ExpenseDetailScreen extends ConsumerWidget {
                     ] else ...[
                       if (myOwedAmt > 0)
                         AppButton(
-                          label: 'Remind payer · ${expense.currency} ${myOwedAmt.toStringAsFixed(0)}',
+                          label:
+                              'Remind payer · $currencyCode ${myOwedAmt.toStringAsFixed(0)}',
                           color: AppColors.onboardingViolet,
                           textColor: AppColors.white,
                           onTap: () async {
                             final confirm = await AppDialog.showConfirm(
                               context,
                               title: 'Send Reminder',
-                              message: 'Are you sure you want to send a payment reminder to $payerName?',
+                              message:
+                                  'Are you sure you want to send a payment reminder to $payerName?',
                               confirmText: 'Send',
                               cancelText: 'Cancel',
                             );
@@ -739,6 +897,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
     Map<String, String> memberMap,
     String currentUserId,
     String payerName,
+    String currencyCode,
   ) {
     bool isDownloading = false;
     showDialog(
@@ -783,7 +942,8 @@ class ExpenseDetailScreen extends ConsumerWidget {
                     ),
                     SizedBox(height: 4.h),
                     AppText(
-                      DateFormat('MMMM dd, yyyy · hh:mm a').format(expense.date),
+                      DateFormat('MMMM dd, yyyy · hh:mm a')
+                          .format(expense.date),
                       fontSize: 11,
                       color: AppColors.textGrey,
                     ),
@@ -838,7 +998,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                 fontSize: 13,
                                 color: AppColors.white.withValues(alpha: 0.7)),
                             AppText(
-                                '${expense.currency} ${entry.value.toStringAsFixed(2)}',
+                                'currencyCod ${entry.value.toStringAsFixed(2)}',
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.white),
@@ -869,7 +1029,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
                             fontWeight: FontWeight.w700,
                             color: AppColors.white),
                         AppText(
-                            '${expense.currency} ${expense.amount.toStringAsFixed(2)}',
+                            '$currencyCode ${expense.amount.toStringAsFixed(2)}',
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
                             color: AppColors.white),
@@ -973,6 +1133,36 @@ class ExpenseDetailScreen extends ConsumerWidget {
           },
         );
       },
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, {Color? valueColor}) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 10.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          AppText(
+            label,
+            fontSize: 13,
+            color: AppColors.white.withValues(alpha: 0.4),
+            fontWeight: FontWeight.w500,
+          ),
+          AppText(
+            value,
+            fontSize: 13,
+            color: valueColor ?? AppColors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Divider(
+      color: AppColors.white.withValues(alpha: 0.04),
+      height: 1,
     );
   }
 }

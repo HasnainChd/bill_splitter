@@ -150,7 +150,7 @@ class OnboardingScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const AppText(
-              'Total You\'re Owed',
+              'Total Others Owe You',
               fontSize: 14,
               color: AppColors.white,
             ),
@@ -228,7 +228,7 @@ class OnboardingScreen extends StatelessWidget {
                     ),
                     SizedBox(width: 6.w),
                     AppText(
-                      'You owe',
+                      'You owe others',
                       fontSize: 11,
                       color: AppColors.textGrey,
                     ),
@@ -257,7 +257,7 @@ class OnboardingScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     AppText(
-                      'Owed to you',
+                      'Others owe you',
                       fontSize: 11,
                       color: AppColors.textGrey,
                     ),

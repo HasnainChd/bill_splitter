@@ -2,21 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/app_button.dart';
-import '../../providers/settings_provider.dart';
+import '../../providers/notifications_provider.dart';
 
-final activityFilterProvider = StateProvider<String>((ref) => 'All');
+final activityFilterProvider = StateProvider.autoDispose<String>((ref) => 'All');
 
 class ActivityScreen extends ConsumerWidget {
   const ActivityScreen({super.key});
 
+  String _getEmojiForCategory(String category) {
+    if (category == 'Expenses') return '🍕';
+    if (category == 'Payments') return '💸';
+    if (category == 'Groups') return '👥';
+    return '📝';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeFilter = ref.watch(activityFilterProvider);
-    final defaultCurrency = ref.watch(defaultCurrencyProvider);
+    final notifications = ref.watch(dynamicNotificationsProvider);
+
+    final filtered = notifications.where((n) {
+      if (activeFilter == 'All') return true;
+      return n.category == activeFilter;
+    }).toList();
+
+    // Group items by month-year
+    final Map<String, List<NotificationItem>> grouped = {};
+    for (var n in filtered) {
+      final monthStr = DateFormat('MMMM yyyy').format(n.date);
+      grouped.putIfAbsent(monthStr, () => []).add(n);
+    }
 
     return SafeArea(
       top: false,
@@ -56,47 +75,8 @@ class ActivityScreen extends ConsumerWidget {
                     fontWeight: FontWeight.w800,
                     color: AppColors.white,
                   ),
-                  // Actions Row (Filter & Download)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 42.w,
-                        height: 42.w,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E1C38),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          icon: Icon(
-                            Icons.tune_rounded,
-                            color: AppColors.white,
-                            size: 18.sp,
-                          ),
-                          onPressed: () {},
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Container(
-                        width: 42.w,
-                        height: 42.w,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E1C38),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          icon: Icon(
-                            Icons.arrow_downward_rounded,
-                            color: AppColors.white,
-                            size: 18.sp,
-                          ),
-                          onPressed: () {},
-                        ),
-                      ),
-                    ],
-                  ),
+                  // Spacer to align title center
+                  SizedBox(width: 42.w),
                 ],
               ),
             ),
@@ -121,129 +101,57 @@ class ActivityScreen extends ConsumerWidget {
 
             // ── Scrollable Activity Content ──
             Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.symmetric(horizontal: 20.w),
-                child: Column(
-                  children: [
-                    // May 2024 Header
-                    _buildSectionHeader(
-                      title: 'May 2024',
-                      amountBadge: '-$defaultCurrency 756',
-                      isPositive: false,
-                    ),
-                    SizedBox(height: 12.h),
-
-                    // May 2024 Grouped List Card
-                    AppCard(
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        children: [
-                          _buildActivityItem(
-                            emoji: '🏨',
-                            title: 'Airbnb accommodation',
-                            subtitle: 'Barcelona Trip · May 15 · by You',
-                            amount: '-$defaultCurrency 180',
-                            amountColor: AppColors.coralRed,
-                          ),
-                          _buildDivider(),
-                          _buildActivityItem(
-                            emoji: '💸',
-                            title: 'Sarah paid you back',
-                            subtitle: 'Barcelona Trip · May 18',
-                            amount: '+$defaultCurrency 168',
-                            amountColor: const Color(0xFF00C896),
-                          ),
-                          _buildDivider(),
-                          _buildActivityItem(
-                            emoji: '🎭',
-                            title: 'Sagrada Família tickets',
-                            subtitle: 'Barcelona Trip · May 17 · by Sarah',
-                            amount: '-$defaultCurrency 30',
-                            amountColor: AppColors.coralRed,
-                          ),
-                          _buildDivider(),
-                          _buildActivityItem(
-                            emoji: '🍕',
-                            title: 'Tapas dinner',
-                            subtitle: 'Barcelona Trip · May 16 · by Sarah',
-                            amount: '-$defaultCurrency 42',
-                            amountColor: AppColors.coralRed,
-                          ),
-                          _buildDivider(),
-                          _buildActivityItem(
-                            emoji: '👥',
-                            title: 'Joined "NYC Getaway"',
-                            subtitle: 'May 14',
-                            amount: '',
-                            amountColor: AppColors.white,
-                          ),
-                        ],
+              child: filtered.isEmpty
+                  ? Center(
+                      child: AppText(
+                        'No activities found',
+                        fontSize: 14,
+                        color: AppColors.white.withValues(alpha: 0.3),
                       ),
-                    ),
-                    SizedBox(height: 24.h),
+                    )
+                  : ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      itemCount: grouped.keys.length,
+                      itemBuilder: (context, index) {
+                        final monthStr = grouped.keys.elementAt(index);
+                        final items = grouped[monthStr]!;
 
-                    // April 2024 Header
-                    _buildSectionHeader(
-                      title: 'April 2024',
-                      amountBadge: '+$defaultCurrency 1,560',
-                      isPositive: true,
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSectionHeader(
+                              title: monthStr,
+                              amountBadge: '${items.length} ${items.length == 1 ? 'item' : 'items'}',
+                              isPositive: true,
+                            ),
+                            SizedBox(height: 12.h),
+                            AppCard(
+                              padding: EdgeInsets.zero,
+                              child: Column(
+                                children: List.generate(items.length, (idx) {
+                                  final item = items[idx];
+                                  return Column(
+                                    children: [
+                                      _buildActivityItem(
+                                        emoji: _getEmojiForCategory(item.category),
+                                        title: item.title,
+                                        subtitle: '${item.groupName} • ${item.subtitle}',
+                                        amount: item.amount ?? '',
+                                        amountColor: item.amountColor ?? AppColors.white,
+                                      ),
+                                      if (idx < items.length - 1)
+                                        _buildDivider(),
+                                    ],
+                                  );
+                                }),
+                              ),
+                            ),
+                            SizedBox(height: 24.h),
+                          ],
+                        );
+                      },
                     ),
-                    SizedBox(height: 12.h),
-
-                    // April 2024 Grouped List Card
-                    AppCard(
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        children: [
-                          _buildActivityItem(
-                            emoji: '🏠',
-                            title: 'Priya paid rent share',
-                            subtitle: 'Grove Apartment · Apr 30',
-                            amount: '+$defaultCurrency 800',
-                            amountColor: const Color(0xFF00C896),
-                          ),
-                          _buildDivider(),
-                          _buildActivityItem(
-                            emoji: '⚡',
-                            title: 'Electricity bill',
-                            subtitle: 'Grove Apartment · Apr 28 · by Priya',
-                            amount: '-$defaultCurrency 60',
-                            amountColor: AppColors.coralRed,
-                          ),
-                          _buildDivider(),
-                          _buildActivityItem(
-                            emoji: '🏠',
-                            title: 'Kai paid rent share',
-                            subtitle: 'Grove Apartment · Apr 30',
-                            amount: '+$defaultCurrency 800',
-                            amountColor: const Color(0xFF00C896),
-                          ),
-                          _buildDivider(),
-                          _buildActivityItem(
-                            emoji: '🛒',
-                            title: 'Grocery run',
-                            subtitle: 'Grove Apartment · Apr 22 · by You',
-                            amount: '-$defaultCurrency 47',
-                            amountColor: AppColors.coralRed,
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 24.h),
-
-                    // Load more activity button
-                    AppButton(
-                      label: 'Load more activity',
-                      isOutlined: true,
-                      textColor: AppColors.white.withValues(alpha: 0.6),
-                      color: AppColors.cardDark,
-                      onTap: () {},
-                    ),
-                    SizedBox(height: 32.h),
-                  ],
-                ),
-              ),
             ),
           ],
         ),
@@ -281,8 +189,6 @@ class ActivityScreen extends ConsumerWidget {
     required String amountBadge,
     required bool isPositive,
   }) {
-    final badgeColor =
-        isPositive ? const Color(0xFF00C896) : AppColors.coralRed;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -295,14 +201,14 @@ class ActivityScreen extends ConsumerWidget {
         Container(
           padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
           decoration: BoxDecoration(
-            color: badgeColor.withValues(alpha: 0.12),
+            color: AppColors.onboardingViolet.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(12.r),
           ),
           child: AppText(
             amountBadge,
             fontSize: 11,
             fontWeight: FontWeight.w800,
-            color: badgeColor,
+            color: AppColors.onboardingViolet,
           ),
         ),
       ],
@@ -320,7 +226,6 @@ class ActivityScreen extends ConsumerWidget {
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
       child: Row(
         children: [
-          // Emoji Card Container (No border, rounded card look matching screenshots)
           Container(
             width: 40.w,
             height: 40.w,

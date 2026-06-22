@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/profile_provider.dart';
 
 final currencySearchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
 
@@ -135,8 +136,22 @@ class DefaultCurrencyScreen extends ConsumerWidget {
                   return Padding(
                     padding: EdgeInsets.only(bottom: 10.h),
                     child: GestureDetector(
-                      onTap: () {
-                        ref.read(defaultCurrencyProvider.notifier).state = cur['code']!;
+                      onTap: () async {
+                        final selectedCurrency = cur['code']!;
+                        ref.read(defaultCurrencyProvider.notifier).state = selectedCurrency;
+                        
+                        // Async update to Supabase profile
+                        final profile = ref.read(profileProvider).profile;
+                        if (profile != null) {
+                          await ref.read(profileProvider.notifier).updateProfile(
+                            fullName: profile.fullName,
+                            username: profile.username,
+                            phone: profile.phone,
+                            bio: profile.bio,
+                            currency: selectedCurrency,
+                            context: context,
+                          );
+                        }
                       },
                       child: AppCard(
                         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:io';
 import '../../providers/auth_provider.dart';
 import '../../providers/profile_provider.dart';
 
@@ -13,6 +14,9 @@ final aeSplitTypeProvider = StateProvider.autoDispose<String>((ref) => 'Equal');
 /// Which members are included in the split
 final aeSelectedMembersProvider =
     StateProvider.autoDispose<Set<String>>((ref) => {});
+
+/// Selected payer user ID
+final aePaidByProvider = StateProvider.autoDispose<String?>((ref) => null);
 
 /// Amount text controller
 final aeAmountControllerProvider =
@@ -37,6 +41,22 @@ final aeCustomSplitsProvider =
 /// Percent split amount per user ID
 final aePercentSplitsProvider =
     StateProvider<Map<String, double>>((ref) => {});
+
+/// Selected Date
+final aeDateProvider = StateProvider.autoDispose<DateTime>((ref) => DateTime.now());
+
+/// Notes text controller
+final aeNotesControllerProvider = Provider.autoDispose<TextEditingController>((ref) {
+  final c = TextEditingController();
+  ref.onDispose(c.dispose);
+  return c;
+});
+
+/// Selected Receipt Image File
+final aeReceiptFileProvider = StateProvider.autoDispose<File?>((ref) => null);
+
+/// Existing Receipt URL (for editing)
+final aeReceiptUrlProvider = StateProvider.autoDispose<String?>((ref) => null);
 
 /// Track loaded group IDs to prevent infinite fetch loop in GroupDetailScreen
 final loadedGroupExpensesProvider =
@@ -86,18 +106,7 @@ final allUsersProvider = FutureProvider<List<UserProfile>>((ref) async {
         .select()
         .neq('id', currentUser.id);
 
-    return (data as List).map((row) {
-      return UserProfile(
-        id: row['id']?.toString() ?? '',
-        fullName: row['fullName'] as String? ?? 'Unknown',
-        username: row['username'] as String? ?? '',
-        email: row['email'] as String? ?? '',
-        phone: row['phone'] as String? ?? '',
-        bio: row['bio'] as String? ?? '',
-        currency: row['currency'] as String? ?? 'USD',
-        avatarUrl: row['avatarUrl'] as String? ?? '',
-      );
-    }).toList();
+    return (data as List).map((row) => UserProfile.fromMap(row, '')).toList();
   } catch (e) {
     debugPrint('Error fetching registered users: $e');
     return [];

@@ -19,9 +19,10 @@ class NotificationsScreen extends ConsumerWidget {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
-    final itemDate = DateTime(date.year, date.month, date.day);
+    final localDate = date.toLocal();
+    final itemDate = DateTime(localDate.year, localDate.month, localDate.day);
 
-    final diffInMinutes = now.difference(date).inMinutes;
+    final diffInMinutes = now.difference(localDate).inMinutes;
     if (diffInMinutes < 60 && diffInMinutes >= 0) {
       return 'JUST NOW';
     } else if (itemDate == today) {
