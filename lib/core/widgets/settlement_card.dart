@@ -13,6 +13,9 @@ class SettlementCard extends StatelessWidget {
   final bool isLoading;
   final VoidCallback? onMarkAsPaid;
 
+  final String? fromAvatarUrl;
+  final String? toAvatarUrl;
+
   const SettlementCard({
     super.key,
     required this.fromMember,
@@ -22,6 +25,8 @@ class SettlementCard extends StatelessWidget {
     this.currency = 'USD',
     this.isLoading = false,
     this.onMarkAsPaid,
+    this.fromAvatarUrl,
+    this.toAvatarUrl,
   });
 
   @override
@@ -62,6 +67,7 @@ class SettlementCard extends StatelessWidget {
                     AppAvatar(
                       name: fromMember,
                       size: 44.sp,
+                      avatarUrl: fromAvatarUrl,
                     ),
                     SizedBox(height: 6.h),
                     AppText(
@@ -118,6 +124,7 @@ class SettlementCard extends StatelessWidget {
                     AppAvatar(
                       name: toMember,
                       size: 44.sp,
+                      avatarUrl: toAvatarUrl,
                     ),
                     SizedBox(height: 6.h),
                     AppText(

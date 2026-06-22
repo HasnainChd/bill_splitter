@@ -13,6 +13,7 @@ import 'core/router/app_router.dart';
 import 'core/models/group.dart';
 import 'core/models/expense.dart';
 import 'providers/auth_provider.dart';
+import 'core/services/push_notification_service.dart';
 
 
 void main() async {
@@ -114,6 +115,7 @@ class BillSplitterApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(authStateListenerProvider);
+    ref.watch(pushNotificationServiceProvider);
     return ScreenUtilInit(
       designSize: const Size(390, 844),
       minTextAdapt: true,

@@ -151,7 +151,14 @@ class AppRouter {
             final map = state.extra as Map<String, dynamic>;
             final group = map['group'] as Group;
             final expense = map['expense'] as Expense?;
-            return AddExpenseScreen(group: group, expenseToEdit: expense);
+            final scannedAmount = map['scannedAmount'] as String?;
+            final scannedTitle = map['scannedTitle'] as String?;
+            return AddExpenseScreen(
+              group: group,
+              expenseToEdit: expense,
+              scannedAmount: scannedAmount,
+              scannedTitle: scannedTitle,
+            );
           }
           final group = state.extra as Group?;
           if (group == null) {
