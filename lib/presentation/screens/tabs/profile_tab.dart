@@ -10,6 +10,9 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/router/app_router.dart';
 import '../../../providers/profile_provider.dart';
 import '../../../providers/settings_provider.dart';
+import '../../../providers/group_provider.dart';
+import '../../../providers/expense_provider.dart';
+import '../../../core/utils/financial_calculator.dart';
 
 class ProfileTab extends ConsumerWidget {
   const ProfileTab({super.key});
@@ -28,61 +31,61 @@ class ProfileTab extends ConsumerWidget {
     final profileState = ref.watch(profileProvider);
     final profile = profileState.profile;
     final defaultCurrency = ref.watch(defaultCurrencyProvider);
+    final groupState = ref.watch(groupProvider);
+    final expenseState = ref.watch(expenseProvider);
+
+    int totalGroups = groupState.groups.length;
+    int totalExpenses = expenseState.expenses.length;
+    double totalSettled = FinancialCalculator.calculateTotalSettled(expenseState.expenses);
 
     if (profile == null) {
       if (profileState.error != null) {
-        return SizedBox(
-          height: 400.h,
-          child: Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline_rounded,
-                    color: AppColors.coralRed,
-                    size: 48.sp,
-                  ),
-                  SizedBox(height: 16.h),
-                  const AppText(
-                    'Error loading profile',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.white,
-                  ),
-                  SizedBox(height: 8.h),
-                  AppText(
-                    profileState.error!,
-                    fontSize: 13,
-                    color: AppColors.white.withValues(alpha: 0.5),
-                    align: TextAlign.center,
-                  ),
-                  SizedBox(height: 24.h),
-                  ElevatedButton(
-                    onPressed: () =>
-                        ref.read(profileProvider.notifier).fetchProfile(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.onboardingViolet,
-                      foregroundColor: AppColors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
+        return Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24.w),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline_rounded,
+                  color: AppColors.coralRed,
+                  size: 48.sp,
+                ),
+                SizedBox(height: 16.h),
+                const AppText(
+                  'Error loading profile',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.white,
+                ),
+                SizedBox(height: 8.h),
+                AppText(
+                  profileState.error!,
+                  fontSize: 13,
+                  color: AppColors.white.withValues(alpha: 0.5),
+                  align: TextAlign.center,
+                ),
+                SizedBox(height: 24.h),
+                ElevatedButton(
+                  onPressed: () =>
+                      ref.read(profileProvider.notifier).fetchProfile(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.onboardingViolet,
+                    foregroundColor: AppColors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
-                    child: const Text('Retry'),
                   ),
-                ],
-              ),
+                  child: const Text('Retry'),
+                ),
+              ],
             ),
           ),
         );
       }
 
-      return SizedBox(
-        height: 400.h,
-        child: const Center(
-          child: CircularProgressIndicator(color: AppColors.onboardingViolet),
-        ),
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.onboardingViolet),
       );
     }
 
@@ -231,21 +234,21 @@ class ProfileTab extends ConsumerWidget {
               _buildStatCard(
                 icon: Icons.people_outline_rounded,
                 iconColor: AppColors.white.withValues(alpha: 0.5),
-                value: '3',
+                value: '$totalGroups',
                 label: 'Groups',
               ),
               SizedBox(width: 12.w),
               _buildStatCard(
                 icon: Icons.description_outlined,
                 iconColor: AppColors.white.withValues(alpha: 0.5),
-                value: '47',
+                value: '$totalExpenses',
                 label: 'Expenses',
               ),
               SizedBox(width: 12.w),
               _buildStatCard(
                 icon: Icons.check_box_outlined,
                 iconColor: const Color(0xFF10B981),
-                value: '${defaultCurrency}3.2k',
+                value: '$defaultCurrency${totalSettled >= 1000 ? '${(totalSettled / 1000).toStringAsFixed(1)}k' : totalSettled.toStringAsFixed(0)}',
                 label: 'Settled',
               ),
             ],
@@ -356,9 +359,21 @@ class ProfileTab extends ConsumerWidget {
                   title: 'Sign Out',
                   textColor: AppColors.coralRed,
                   onTap: () async {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.onboardingViolet,
+                        ),
+                      ),
+                    );
                     final router = GoRouter.of(context);
                     await Supabase.instance.client.auth.signOut();
                     ref.read(homeTabIndexProvider.notifier).state = 0;
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                    }
                     router.go(AppRouter.login);
                   },
                 ),

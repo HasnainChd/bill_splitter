@@ -58,12 +58,27 @@ class GroupsTab extends ConsumerWidget {
         'statusText': myBalance == 0
             ? 'Settled up'
             : myBalance > 0
-                ? 'You are owed'
-                : 'You owe',
+                ? 'Others owe you'
+                : 'You owe others',
         'isOwed': myBalance > 0,
         'currency': group.currency,
-        'timeText': 'Active · ${DateTime.now().difference(group.createdAt).inDays} days ago',
-        'icon': GroupIconHelper.getGroupIcon(group.name),
+        'timeText': (() {
+          final diff = DateTime.now().difference(group.createdAt.toLocal());
+          final days = diff.inDays.abs();
+          if (days > 0) {
+            return 'Active · $days ${days == 1 ? 'day' : 'days'} ago';
+          }
+          final hours = diff.inHours.abs();
+          if (hours > 0) {
+            return 'Active · $hours ${hours == 1 ? 'hour' : 'hours'} ago';
+          }
+          final minutes = diff.inMinutes.abs();
+          if (minutes > 0) {
+            return 'Active · $minutes ${minutes == 1 ? 'minute' : 'minutes'} ago';
+          }
+          return 'Active · just now';
+        })(),
+        'icon': GroupIconHelper.getIconForGroup(group),
       });
     }
 
@@ -142,7 +157,7 @@ class GroupsTab extends ConsumerWidget {
                 SizedBox(width: 8.w),
                 _buildStatChip(
                   ref: ref,
-                  label: 'Owed $currencyCode ${totalOwed.toStringAsFixed(0)}',
+                  label: 'Others Owe You · $currencyCode ${totalOwed.toStringAsFixed(0)}',
                   filterKey: 'Owed',
                   activeFilter: activeFilter,
                   selectedColor: const Color(0xFF10B981),
@@ -152,7 +167,7 @@ class GroupsTab extends ConsumerWidget {
                 SizedBox(width: 8.w),
                 _buildStatChip(
                   ref: ref,
-                  label: 'Owe $currencyCode ${totalOwe.toStringAsFixed(0)}',
+                  label: 'You Owe Others · $currencyCode ${totalOwe.toStringAsFixed(0)}',
                   filterKey: 'Owe',
                   activeFilter: activeFilter,
                   selectedColor: AppColors.balanceOwed,
@@ -167,15 +182,22 @@ class GroupsTab extends ConsumerWidget {
 
         // ── Groups List ──
         Expanded(
-          child: filteredGroups.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.symmetric(horizontal: 20.w),
-                  itemCount: filteredGroups.length,
-                  itemBuilder: (context, index) =>
-                      _buildGroupCard(context, filteredGroups[index]),
-                ),
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await ref.read(groupProvider.notifier).loadGroups();
+            },
+            child: filteredGroups.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    itemCount: filteredGroups.length,
+                    itemBuilder: (context, index) =>
+                        _buildGroupCard(context, filteredGroups[index]),
+                  ),
+          ),
         ),
       ],
     );
@@ -380,20 +402,27 @@ class GroupsTab extends ConsumerWidget {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.search_off_rounded,
-              size: 48.sp, color: AppColors.white.withValues(alpha: 0.3)),
-          SizedBox(height: 16.h),
-          const AppText(
-            'No groups match your search',
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: AppColors.white,
-          ),
-        ],
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      child: Container(
+        height: 300.h,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off_rounded,
+                size: 48.sp, color: AppColors.white.withValues(alpha: 0.3)),
+            SizedBox(height: 16.h),
+            const AppText(
+              'No groups match your search',
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.white,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -459,14 +488,22 @@ class GroupAvatarsWidget extends ConsumerWidget {
                     color: avatarColor,
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.backgroundDark, width: 2.w),
+                    image: member.avatarUrl.isNotEmpty
+                        ? DecorationImage(
+                            image: NetworkImage(member.avatarUrl),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
                   alignment: Alignment.center,
-                  child: AppText(
-                    initials.toUpperCase(),
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.white,
-                  ),
+                  child: member.avatarUrl.isEmpty
+                      ? AppText(
+                          initials.toUpperCase(),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.white,
+                        )
+                      : null,
                 ),
               );
             }),

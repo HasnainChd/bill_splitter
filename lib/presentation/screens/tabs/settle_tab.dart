@@ -133,14 +133,14 @@ class SettleTab extends ConsumerWidget {
           Row(
             children: [
               _buildSummaryCard(
-                'You Owe',
+                'You Owe Others',
                 '$defaultCurrency ${totalOwe.toStringAsFixed(0)}',
                 '$owePeopleCount ${owePeopleCount == 1 ? 'person' : 'people'}',
                 AppColors.balanceOwed,
               ),
               SizedBox(width: 12.w),
               _buildSummaryCard(
-                'Owed to You',
+                'Others Owe You',
                 '$defaultCurrency ${totalOwedTo.toStringAsFixed(0)}',
                 '$owedPeopleCount ${owedPeopleCount == 1 ? 'person' : 'people'}',
                 AppColors.balanceOwedTo,
@@ -156,7 +156,7 @@ class SettleTab extends ConsumerWidget {
               SizedBox(width: 8.w),
               _buildChip(ref, 'I Owe', settleFilter),
               SizedBox(width: 8.w),
-              _buildChip(ref, 'Owed to Me', settleFilter),
+              _buildChip(ref, 'Others Owe Me', settleFilter),
             ],
           ),
           SizedBox(height: 16.h),
@@ -203,7 +203,7 @@ class SettleTab extends ConsumerWidget {
                     children: [
                       if (settleFilter == 'All' || settleFilter == 'I Owe') ...[
                         if (myOwe.isNotEmpty) ...[
-                          _buildSectionLabel('YOU OWE'),
+                          _buildSectionLabel('YOU OWE OTHERS'),
                           ...myOwe.map((gs) {
                             final otherUserId = gs.settlement.toMember;
                             final otherName = userProfiles[otherUserId]?.fullName ?? 'Other User';
@@ -242,6 +242,7 @@ class SettleTab extends ConsumerWidget {
                                         paidBy: currentUserId,
                                         splitAmong: {otherUserId: gs.settlement.amount},
                                         categoryIconCodePoint: Icons.handshake_rounded.codePoint,
+                                        splitType: 'Equal',
                                       );
                                       if (context.mounted) {
                                         AppSnackBar.showSuccess(
@@ -268,9 +269,9 @@ class SettleTab extends ConsumerWidget {
                           }),
                         ],
                       ],
-                      if (settleFilter == 'All' || settleFilter == 'Owed to Me') ...[
+                      if (settleFilter == 'All' || settleFilter == 'Others Owe Me') ...[
                         if (myOwed.isNotEmpty) ...[
-                          _buildSectionLabel('OWED TO YOU'),
+                          _buildSectionLabel('OTHERS OWE YOU'),
                           ...myOwed.map((gs) {
                             final otherUserId = gs.settlement.fromMember;
                             final otherName = userProfiles[otherUserId]?.fullName ?? 'Other User';
@@ -358,6 +359,7 @@ class SettleTab extends ConsumerWidget {
                                   paidBy: currentUserId,
                                   splitAmong: {otherUserId: gs.settlement.amount},
                                   categoryIconCodePoint: Icons.handshake_rounded.codePoint,
+                                  splitType: 'Equal',
                                 );
                               }
                               if (context.mounted) {

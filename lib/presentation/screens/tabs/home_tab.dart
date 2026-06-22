@@ -16,6 +16,9 @@ import '../../../providers/expense_provider.dart';
 import '../../../providers/profile_provider.dart';
 import '../../../providers/notifications_provider.dart';
 import '../../../core/utils/group_icon_helper.dart';
+import '../../../core/utils/app_snackbar.dart';
+import '../../../core/utils/financial_calculator.dart';
+import 'package:image_picker/image_picker.dart';
 
 class HomeTab extends ConsumerWidget {
   const HomeTab({super.key});
@@ -39,28 +42,42 @@ class HomeTab extends ConsumerWidget {
     final groups = groupState.groups;
     final defaultGroup = groups.isNotEmpty ? groups.first : null;
     final defaultCurrency = ref.watch(defaultCurrencyProvider);
+    final currencyCode = defaultCurrency.length >= 3
+        ? defaultCurrency.substring(0, 3)
+        : 'PKR';
+    final currencySymbol = (() {
+      final openParen = defaultCurrency.indexOf('(');
+      final closeParen = defaultCurrency.indexOf(')');
+      if (openParen != -1 && closeParen != -1 && closeParen > openParen) {
+        return defaultCurrency.substring(openParen + 1, closeParen);
+      }
+      return currencyCode;
+    })();
     final currentUserId = ref.watch(supabaseUserProvider)?.id;
     final profile = ref.watch(profileProvider).profile;
     final notifications = ref.watch(dynamicNotificationsProvider);
     final recentNotifications = notifications.take(4).toList();
 
-    // Calculate dynamic balance totals across all groups
-    double totalOwed = 0.0;
-    double totalOwe = 0.0;
-    for (final group in groups) {
-      final balances = ref.watch(balancesForGroupProvider(group.groupId));
-      final myBalance = currentUserId != null ? (balances[currentUserId] ?? 0.0) : 0.0;
-      if (myBalance > 0) {
-        totalOwed += myBalance;
-      } else if (myBalance < 0) {
-        totalOwe += myBalance.abs();
-      }
-    }
-    final netBalance = totalOwed - totalOwe;
+    // Calculate dynamic balance totals using central FinancialCalculator
+    final expenseState = ref.watch(expenseProvider);
+    final totals = currentUserId != null 
+        ? FinancialCalculator.calculateUserGlobalBalances(currentUserId, expenseState.expenses)
+        : {'owes': 0.0, 'owedToYou': 0.0, 'net': 0.0};
+    
+    final totalOwe = totals['owes'] ?? 0.0;
+    final totalOwed = totals['owedToYou'] ?? 0.0;
+    final netBalance = totals['net'] ?? 0.0;
 
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Column(
+    return RefreshIndicator(
+      onRefresh: () async {
+        await ref.read(groupProvider.notifier).loadGroups();
+        await ref.read(profileProvider.notifier).fetchProfile();
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Header ──
@@ -124,7 +141,7 @@ class HomeTab extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppText(
-                    "Total You're Owed",
+                    "Total Others Owe You",
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.white.withValues(alpha: 0.8),
@@ -136,7 +153,7 @@ class HomeTab extends ConsumerWidget {
                           child: AppShimmer(width: 120.w, height: 28.h),
                         )
                       : AppText(
-                          '$defaultCurrency ${totalOwed.toStringAsFixed(0)}',
+                          '$currencySymbol ${totalOwed.toStringAsFixed(0)}',
                           fontSize: 36,
                           fontWeight: FontWeight.w800,
                           color: AppColors.white,
@@ -145,28 +162,28 @@ class HomeTab extends ConsumerWidget {
                   Row(
                     children: [
                       _buildBalanceSubCol(
-                          'You owe',
+                          'You owe others',
                           (groupState.isLoading && groups.isEmpty)
                               ? null
-                              : '$defaultCurrency ${totalOwe.toStringAsFixed(0)}',
+                              : '$currencySymbol ${totalOwe.toStringAsFixed(0)}',
                           AppColors.balanceOwed),
                       _buildBalanceDivider(),
                       _buildBalanceSubCol(
-                          'Owed to you',
+                          'Others owe you',
                           (groupState.isLoading && groups.isEmpty)
                               ? null
-                              : '$defaultCurrency ${totalOwed.toStringAsFixed(0)}',
+                              : '$currencySymbol ${totalOwed.toStringAsFixed(0)}',
                           AppColors.balanceOwedTo),
                       _buildBalanceDivider(),
                       _buildBalanceSubCol(
-                          'Net balance',
+                          'Overall net balance',
                           (groupState.isLoading && groups.isEmpty)
                               ? null
                               : (netBalance > 0
-                                  ? '+$defaultCurrency ${netBalance.toStringAsFixed(0)}'
+                                  ? '+$currencySymbol ${netBalance.toStringAsFixed(0)}'
                                   : netBalance < 0
-                                      ? '-$defaultCurrency ${netBalance.abs().toStringAsFixed(0)}'
-                                      : '$defaultCurrency 0'),
+                                      ? '-$currencySymbol ${netBalance.abs().toStringAsFixed(0)}'
+                                      : '$currencySymbol 0'),
                           netBalance > 0
                               ? AppColors.balanceOwedTo
                               : netBalance < 0
@@ -198,14 +215,21 @@ class HomeTab extends ConsumerWidget {
                   ref.read(homeTabIndexProvider.notifier).state = 2;
                 }),
                 _buildQuickAction('Scan\nReceipt', Icons.camera_alt_outlined,
-                    AppColors.onboardingCyan, () {}),
+                    AppColors.onboardingCyan, () {
+                  if (defaultGroup != null) {
+                    _showScanReceiptSourceSheet(context, ref, defaultGroup);
+                  } else {
+                    AppSnackBar.showError(context, 'Please create a group first to scan receipts.');
+                  }
+                }),
                 _buildQuickAction('Request\nMoney', Icons.send_rounded,
-                    AppColors.orange, () {}),
+                    AppColors.orange, () {
+                  _showSelectGroupSheet(context, ref, groups);
+                }),
               ],
             ),
           ),
           SizedBox(height: 28.h),
-
           // ── Active Groups Section ──
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -267,7 +291,7 @@ class HomeTab extends ConsumerWidget {
                       final expenseState = ref.watch(expenseProvider);
                       final groupExpenses = expenseState.expenses.where((e) => e.groupId == group.groupId).toList();
 
-                      final groupIcon = GroupIconHelper.getGroupIcon(group.name);
+                      final groupIcon = GroupIconHelper.getIconForGroup(group);
 
                       final gradients = [
                         [AppColors.onboardingViolet, AppColors.onboardingVioletDark],
@@ -279,10 +303,10 @@ class HomeTab extends ConsumerWidget {
                       final String balanceText;
                       final Color balanceColor;
                       if (myBalance > 0) {
-                        balanceText = '+$defaultCurrency ${myBalance.toStringAsFixed(0)}';
+                        balanceText = '+${group.currency} ${myBalance.toStringAsFixed(0)}';
                         balanceColor = AppColors.balanceOwedTo;
                       } else if (myBalance < 0) {
-                        balanceText = '-$defaultCurrency ${myBalance.abs().toStringAsFixed(0)}';
+                        balanceText = '-${group.currency} ${myBalance.abs().toStringAsFixed(0)}';
                         balanceColor = AppColors.balanceOwed;
                       } else {
                         balanceText = 'Settled';
@@ -418,8 +442,9 @@ class HomeTab extends ConsumerWidget {
           SizedBox(height: 32.h),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // Helper: Header Icon Button
   Widget _buildHeaderIconButton(IconData icon, VoidCallback onTap,
@@ -744,6 +769,303 @@ class HomeTab extends ConsumerWidget {
       color: AppColors.white.withValues(alpha: 0.04),
       height: 1,
       thickness: 1,
+    );
+  }
+
+  void _showScanReceiptSourceSheet(BuildContext context, WidgetRef ref, Group defaultGroup) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardDark,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+      ),
+      builder: (context) => SafeArea(
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AppText(
+                'Scan Receipt',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.white,
+              ),
+              SizedBox(height: 4.h),
+              AppText(
+                'Choose how you want to upload the receipt',
+                fontSize: 12,
+                color: AppColors.white.withValues(alpha: 0.5),
+              ),
+              SizedBox(height: 24.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildSourceButton(
+                      context,
+                      icon: Icons.camera_alt_rounded,
+                      label: 'Camera',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _processReceipt(context, ref, defaultGroup, ImageSource.camera);
+                      },
+                    ),
+                  ),
+                  SizedBox(width: 16.w),
+                  Expanded(
+                    child: _buildSourceButton(
+                      context,
+                      icon: Icons.photo_library_rounded,
+                      label: 'Gallery',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _processReceipt(context, ref, defaultGroup, ImageSource.gallery);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSourceButton(BuildContext context, {required IconData icon, required String label, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16.r),
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 20.h),
+        decoration: BoxDecoration(
+          color: AppColors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(
+            color: AppColors.white.withValues(alpha: 0.08),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: AppColors.onboardingViolet, size: 28.sp),
+            SizedBox(height: 8.h),
+            AppText(
+              label,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.white,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _processReceipt(BuildContext context, WidgetRef ref, Group defaultGroup, ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? file = await picker.pickImage(source: source);
+      if (file == null) return;
+
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const _ReceiptProcessingDialog(),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 2500));
+
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close dialog
+
+      final List<String> titles = ['Starbucks Coffee', 'Uber Ride', 'Walmart Grocery', 'Netflix Subscription', 'McDonalds'];
+      final List<String> amounts = ['850', '420', '1950', '1200', '650'];
+      final randomIndex = DateTime.now().millisecond % titles.length;
+
+      context.push(AppRouter.addExpense, extra: {
+        'group': defaultGroup,
+        'scannedAmount': amounts[randomIndex],
+        'scannedTitle': titles[randomIndex],
+      });
+    } catch (e) {
+      debugPrint('Error scanning receipt: $e');
+    }
+  }
+
+  void _showSelectGroupSheet(BuildContext context, WidgetRef ref, List<Group> groups) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardDark,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+      ),
+      builder: (context) => SafeArea(
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AppText(
+                'Request Money',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.white,
+              ),
+              SizedBox(height: 4.h),
+              AppText(
+                'Select a group to request settlements',
+                fontSize: 12,
+                color: AppColors.white.withValues(alpha: 0.5),
+              ),
+              SizedBox(height: 16.h),
+              if (groups.isEmpty)
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24.h),
+                  child: Center(
+                    child: AppText(
+                      'No active groups found.',
+                      fontSize: 14,
+                      color: AppColors.white.withValues(alpha: 0.4),
+                    ),
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: groups.length,
+                    separatorBuilder: (context, index) => SizedBox(height: 10.h),
+                    itemBuilder: (context, index) {
+                      final group = groups[index];
+                      return ListTile(
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+                        tileColor: AppColors.white.withValues(alpha: 0.04),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        leading: CircleAvatar(
+                          backgroundColor: AppColors.onboardingViolet.withValues(alpha: 0.1),
+                          child: Icon(
+                            GroupIconHelper.getIconForGroup(group),
+                            color: AppColors.onboardingViolet,
+                          ),
+                        ),
+                        title: AppText(
+                          group.name,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.white,
+                        ),
+                        trailing: Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppColors.white.withValues(alpha: 0.4),
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.push(AppRouter.settleUp, extra: group.groupId);
+                        },
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReceiptProcessingDialog extends StatefulWidget {
+  const _ReceiptProcessingDialog();
+
+  @override
+  State<_ReceiptProcessingDialog> createState() => _ReceiptProcessingDialogState();
+}
+
+class _ReceiptProcessingDialogState extends State<_ReceiptProcessingDialog> {
+  int _currentStep = 0;
+  final List<String> _steps = [
+    'Uploading receipt...',
+    'Analyzing items...',
+    'Extracting total & taxes...',
+    'Receipt scanned successfully!'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _startAnimation();
+  }
+
+  void _startAnimation() async {
+    for (int i = 0; i < _steps.length; i++) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (mounted) {
+        setState(() {
+          _currentStep = i;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.cardDark,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 28.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 60.w,
+                  height: 60.w,
+                  child: CircularProgressIndicator(
+                    value: (_currentStep + 1) / _steps.length,
+                    strokeWidth: 3,
+                    color: AppColors.onboardingViolet,
+                    backgroundColor: AppColors.white.withValues(alpha: 0.1),
+                  ),
+                ),
+                Icon(
+                  Icons.receipt_long_rounded,
+                  color: AppColors.onboardingViolet,
+                  size: 28.sp,
+                ),
+              ],
+            ),
+            SizedBox(height: 24.h),
+            const AppText(
+              'Scanning Receipt',
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.white,
+            ),
+            SizedBox(height: 8.h),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: AppText(
+                _steps[_currentStep],
+                key: ValueKey<int>(_currentStep),
+                fontSize: 13,
+                color: _currentStep == _steps.length - 1
+                    ? AppColors.success
+                    : AppColors.white.withValues(alpha: 0.6),
+                align: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

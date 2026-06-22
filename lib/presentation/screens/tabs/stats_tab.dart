@@ -5,6 +5,9 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_text.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../providers/settings_provider.dart';
+import '../../../providers/expense_provider.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../core/utils/financial_calculator.dart';
 
 final statsPeriodProvider = StateProvider.autoDispose<String>((ref) => '6M');
 final selectedStatsMonthProvider =
@@ -19,22 +22,25 @@ class StatsTab extends ConsumerWidget {
     final selectedMonth = ref.watch(selectedStatsMonthProvider);
     final defaultCurrency = ref.watch(defaultCurrencyProvider);
 
+    final expenseState = ref.watch(expenseProvider);
+    final currentUserId = ref.watch(supabaseUserProvider)?.id;
+
     // Dynamic metrics based on active period selection
-    String spentVal = '$defaultCurrency 2070';
-    String receivedVal = '$defaultCurrency 2590';
-    String netVal = '+$defaultCurrency 520';
-    if (activePeriod == '1M') {
-      spentVal = '$defaultCurrency 412';
-      receivedVal = '$defaultCurrency 620';
-      netVal = '+$defaultCurrency 208';
-    } else if (activePeriod == '3M') {
-      spentVal = '$defaultCurrency 1180';
-      receivedVal = '$defaultCurrency 1450';
-      netVal = '+$defaultCurrency 270';
-    } else if (activePeriod == '1Y') {
-      spentVal = '$defaultCurrency 4310';
-      receivedVal = '$defaultCurrency 5100';
-      netVal = '+$defaultCurrency 790';
+    String spentVal = '$defaultCurrency 0';
+    String receivedVal = '$defaultCurrency 0';
+    String netVal = '+$defaultCurrency 0';
+
+    if (currentUserId != null) {
+      // In a fully built app, we'd filter expenses by activePeriod here
+      // For now, we use all expenses dynamically to ensure synchronization
+      final totals = FinancialCalculator.calculateUserGlobalBalances(currentUserId, expenseState.expenses);
+      final owes = totals['owes'] ?? 0.0;
+      final owedToYou = totals['owedToYou'] ?? 0.0;
+      final net = totals['net'] ?? 0.0;
+
+      spentVal = '$defaultCurrency ${owes.toStringAsFixed(0)}';
+      receivedVal = '$defaultCurrency ${owedToYou.toStringAsFixed(0)}';
+      netVal = '${net >= 0 ? '+' : '-'}$defaultCurrency ${net.abs().toStringAsFixed(0)}';
     }
 
     return SafeArea(
