@@ -140,17 +140,20 @@ class GroupNotifier extends StateNotifier<GroupState> {
         await box.put(group.groupId, group);
       }
 
+      if (!mounted) return;
       state = state.copyWith(groups: groupsList, isLoading: false);
     } catch (e) {
       debugPrint('Error loading groups: $e');
       try {
         final box = await Hive.openBox<Group>('groups');
+        if (!mounted) return;
         state = state.copyWith(
           groups: box.values.toList(),
           isLoading: false,
           error: 'Offline mode: $e',
         );
       } catch (boxError) {
+        if (!mounted) return;
         state = state.copyWith(
           isLoading: false,
           error: 'Failed to load groups: $e (Cache: $boxError)',
@@ -196,6 +199,7 @@ class GroupNotifier extends StateNotifier<GroupState> {
       // 3. Reload from remote to update local state and Hive cache
       await loadGroups();
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(error: 'Failed to add group: $e');
       rethrow;
     }
@@ -212,6 +216,7 @@ class GroupNotifier extends StateNotifier<GroupState> {
       // Reload groups to update local state and Hive cache
       await loadGroups();
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(error: 'Failed to add member: $e');
       rethrow;
     }
@@ -238,10 +243,12 @@ class GroupNotifier extends StateNotifier<GroupState> {
         return group.groupId == updatedGroup.groupId ? updatedGroup : group;
       }).toList();
 
+      if (!mounted) return;
       state = state.copyWith(groups: updatedGroups);
       final box = await Hive.openBox<Group>('groups');
       await box.put(updatedGroup.groupId, updatedGroup);
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(error: 'Failed to update group: $e');
       rethrow;
     }
@@ -254,11 +261,14 @@ class GroupNotifier extends StateNotifier<GroupState> {
 
       final updatedGroups =
           state.groups.where((group) => group.groupId != groupId).toList();
+
+      if (!mounted) return;
       state = state.copyWith(groups: updatedGroups);
 
       final box = await Hive.openBox<Group>('groups');
       await box.delete(groupId);
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(error: 'Failed to delete group: $e');
       rethrow;
     }

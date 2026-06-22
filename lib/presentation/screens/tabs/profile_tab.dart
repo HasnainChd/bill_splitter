@@ -13,6 +13,7 @@ import '../../../providers/settings_provider.dart';
 import '../../../providers/group_provider.dart';
 import '../../../providers/expense_provider.dart';
 import '../../../core/utils/financial_calculator.dart';
+import 'package:share_plus/share_plus.dart';
 
 class ProfileTab extends ConsumerWidget {
   const ProfileTab({super.key});
@@ -116,7 +117,7 @@ class ProfileTab extends ConsumerWidget {
                 width: 42.w,
                 height: 42.w,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1C38),
+                  color: AppColors.primaryMid,
                   borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: IconButton(
@@ -268,18 +269,22 @@ class ProfileTab extends ConsumerWidget {
                   label: 'Early Adopter',
                   color: AppColors.onboardingViolet,
                 ),
-                SizedBox(width: 8.w),
-                _buildAchievementBadge(
-                  icon: Icons.emoji_events_rounded,
-                  label: 'Top Settler',
-                  color: const Color(0xFF10B981),
-                ),
-                SizedBox(width: 8.w),
-                _buildAchievementBadge(
-                  icon: Icons.workspace_premium_rounded,
-                  label: 'Group Creator',
-                  color: const Color(0xFFF59E0B),
-                ),
+                if (totalSettled >= 100) ...[
+                  SizedBox(width: 8.w),
+                  _buildAchievementBadge(
+                    icon: Icons.emoji_events_rounded,
+                    label: 'Top Settler',
+                    color: AppColors.success,
+                  ),
+                ],
+                if (totalGroups >= 3) ...[
+                  SizedBox(width: 8.w),
+                  _buildAchievementBadge(
+                    icon: Icons.workspace_premium_rounded,
+                    label: 'Group Creator',
+                    color: AppColors.catGeneral,
+                  ),
+                ],
               ],
             ),
           ),
@@ -291,28 +296,66 @@ class ProfileTab extends ConsumerWidget {
           AppCard(
             padding: EdgeInsets.zero,
             child: Column(
-              children: [
-                _buildActiveGroupItem(
-                  emoji: '✈️',
-                  name: 'Barcelona Trip',
-                  amount: '+$defaultCurrency 337',
-                  amountColor: const Color(0xFF00C896),
-                ),
-                _buildDivider(),
-                _buildActiveGroupItem(
-                  emoji: '🏠',
-                  name: 'Grove Apt',
-                  amount: '+$defaultCurrency 740',
-                  amountColor: const Color(0xFF00C896),
-                ),
-                _buildDivider(),
-                _buildActiveGroupItem(
-                  emoji: '🍕',
-                  name: 'Dinner Crew',
-                  amount: '-$defaultCurrency 41',
-                  amountColor: AppColors.coralRed,
-                ),
-              ],
+              children: () {
+                final sortedGroups = List.from(groupState.groups)
+                  ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                final topGroups = sortedGroups.take(3).toList();
+                
+                if (topGroups.isEmpty) {
+                  return [
+                    Padding(
+                      padding: EdgeInsets.all(24.w),
+                      child: Center(
+                        child: AppText(
+                          'No active groups yet',
+                          color: AppColors.white.withValues(alpha: 0.4),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ];
+                }
+
+                // Prepare grouped expenses
+                final Map<String, List> groupExpensesMap = {};
+                for (final e in expenseState.expenses) {
+                  groupExpensesMap.putIfAbsent(e.groupId, () => []).add(e);
+                }
+
+                List<Widget> groupWidgets = [];
+                for (int i = 0; i < topGroups.length; i++) {
+                  final g = topGroups[i];
+                  final groupExps = groupExpensesMap[g.groupId] ?? [];
+                  final balances = FinancialCalculator.calculateGroupBalances(List.from(groupExps));
+                  final myBalance = balances[profile.id] ?? 0.0;
+                  
+                  String amountStr;
+                  Color amountColor;
+                  if (myBalance < -0.01) {
+                      amountStr = '-$defaultCurrency ${myBalance.abs().toStringAsFixed(0)}';
+                      amountColor = AppColors.avatarRose;
+                  } else if (myBalance > 0.01) {
+                      amountStr = '+$defaultCurrency ${myBalance.toStringAsFixed(0)}';
+                      amountColor = AppColors.success;
+                  } else {
+                      amountStr = 'Settled';
+                      amountColor = AppColors.white.withValues(alpha: 0.5);
+                  }
+                  
+                  groupWidgets.add(
+                    _buildActiveGroupItem(
+                      iconCodePoint: g.iconCodePoint,
+                      name: g.name,
+                      amount: amountStr,
+                      amountColor: amountColor,
+                    ),
+                  );
+                  if (i < topGroups.length - 1) {
+                    groupWidgets.add(_buildDivider());
+                  }
+                }
+                return groupWidgets;
+              }(),
             ),
           ),
           SizedBox(height: 24.h),
@@ -337,21 +380,10 @@ class ProfileTab extends ConsumerWidget {
                 _buildMenuRowItem(
                   emoji: '👋',
                   title: 'Invite Friends',
-                  trailingBadge: Container(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    child: AppText(
-                      'Get $defaultCurrency 5',
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF10B981),
-                    ),
-                  ),
-                  onTap: () {},
+                  onTap: () async {
+                    // ignore: deprecated_member_use
+                    await Share.share('Join me on Divvy to easily split bills! Download here: https://divvy.app');
+                  },
                 ),
                 _buildDivider(),
                 _buildMenuRowItem(
@@ -462,7 +494,7 @@ class ProfileTab extends ConsumerWidget {
   }
 
   Widget _buildActiveGroupItem({
-    required String emoji,
+    required int? iconCodePoint,
     required String name,
     required String amount,
     required Color amountColor,
@@ -475,13 +507,14 @@ class ProfileTab extends ConsumerWidget {
             width: 40.w,
             height: 40.w,
             decoration: BoxDecoration(
-              color: const Color(0xFF1E1C38),
+              color: AppColors.primaryMid,
               borderRadius: BorderRadius.circular(12.r),
             ),
             alignment: Alignment.center,
-            child: AppText(
-              emoji,
-              fontSize: 16,
+            child: Icon(
+              iconCodePoint != null ? IconData(iconCodePoint, fontFamily: 'MaterialIcons') : Icons.group_rounded,
+              color: AppColors.white,
+              size: 20.sp,
             ),
           ),
           SizedBox(width: 12.w),
