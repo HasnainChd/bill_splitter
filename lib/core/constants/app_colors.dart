@@ -52,6 +52,14 @@ class AppColors {
   static const Color successDark =
       Color(0xFF00B084); // Settle All button gradient end
 
+  // Category Colors
+  static const Color catFood = Color(0xFF6366F1); // Indigo
+  static const Color catTravel = Color(0xFF0EA5E9); // Sky Blue
+  static const Color catHousing = Color(0xFF10B981); // Emerald
+  static const Color catUtilities = Color(0xFF8B5CF6); // Purple
+  static const Color catEntertainment = Color(0xFFEC4899); // Pink
+  static const Color catGeneral = Color(0xFFF59E0B); // Amber
+
   // Group Card Gradient Colors
   static const Color groupBlue = Color(0xFF0EA5E9);
   static const Color groupBlueDark = Color(0xFF0284C7);

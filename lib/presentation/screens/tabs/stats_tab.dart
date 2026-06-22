@@ -8,10 +8,12 @@ import '../../../providers/settings_provider.dart';
 import '../../../providers/expense_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../core/utils/financial_calculator.dart';
+import 'package:intl/intl.dart';
 
 final statsPeriodProvider = StateProvider.autoDispose<String>((ref) => '6M');
-final selectedStatsMonthProvider =
-    StateProvider.autoDispose<String>((ref) => 'May');
+final selectedStatsMonthProvider = StateProvider.autoDispose<String>((ref) {
+  return DateFormat('MMM').format(DateTime.now());
+});
 
 class StatsTab extends ConsumerWidget {
   const StatsTab({super.key});
@@ -25,22 +27,208 @@ class StatsTab extends ConsumerWidget {
     final expenseState = ref.watch(expenseProvider);
     final currentUserId = ref.watch(supabaseUserProvider)?.id;
 
+    final currencyCode = defaultCurrency.length >= 3
+        ? defaultCurrency.substring(0, 3)
+        : 'PKR';
+    final currencySymbol = (() {
+      final openParen = defaultCurrency.indexOf('(');
+      final closeParen = defaultCurrency.indexOf(')');
+      if (openParen != -1 && closeParen != -1 && closeParen > openParen) {
+        return defaultCurrency.substring(openParen + 1, closeParen);
+      }
+      return currencyCode;
+    })();
+
     // Dynamic metrics based on active period selection
-    String spentVal = '$defaultCurrency 0';
-    String receivedVal = '$defaultCurrency 0';
-    String netVal = '+$defaultCurrency 0';
+    String spentVal = '$currencySymbol 0';
+    String receivedVal = '$currencySymbol 0';
+    String netVal = '+$currencySymbol 0';
+    String spentSubtitle = 'No change vs last period';
+    String receivedSubtitle = 'No change vs last period';
+    String netSubtitle = 'No change vs last period';
 
     if (currentUserId != null) {
-      // In a fully built app, we'd filter expenses by activePeriod here
-      // For now, we use all expenses dynamically to ensure synchronization
-      final totals = FinancialCalculator.calculateUserGlobalBalances(currentUserId, expenseState.expenses);
+      // Filter expenses based on activePeriod
+      final now = DateTime.now();
+      DateTime startDate;
+      DateTime prevStartDate;
+      
+      switch (activePeriod) {
+        case '1M': 
+          startDate = DateTime(now.year, now.month - 1, now.day); 
+          prevStartDate = DateTime(now.year, now.month - 2, now.day);
+          break;
+        case '3M': 
+          startDate = DateTime(now.year, now.month - 3, now.day); 
+          prevStartDate = DateTime(now.year, now.month - 6, now.day);
+          break;
+        case '1Y': 
+          startDate = DateTime(now.year - 1, now.month, now.day); 
+          prevStartDate = DateTime(now.year - 2, now.month, now.day);
+          break;
+        case '6M':
+        default: 
+          startDate = DateTime(now.year, now.month - 6, now.day); 
+          prevStartDate = DateTime(now.year, now.month - 12, now.day);
+          break;
+      }
+
+      final filteredExpenses = expenseState.expenses.where((e) => e.date.isAfter(startDate)).toList();
+      final prevFilteredExpenses = expenseState.expenses.where((e) => e.date.isAfter(prevStartDate) && e.date.isBefore(startDate)).toList();
+
+      final totals = FinancialCalculator.calculateUserGlobalBalances(currentUserId, filteredExpenses);
+      final prevTotals = FinancialCalculator.calculateUserGlobalBalances(currentUserId, prevFilteredExpenses);
+
       final owes = totals['owes'] ?? 0.0;
       final owedToYou = totals['owedToYou'] ?? 0.0;
       final net = totals['net'] ?? 0.0;
+      
+      final prevOwes = prevTotals['owes'] ?? 0.0;
+      final prevOwedToYou = prevTotals['owedToYou'] ?? 0.0;
+      final prevNet = prevTotals['net'] ?? 0.0;
 
-      spentVal = '$defaultCurrency ${owes.toStringAsFixed(0)}';
-      receivedVal = '$defaultCurrency ${owedToYou.toStringAsFixed(0)}';
-      netVal = '${net >= 0 ? '+' : '-'}$defaultCurrency ${net.abs().toStringAsFixed(0)}';
+      String getChangeStr(double current, double prev) {
+         if (prev == 0) return current > 0 ? '↑ 100% vs last period' : 'No change vs last period';
+         double diff = current - prev;
+         double pct = (diff.abs() / prev) * 100;
+         if (pct < 1) return 'No change vs last period';
+         return '${diff > 0 ? '↑' : '↓'} ${pct.toStringAsFixed(0)}% vs last period';
+      }
+
+      spentVal = '$currencySymbol ${owes.toStringAsFixed(0)}';
+      receivedVal = '$currencySymbol ${owedToYou.toStringAsFixed(0)}';
+      netVal = '${net >= 0 ? '+' : '-'}$currencySymbol ${net.abs().toStringAsFixed(0)}';
+      
+      spentSubtitle = getChangeStr(owes, prevOwes);
+      receivedSubtitle = getChangeStr(owedToYou, prevOwedToYou);
+      
+      if (prevNet == 0) {
+          netSubtitle = net != 0 ? 'Changed vs last period' : 'No change vs last period';
+      } else {
+          double netDiff = net - prevNet;
+          double netPct = (netDiff.abs() / prevNet.abs()) * 100;
+          if (netPct < 1) netSubtitle = 'No change vs last period';
+          else netSubtitle = '${netDiff > 0 ? '↑' : '↓'} ${netPct.toStringAsFixed(0)}% vs last period';
+      }
+    }
+
+    // --- Dynamic Monthly Chart ---
+    final now = DateTime.now();
+    final last6Months = <DateTime>[];
+    for (int i = 5; i >= 0; i--) {
+      last6Months.add(DateTime(now.year, now.month - i, 1));
+    }
+
+    Map<String, double> spentPerMonth = {};
+    Map<String, double> receivedPerMonth = {};
+
+    if (currentUserId != null) {
+      for (var monthDate in last6Months) {
+         final monthKey = DateFormat('MMM yyyy').format(monthDate);
+         final monthExpenses = expenseState.expenses.where((e) {
+             return e.date.year == monthDate.year && e.date.month == monthDate.month;
+         }).toList();
+         
+         final monthTotals = FinancialCalculator.calculateUserGlobalBalances(currentUserId, monthExpenses);
+         spentPerMonth[monthKey] = monthTotals['owes'] ?? 0.0;
+         receivedPerMonth[monthKey] = monthTotals['owedToYou'] ?? 0.0;
+      }
+    }
+
+    double maxMonthVal = 1.0; // avoid division by zero
+    for (var m in last6Months) {
+       final mk = DateFormat('MMM yyyy').format(m);
+       if ((spentPerMonth[mk] ?? 0) > maxMonthVal) maxMonthVal = spentPerMonth[mk]!;
+       if ((receivedPerMonth[mk] ?? 0) > maxMonthVal) maxMonthVal = receivedPerMonth[mk]!;
+    }
+
+    final double maxBarHeight = 120.h;
+    List<Widget> barWidgets = last6Months.map((m) {
+       final mk = DateFormat('MMM yyyy').format(m);
+       final label = DateFormat('MMM').format(m);
+       final spent = spentPerMonth[mk] ?? 0;
+       final received = receivedPerMonth[mk] ?? 0;
+       
+       return _buildDualBar(
+          ref, 
+          label, 
+          (spent / maxMonthVal) * maxBarHeight, 
+          (received / maxMonthVal) * maxBarHeight, 
+          selectedMonth,
+          showBadge: label == selectedMonth,
+          badgeText: '$currencySymbol ${(spent + received).toStringAsFixed(0)}'
+       );
+    }).toList();
+
+    // --- Dynamic Categories ---
+    DateTime filterStartDate;
+    switch (activePeriod) {
+      case '1M': filterStartDate = DateTime(now.year, now.month - 1, now.day); break;
+      case '3M': filterStartDate = DateTime(now.year, now.month - 3, now.day); break;
+      case '1Y': filterStartDate = DateTime(now.year - 1, now.month, now.day); break;
+      case '6M':
+      default: filterStartDate = DateTime(now.year, now.month - 6, now.day); break;
+    }
+    final filteredCatExpenses = expenseState.expenses.where((e) => e.date.isAfter(filterStartDate)).toList();
+
+    Map<String, double> categoryTotals = {};
+    double totalFilteredAmount = 0;
+
+    for (var e in filteredCatExpenses) {
+       String catName = 'Other';
+       if (e.categoryIconCodePoint == Icons.restaurant_rounded.codePoint || e.categoryIconCodePoint == Icons.local_pizza_rounded.codePoint || e.categoryIconCodePoint == Icons.local_cafe_rounded.codePoint || e.categoryIconCodePoint == Icons.local_bar_rounded.codePoint || e.categoryIconCodePoint == Icons.shopping_basket_rounded.codePoint) {
+         catName = 'Dining & Groceries';
+       } else if (e.categoryIconCodePoint == Icons.flight_takeoff_rounded.codePoint || e.categoryIconCodePoint == Icons.directions_car_rounded.codePoint || e.categoryIconCodePoint == Icons.hotel_rounded.codePoint || e.categoryIconCodePoint == Icons.directions_boat_rounded.codePoint || e.categoryIconCodePoint == Icons.map_rounded.codePoint) {
+         catName = 'Travel';
+       } else if (e.categoryIconCodePoint == Icons.home_rounded.codePoint || e.categoryIconCodePoint == Icons.apartment_rounded.codePoint || e.categoryIconCodePoint == Icons.weekend_rounded.codePoint || e.categoryIconCodePoint == Icons.bolt_rounded.codePoint || e.categoryIconCodePoint == Icons.water_drop_rounded.codePoint) {
+         catName = 'Housing & Utilities';
+       } else if (e.categoryIconCodePoint == Icons.celebration_rounded.codePoint || e.categoryIconCodePoint == Icons.movie_creation_rounded.codePoint || e.categoryIconCodePoint == Icons.sports_esports_rounded.codePoint || e.categoryIconCodePoint == Icons.sports_soccer_rounded.codePoint || e.categoryIconCodePoint == Icons.shopping_bag_rounded.codePoint) {
+         catName = 'Life & Entertainment';
+       } else {
+         catName = 'General';
+       }
+
+       categoryTotals[catName] = (categoryTotals[catName] ?? 0) + e.amount;
+       totalFilteredAmount += e.amount;
+    }
+
+    final sortedCategories = categoryTotals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    List<Widget> categoryWidgets = [];
+    if (sortedCategories.isEmpty) {
+        categoryWidgets.add(Padding(
+          padding: EdgeInsets.all(24.w),
+          child: AppText('No expenses found for this period.', color: AppColors.white.withValues(alpha: 0.5)),
+        ));
+    } else {
+        for (int i = 0; i < sortedCategories.length; i++) {
+            final cat = sortedCategories[i];
+            final pct = totalFilteredAmount > 0 ? (cat.value / totalFilteredAmount) : 0.0;
+            
+            IconData icon = Icons.category_rounded;
+            Color iconColor = AppColors.catGeneral;
+            if (cat.key.toLowerCase().contains('food') || cat.key.toLowerCase().contains('din')) { icon = Icons.restaurant_rounded; iconColor = AppColors.catFood; }
+            else if (cat.key.toLowerCase().contains('travel') || cat.key.toLowerCase().contains('trans')) { icon = Icons.flight_takeoff_rounded; iconColor = AppColors.catTravel; }
+            else if (cat.key.toLowerCase().contains('hous') || cat.key.toLowerCase().contains('rent')) { icon = Icons.home_filled; iconColor = AppColors.catHousing; }
+            else if (cat.key.toLowerCase().contains('util')) { icon = Icons.bolt_rounded; iconColor = AppColors.catUtilities; }
+            else if (cat.key.toLowerCase().contains('entert')) { icon = Icons.theater_comedy_rounded; iconColor = AppColors.catEntertainment; }
+
+            categoryWidgets.add(
+                _buildCategoryRow(
+                   icon: icon,
+                   iconColor: iconColor,
+                   title: cat.key,
+                   amount: '$currencySymbol ${cat.value.toStringAsFixed(0)}',
+                   percentage: '${(pct * 100).toStringAsFixed(0)}%',
+                   progress: pct,
+                   themeColor: iconColor,
+                )
+            );
+            if (i < sortedCategories.length - 1) {
+                categoryWidgets.add(_buildCategoryDivider());
+            }
+        }
     }
 
     return SafeArea(
@@ -131,8 +319,8 @@ class StatsTab extends ConsumerWidget {
                           child: _buildMetricCard(
                             title: 'Total Spent',
                             value: spentVal,
-                            subtitle: '↓ 12% vs last period',
-                            valueColor: const Color(0xFFF43F5E), // Red/coral
+                            subtitle: spentSubtitle,
+                            valueColor: AppColors.avatarRose,
                           ),
                         ),
                         SizedBox(width: 8.w),
@@ -140,8 +328,8 @@ class StatsTab extends ConsumerWidget {
                           child: _buildMetricCard(
                             title: 'Received',
                             value: receivedVal,
-                            subtitle: '↑ 24% vs last period',
-                            valueColor: const Color(0xFF10B981), // Green
+                            subtitle: receivedSubtitle,
+                            valueColor: AppColors.success,
                           ),
                         ),
                         SizedBox(width: 8.w),
@@ -149,8 +337,8 @@ class StatsTab extends ConsumerWidget {
                           child: _buildMetricCard(
                             title: 'Net',
                             value: netVal,
-                            subtitle: 'Overall balance',
-                            valueColor: const Color(0xFF10B981), // Green
+                            subtitle: netSubtitle,
+                            valueColor: netVal.startsWith('-') ? AppColors.avatarRose : AppColors.success,
                           ),
                         ),
                       ],
@@ -175,10 +363,10 @@ class StatsTab extends ConsumerWidget {
                               Row(
                                 children: [
                                   _buildLegendDot(
-                                      const Color(0xFFF43F5E), 'Spent'),
+                                      AppColors.avatarRose, 'Spent'),
                                   SizedBox(width: 12.w),
                                   _buildLegendDot(
-                                      const Color(0xFF10B981), 'Received'),
+                                      AppColors.success, 'Received'),
                                 ],
                               ),
                             ],
@@ -188,21 +376,7 @@ class StatsTab extends ConsumerWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              _buildDualBar(
-                                  ref, 'Jan', 40.h, 20.h, selectedMonth),
-                              _buildDualBar(
-                                  ref, 'Feb', 80.h, 60.h, selectedMonth),
-                              _buildDualBar(
-                                  ref, 'Mar', 30.h, 80.h, selectedMonth),
-                              _buildDualBar(
-                                  ref, 'Apr', 88.h, 50.h, selectedMonth),
-                              _buildDualBar(
-                                  ref, 'May', 75.h, 100.h, selectedMonth,
-                                  showBadge: true, badgeText: '$defaultCurrency 620'),
-                              _buildDualBar(
-                                  ref, 'Jun', 35.h, 120.h, selectedMonth),
-                            ],
+                            children: barWidgets,
                           ),
                         ],
                       ),
@@ -222,47 +396,7 @@ class StatsTab extends ConsumerWidget {
                     AppCard(
                       padding: EdgeInsets.zero,
                       child: Column(
-                        children: [
-                          _buildCategoryRow(
-                            icon: Icons.restaurant_rounded,
-                            iconColor: const Color(0xFF6366F1),
-                            title: 'Food & Dining',
-                            amount: '$defaultCurrency 412',
-                            percentage: '38%',
-                            progress: 0.38,
-                            themeColor: const Color(0xFF6366F1),
-                          ),
-                          _buildCategoryDivider(),
-                          _buildCategoryRow(
-                            icon: Icons.flight_takeoff_rounded,
-                            iconColor: const Color(0xFF0EA5E9),
-                            title: 'Travel',
-                            amount: '$defaultCurrency 324',
-                            percentage: '30%',
-                            progress: 0.30,
-                            themeColor: const Color(0xFF0EA5E9),
-                          ),
-                          _buildCategoryDivider(),
-                          _buildCategoryRow(
-                            icon: Icons.home_filled,
-                            iconColor: const Color(0xFF10B981),
-                            title: 'Rent & Bills',
-                            amount: '$defaultCurrency 216',
-                            percentage: '20%',
-                            progress: 0.20,
-                            themeColor: const Color(0xFF10B981),
-                          ),
-                          _buildCategoryDivider(),
-                          _buildCategoryRow(
-                            icon: Icons.theater_comedy_rounded,
-                            iconColor: const Color(0xFFF59E0B),
-                            title: 'Entertainment',
-                            amount: '$defaultCurrency 130',
-                            percentage: '12%',
-                            progress: 0.12,
-                            themeColor: const Color(0xFFF59E0B),
-                          ),
-                        ],
+                        children: categoryWidgets,
                       ),
                     ),
                     SizedBox(height: 32.h),
@@ -405,7 +539,7 @@ class StatsTab extends ConsumerWidget {
                   width: 10.w,
                   height: spentHeight,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF43F5E),
+                    color: AppColors.avatarRose,
                     borderRadius:
                         BorderRadius.vertical(top: Radius.circular(3.r)),
                   ),
@@ -416,7 +550,7 @@ class StatsTab extends ConsumerWidget {
                   width: 10.w,
                   height: receivedHeight,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF10B981),
+                    color: AppColors.success,
                     borderRadius:
                         BorderRadius.vertical(top: Radius.circular(3.r)),
                   ),
