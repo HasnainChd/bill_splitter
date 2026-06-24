@@ -80,9 +80,13 @@ class NotesField extends ConsumerWidget {
     return AppTextField(
       controller: controller,
       hint: 'Notes (optional)',
-      prefix: const Icon(Icons.notes_rounded, color: AppColors.onboardingViolet),
+      prefix: Padding(
+        padding: EdgeInsets.only(bottom: 24.h),
+        child:
+            const Icon(Icons.notes_rounded, color: AppColors.onboardingViolet),
+      ),
       keyboardType: TextInputType.multiline,
-      maxLines: 3,
+      maxLines: 2,
     );
   }
 }
@@ -98,8 +102,8 @@ class ReceiptAttachmentPicker extends ConsumerWidget {
     return GestureDetector(
       onTap: () async {
         final ImagePicker picker = ImagePicker();
-        final XFile? image =
-            await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+        final XFile? image = await picker.pickImage(
+            source: ImageSource.gallery, imageQuality: 70);
         if (image != null) {
           ref.read(aeReceiptFileProvider.notifier).state = File(image.path);
         }

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
@@ -287,6 +288,9 @@ class EditProfileScreen extends ConsumerWidget {
                           hint: 'Enter username',
                           controller: formState.usernameCtrl,
                           label: 'Username',
+                          inputFormatters: [
+                            FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                          ],
                           prefix: Container(
                             width: 38.w,
                             alignment: Alignment.center,
@@ -302,7 +306,7 @@ class EditProfileScreen extends ConsumerWidget {
                         Padding(
                           padding: EdgeInsets.only(left: 4.w),
                           child: AppText(
-                            '✓ divvy.app/${formState.usernameCtrl.text.isNotEmpty ? formState.usernameCtrl.text : "username"}',
+                            '✓ equaly.app/${(formState.usernameCtrl.text.isNotEmpty ? formState.usernameCtrl.text : "username").replaceAll(" ", "")}',
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: AppColors.success,

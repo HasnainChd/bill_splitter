@@ -131,7 +131,7 @@ final editProfileFormProvider =
   final profile = ref.read(profileProvider).profile;
 
   final nameCtrl = TextEditingController(text: profile?.fullName ?? '');
-  final usernameCtrl = TextEditingController(text: profile?.username ?? '');
+  final usernameCtrl = TextEditingController(text: (profile?.username ?? '').replaceAll(' ', ''));
   final emailCtrl = TextEditingController(text: profile?.email ?? '');
   final phoneCtrl = TextEditingController(text: profile?.phone ?? '');
   final bioCtrl = TextEditingController(text: profile?.bio ?? '');
@@ -166,7 +166,7 @@ final editProfileFormProvider =
     final p = next.profile;
     if (p != null) {
       if (nameCtrl.text.isEmpty) nameCtrl.text = p.fullName;
-      if (usernameCtrl.text.isEmpty) usernameCtrl.text = p.username;
+      if (usernameCtrl.text.isEmpty) usernameCtrl.text = p.username.replaceAll(' ', '');
       if (emailCtrl.text.isEmpty) emailCtrl.text = p.email;
       if (phoneCtrl.text.isEmpty) phoneCtrl.text = p.phone;
       if (bioCtrl.text.isEmpty) bioCtrl.text = p.bio;

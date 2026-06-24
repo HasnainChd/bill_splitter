@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../constants/app_colors.dart';
 import 'app_text.dart';
@@ -19,6 +20,7 @@ class AppTextField extends StatelessWidget {
   final String? suffixText;
   final void Function(String)? onChanged;
   final bool readOnly;
+  final List<TextInputFormatter>? inputFormatters;
 
   const AppTextField({
     super.key,
@@ -35,6 +37,7 @@ class AppTextField extends StatelessWidget {
     this.suffixText,
     this.onChanged,
     this.readOnly = false,
+    this.inputFormatters,
   });
 
   @override
@@ -85,6 +88,7 @@ class AppTextField extends StatelessWidget {
           maxLines: maxLines,
           onChanged: onChanged,
           readOnly: readOnly,
+          inputFormatters: inputFormatters,
           cursorColor: Colors.white,
           style: TextStyle(
             fontSize: 15.sp,

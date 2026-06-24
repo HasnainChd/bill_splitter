@@ -89,9 +89,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
         AppSnackBar.showError(context, errorMessage);
       }
     } catch (e) {
-      state = state.copyWith(error: 'An error occurred: $e');
+      final errStr = e.toString();
+      final msg = errStr.contains('SocketException') || errStr.contains('ClientException')
+          ? 'No internet connection. Please check your network and try again.'
+          : 'An error occurred: $e';
+      state = state.copyWith(error: msg);
       if (context.mounted) {
-        AppSnackBar.showError(context, 'An error occurred: $e');
+        AppSnackBar.showError(context, msg);
       }
     } finally {
       state = state.copyWith(isLoading: false);
@@ -112,7 +116,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(
         email.trim(),
-        redirectTo: 'divvy://reset-password',
+        redirectTo: 'equaly://reset-password',
       );
       if (!context.mounted) return;
       AppSnackBar.showSuccess(
@@ -131,9 +135,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
         AppSnackBar.showError(context, errorMessage);
       }
     } catch (e) {
-      state = state.copyWith(error: 'An error occurred: $e');
+      final errStr = e.toString();
+      final msg = errStr.contains('SocketException') || errStr.contains('ClientException')
+          ? 'No internet connection. Please check your network and try again.'
+          : 'An error occurred: $e';
+      state = state.copyWith(error: msg);
       if (context.mounted) {
-        AppSnackBar.showError(context, 'An error occurred: $e');
+        AppSnackBar.showError(context, msg);
       }
     } finally {
       state = state.copyWith(isLoading: false);

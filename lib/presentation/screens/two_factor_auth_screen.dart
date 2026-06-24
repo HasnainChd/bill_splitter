@@ -198,7 +198,7 @@ class TwoFactorAuthScreen extends ConsumerWidget {
                                     borderRadius: BorderRadius.circular(16.r),
                                     image: const DecorationImage(
                                       image: NetworkImage(
-                                        'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=otpauth://totp/Divvy:alex@email.com?secret=JBSWY3DPEHPK3PXP&issuer=Divvy',
+                                        'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=otpauth://totp/Equaly:alex@email.com?secret=JBSWY3DPEHPK3PXP&issuer=Equaly',
                                       ),
                                     ),
                                   ),

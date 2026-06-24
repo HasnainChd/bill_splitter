@@ -59,6 +59,24 @@ class HomeTab extends ConsumerWidget {
     final notifications = ref.watch(dynamicNotificationsProvider);
     final recentNotifications = notifications.take(4).toList();
 
+    // Dynamic greeting based on time of day
+    final hour = DateTime.now().hour;
+    final String greeting;
+    final String greetingIcon;
+    if (hour < 12) {
+      greeting = 'Good morning';
+      greetingIcon = '☀️';
+    } else if (hour < 17) {
+      greeting = 'Good afternoon';
+      greetingIcon = '🌤️';
+    } else if (hour < 21) {
+      greeting = 'Good evening';
+      greetingIcon = '🌆';
+    } else {
+      greeting = 'Good night';
+      greetingIcon = '🌙';
+    }
+
     // Calculate dynamic balance totals using central FinancialCalculator
     final expenseState = ref.watch(expenseProvider);
     final totals = currentUserId != null
@@ -92,17 +110,23 @@ class HomeTab extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       AppText(
-                        'Good morning 👋',
+                        '$greeting $greetingIcon',
                         fontSize: 14,
                         color: AppColors.white.withValues(alpha: 0.5),
                       ),
                       SizedBox(height: 4.h),
-                      AppText(
-                        profile?.fullName.split(' ').first ?? 'User',
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.white,
-                      ),
+                      profile == null
+                          ? AppShimmer(
+                              width: 200.w,
+                              height: 32.h,
+                              borderRadius: BorderRadius.circular(8.r),
+                            )
+                          : AppText(
+                              profile.fullName,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.white,
+                            ),
                     ],
                   ),
                   Row(
@@ -1014,8 +1038,9 @@ class HomeTab extends ConsumerWidget {
                         onTap: () async {
                           // Insert into requests table, preventing duplicate pending requests
                           try {
-                            final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-                            
+                            final currentUserId =
+                                Supabase.instance.client.auth.currentUser?.id;
+
                             // Check for existing pending request
                             final existing = await Supabase.instance.client
                                 .from('requests')
@@ -1030,16 +1055,19 @@ class HomeTab extends ConsumerWidget {
                                 Navigator.pop(sheetContext);
                               }
                               if (context.mounted) {
-                                AppSnackBar.showError(context, 'A request is already pending for this group!');
+                                AppSnackBar.showError(context,
+                                    'A request is already pending for this group!');
                               }
                               return;
                             }
 
-                            await Supabase.instance.client.from('requests').insert({
+                            await Supabase.instance.client
+                                .from('requests')
+                                .insert({
                               "group_id": group.groupId,
                               "user_id": currentUserId,
                             });
-                            
+
                             if (sheetContext.mounted) {
                               Navigator.pop(sheetContext);
                             }
@@ -1047,10 +1075,10 @@ class HomeTab extends ConsumerWidget {
                               AppSnackBar.showSuccess(
                                   context, 'Payment request sent to group!');
                             }
-                            
-                            // Wait a moment so the user can read the snackbar
-                            await Future.delayed(const Duration(milliseconds: 1500));
 
+                            // Wait a moment so the user can read the snackbar
+                            await Future.delayed(
+                                const Duration(milliseconds: 1500));
                           } catch (e) {
                             debugPrint(
                                 'Failed to send request notification: $e');

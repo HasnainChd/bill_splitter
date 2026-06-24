@@ -382,7 +382,7 @@ class ProfileTab extends ConsumerWidget {
                   title: 'Invite Friends',
                   onTap: () async {
                     // ignore: deprecated_member_use
-                    await Share.share('Join me on Divvy to easily split bills! Download here: https://divvy.app');
+                    await Share.share('Join me on Equaly to easily split bills! Download here: https://equaly.app');
                   },
                 ),
                 _buildDivider(),

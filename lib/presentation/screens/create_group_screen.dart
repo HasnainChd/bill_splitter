@@ -13,8 +13,6 @@ import '../../core/utils/group_icon_helper.dart';
 class CreateGroupScreen extends ConsumerWidget {
   const CreateGroupScreen({super.key});
 
-
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final nameCtrl = ref.watch(cgNameControllerProvider);
@@ -189,7 +187,8 @@ class CreateGroupScreen extends ConsumerWidget {
                     _label('COLOR'),
                     SizedBox(height: 12.h),
                     Row(
-                      children: List.generate(AppColors.groupThemeColors.length, (i) {
+                      children:
+                          List.generate(AppColors.groupThemeColors.length, (i) {
                         final isSelected = i == colorIndex;
                         return Padding(
                           padding: EdgeInsets.only(right: 10.w),
@@ -213,8 +212,8 @@ class CreateGroupScreen extends ConsumerWidget {
                                 boxShadow: isSelected
                                     ? [
                                         BoxShadow(
-                                          color:
-                                              AppColors.groupThemeColors[i].withValues(alpha: 0.5),
+                                          color: AppColors.groupThemeColors[i]
+                                              .withValues(alpha: 0.5),
                                           blurRadius: 8,
                                         )
                                       ]
@@ -300,7 +299,8 @@ class CreateGroupScreen extends ConsumerWidget {
 
                               // Compute color based on ID hash
                               final color = AppColors.avatarColors[
-                                  contact.id.hashCode.abs() % AppColors.avatarColors.length];
+                                  contact.id.hashCode.abs() %
+                                      AppColors.avatarColors.length];
                               final isLast = i == filteredUsers.length - 1;
 
                               return Column(
@@ -439,28 +439,6 @@ class CreateGroupScreen extends ConsumerWidget {
             ),
           ),
           const Spacer(),
-          // Progress indicator
-          Row(
-            children: [
-              Container(
-                width: 32.w,
-                height: 4.h,
-                decoration: BoxDecoration(
-                  color: AppColors.onboardingViolet,
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
-              ),
-              SizedBox(width: 4.w),
-              Container(
-                width: 32.w,
-                height: 4.h,
-                decoration: BoxDecoration(
-                  color: AppColors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -495,14 +473,14 @@ class CreateGroupScreen extends ConsumerWidget {
               width: 40.w,
               height: 40.w,
               decoration: BoxDecoration(
-                  color: avatarColor,
-                  borderRadius: BorderRadius.circular(12.r),
-                  image: avatarUrl != null && avatarUrl.isNotEmpty
-                      ? DecorationImage(
-                          image: NetworkImage(avatarUrl),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
+                color: avatarColor,
+                borderRadius: BorderRadius.circular(12.r),
+                image: avatarUrl != null && avatarUrl.isNotEmpty
+                    ? DecorationImage(
+                        image: NetworkImage(avatarUrl),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
               ),
               alignment: Alignment.center,
               child: avatarUrl == null || avatarUrl.isEmpty
