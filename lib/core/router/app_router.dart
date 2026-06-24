@@ -153,11 +153,13 @@ class AppRouter {
             final expense = map['expense'] as Expense?;
             final scannedAmount = map['scannedAmount'] as String?;
             final scannedTitle = map['scannedTitle'] as String?;
+            final scannedImagePath = map['scannedImagePath'] as String?;
             return AddExpenseScreen(
               group: group,
               expenseToEdit: expense,
               scannedAmount: scannedAmount,
               scannedTitle: scannedTitle,
+              scannedImagePath: scannedImagePath,
             );
           }
           final group = state.extra as Group?;

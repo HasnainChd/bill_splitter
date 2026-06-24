@@ -3,17 +3,37 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../../providers/profile_provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/router/app_router.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../providers/tab_providers.dart';
 
 final ratingStarsProvider = StateProvider.autoDispose<int>((ref) => 0);
 
-final settingsFaceIdProvider = StateProvider.autoDispose<bool>((ref) => true);
+class FaceIdNotifier extends StateNotifier<bool> {
+  FaceIdNotifier() : super(true) {
+    final box = Hive.box('settings');
+    state = box.get('face_id_enabled', defaultValue: true) as bool;
+  }
+
+  @override
+  set state(bool value) {
+    super.state = value;
+    final box = Hive.box('settings');
+    box.put('face_id_enabled', value);
+  }
+}
+
+final settingsFaceIdProvider =
+    StateNotifierProvider.autoDispose<FaceIdNotifier, bool>((ref) {
+  return FaceIdNotifier();
+});
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -78,73 +98,100 @@ class SettingsScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Profile Card
-                    AppCard(
-                      padding: EdgeInsets.all(16.w),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 48.w,
-                            height: 48.w,
-                            decoration: BoxDecoration(
-                              color: AppColors.onboardingViolet,
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            alignment: Alignment.center,
-                            child: const AppText(
-                              'AJ',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.white,
-                            ),
-                          ),
-                          SizedBox(width: 14.w),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const AppText(
-                                  'Alex Johnson',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.white,
+                    Consumer(builder: (context, ref, child) {
+                      final profileState = ref.watch(profileProvider);
+                      final profile = profileState.profile;
+                      final name = profile?.fullName ?? 'User';
+                      final initials = name.isNotEmpty
+                          ? name.substring(0, 1).toUpperCase()
+                          : 'U';
+                      final email = profile?.email ??
+                          ref.watch(supabaseUserProvider)?.email ??
+                          'user@email.com';
+
+                      return AppCard(
+                          padding: EdgeInsets.all(16.w),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 48.w,
+                                height: 48.w,
+                                decoration: BoxDecoration(
+                                  color: AppColors.onboardingViolet,
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  image: profile?.avatarUrl != null &&
+                                          profile!.avatarUrl.isNotEmpty
+                                      ? DecorationImage(
+                                          image:
+                                              NetworkImage(profile.avatarUrl),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
                                 ),
-                                SizedBox(height: 4.h),
-                                AppText(
-                                  'alex@email.com',
-                                  fontSize: 12,
-                                  color: AppColors.white.withValues(alpha: 0.4),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Gold "PRO" Badge
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                            decoration: BoxDecoration(
-                              color: AppColors.orange.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8.r),
-                              border: Border.all(
-                                color: AppColors.orange.withValues(alpha: 0.4),
-                                width: 1.2,
+                                alignment: Alignment.center,
+                                child: profile?.avatarUrl == null ||
+                                        profile!.avatarUrl.isEmpty
+                                    ? AppText(
+                                        initials,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.white,
+                                      )
+                                    : null,
                               ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.bolt_rounded, color: AppColors.orange, size: 12.sp),
-                                SizedBox(width: 2.w),
-                                const AppText(
-                                  'PRO',
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.orange,
+                              SizedBox(width: 14.w),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    AppText(
+                                      name,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.white,
+                                    ),
+                                    SizedBox(height: 4.h),
+                                    AppText(
+                                      email,
+                                      fontSize: 12,
+                                      color: AppColors.white
+                                          .withValues(alpha: 0.4),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                              ),
+                              // Gold "PRO" Badge
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8.w, vertical: 4.h),
+                                decoration: BoxDecoration(
+                                  color:
+                                      AppColors.orange.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8.r),
+                                  border: Border.all(
+                                    color:
+                                        AppColors.orange.withValues(alpha: 0.4),
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.bolt_rounded,
+                                        color: AppColors.orange, size: 12.sp),
+                                    SizedBox(width: 2.w),
+                                    const AppText(
+                                      'PRO',
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.orange,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ));
+                    }),
                     SizedBox(height: 24.h),
 
                     // ACCOUNT Section
@@ -194,7 +241,8 @@ class SettingsScreen extends ConsumerWidget {
                             iconColor: AppColors.orange,
                             title: 'Notifications',
                             subtitle: 'Push, email enabled',
-                            onTap: () => context.push(AppRouter.notificationSettings),
+                            onTap: () =>
+                                context.push(AppRouter.notificationSettings),
                           ),
                           _buildDivider(),
                           _buildSettingsRowItem(
@@ -202,7 +250,8 @@ class SettingsScreen extends ConsumerWidget {
                             iconColor: AppColors.onboardingViolet,
                             title: 'Default Currency',
                             subtitle: activeCurrency,
-                            onTap: () => context.push(AppRouter.defaultCurrency),
+                            onTap: () =>
+                                context.push(AppRouter.defaultCurrency),
                           ),
                           _buildDivider(),
                           _buildSettingsRowItem(
@@ -239,11 +288,15 @@ class SettingsScreen extends ConsumerWidget {
                             trailing: Switch(
                               value: faceIdEnabled,
                               onChanged: (val) {
-                                ref.read(settingsFaceIdProvider.notifier).state = val;
+                                ref
+                                    .read(settingsFaceIdProvider.notifier)
+                                    .state = val;
                               },
                               activeColor: AppColors.onboardingViolet,
-                              activeTrackColor: AppColors.onboardingViolet.withValues(alpha: 0.3),
-                              inactiveThumbColor: AppColors.white.withValues(alpha: 0.6),
+                              activeTrackColor: AppColors.onboardingViolet
+                                  .withValues(alpha: 0.3),
+                              inactiveThumbColor:
+                                  AppColors.white.withValues(alpha: 0.6),
                               inactiveTrackColor: const Color(0xFF1E1C38),
                             ),
                             onTap: () => context.push(AppRouter.security),
@@ -253,7 +306,9 @@ class SettingsScreen extends ConsumerWidget {
                             icon: Icons.shield_outlined,
                             iconColor: const Color(0xFF10B981),
                             title: 'Two-Factor Auth',
-                            subtitle: tfaEnabled ? 'Enabled via $tfaMethod' : 'Disabled',
+                            subtitle: tfaEnabled
+                                ? 'Enabled via $tfaMethod'
+                                : 'Disabled',
                             onTap: () => context.push(AppRouter.twoFactorAuth),
                           ),
                           _buildDivider(),
@@ -270,7 +325,8 @@ class SettingsScreen extends ConsumerWidget {
                             iconColor: const Color(0xFF10B981),
                             title: 'Privacy Settings',
                             subtitle: 'Visibility, data sharing',
-                            onTap: () => context.push(AppRouter.privacySettings),
+                            onTap: () =>
+                                context.push(AppRouter.privacySettings),
                           ),
                         ],
                       ),
@@ -293,9 +349,11 @@ class SettingsScreen extends ConsumerWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 6.w, vertical: 2.h),
                                   decoration: BoxDecoration(
-                                    color: AppColors.orange.withValues(alpha: 0.12),
+                                    color: AppColors.orange
+                                        .withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(6.r),
                                   ),
                                   child: const AppText(
@@ -466,7 +524,8 @@ class SettingsScreen extends ConsumerWidget {
       color: Colors.white.withValues(alpha: 0.04),
       height: 1,
       thickness: 1,
-      indent: 68.w, // indent to align with the start of row text (leading card is 36w + offsets)
+      indent: 68
+          .w, // indent to align with the start of row text (leading card is 36w + offsets)
     );
   }
 
@@ -489,7 +548,8 @@ class SettingsScreen extends ConsumerWidget {
             final rating = ref.watch(ratingStarsProvider);
             return AlertDialog(
               backgroundColor: AppColors.cardDark,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16.r)),
               title: const Center(
                 child: AppText(
                   'Rate Divvy',
@@ -515,13 +575,18 @@ class SettingsScreen extends ConsumerWidget {
                       final isSelected = starIndex <= rating;
                       return GestureDetector(
                         onTap: () {
-                          ref.read(ratingStarsProvider.notifier).state = starIndex;
+                          ref.read(ratingStarsProvider.notifier).state =
+                              starIndex;
                         },
                         child: Padding(
                           padding: EdgeInsets.symmetric(horizontal: 4.w),
                           child: Icon(
-                            isSelected ? Icons.star_rounded : Icons.star_outline_rounded,
-                            color: isSelected ? AppColors.orange : AppColors.white.withValues(alpha: 0.2),
+                            isSelected
+                                ? Icons.star_rounded
+                                : Icons.star_outline_rounded,
+                            color: isSelected
+                                ? AppColors.orange
+                                : AppColors.white.withValues(alpha: 0.2),
                             size: 36.sp,
                           ),
                         ),

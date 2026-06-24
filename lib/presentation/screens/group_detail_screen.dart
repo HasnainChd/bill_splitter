@@ -14,7 +14,7 @@ import '../../providers/group_provider.dart';
 import '../../providers/expense_provider.dart';
 import '../providers/screen_providers.dart';
 import '../../core/utils/app_dialog.dart';
-
+import '../../core/widgets/app_empty_state.dart';
 import '../../core/utils/group_icon_helper.dart';
 
 class GroupDetailScreen extends ConsumerWidget {
@@ -701,21 +701,10 @@ class GroupDetailScreen extends ConsumerWidget {
   Widget _buildEmptyExpenses() {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 40.h),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(Icons.receipt_long_rounded,
-                size: 48.sp, color: AppColors.white.withValues(alpha: 0.2)),
-            SizedBox(height: 12.h),
-            const AppText('No expenses yet',
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.white),
-            SizedBox(height: 4.h),
-            AppText('Tap + Add to record the first one',
-                fontSize: 13, color: AppColors.white.withValues(alpha: 0.4)),
-          ],
-        ),
+      child: const AppEmptyState(
+        title: 'No expenses yet',
+        subtitle: 'Tap + Add to record the first one',
+        icon: Icons.receipt_long_rounded,
       ),
     );
   }

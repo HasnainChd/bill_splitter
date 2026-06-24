@@ -12,6 +12,7 @@ import '../../../providers/expense_provider.dart';
 import '../../../providers/settings_provider.dart';
 import '../../providers/tab_providers.dart';
 import '../../../core/utils/group_icon_helper.dart';
+import '../../../core/widgets/app_empty_state.dart';
 
 class GroupsTab extends ConsumerWidget {
   const GroupsTab({super.key});
@@ -187,7 +188,13 @@ class GroupsTab extends ConsumerWidget {
               await ref.read(groupProvider.notifier).loadGroups();
             },
             child: filteredGroups.isEmpty
-                ? _buildEmptyState()
+                ? AppEmptyState(
+                    title: 'No Groups Found',
+                    subtitle: searchQuery.isNotEmpty
+                        ? 'We couldn\'t find any groups matching your search.'
+                        : 'You aren\'t part of any groups yet. Create one to start splitting bills!',
+                    icon: Icons.group_off_rounded,
+                  )
                 : ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(
                       parent: BouncingScrollPhysics(),
@@ -401,31 +408,6 @@ class GroupsTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState() {
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(
-        parent: BouncingScrollPhysics(),
-      ),
-      child: Container(
-        height: 300.h,
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off_rounded,
-                size: 48.sp, color: AppColors.white.withValues(alpha: 0.3)),
-            SizedBox(height: 16.h),
-            const AppText(
-              'No groups match your search',
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.white,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class GroupAvatarsWidget extends ConsumerWidget {

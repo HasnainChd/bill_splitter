@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -16,17 +18,20 @@ import '../../providers/profile_provider.dart';
 import '../providers/screen_providers.dart';
 import '../../core/utils/group_icon_helper.dart';
 import '../widgets/add_expense_form_elements.dart';
+
 class AddExpenseScreen extends ConsumerWidget {
   final Group group;
   final Expense? expenseToEdit;
   final String? scannedAmount;
   final String? scannedTitle;
+  final String? scannedImagePath;
   const AddExpenseScreen({
     super.key,
     required this.group,
     this.expenseToEdit,
     this.scannedAmount,
     this.scannedTitle,
+    this.scannedImagePath,
   });
 
   static const List<Map<String, dynamic>> _categories = [
@@ -38,17 +43,14 @@ class AddExpenseScreen extends ConsumerWidget {
     {'label': 'Fun', 'icon': Icons.theater_comedy_rounded},
   ];
 
-
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final amountCtrl = ref.watch(aeAmountControllerProvider);
     final titleCtrl = ref.watch(aeTitleControllerProvider);
     final category = ref.watch(aeCategoryProvider);
     final groupCurrency = group.currency;
-    final currencyCode = groupCurrency.length >= 3
-        ? groupCurrency.substring(0, 3)
-        : 'PKR';
+    final currencyCode =
+        groupCurrency.length >= 3 ? groupCurrency.substring(0, 3) : 'PKR';
     final currencySymbol = (() {
       final openParen = groupCurrency.indexOf('(');
       final closeParen = groupCurrency.indexOf(')');
@@ -65,18 +67,20 @@ class AddExpenseScreen extends ConsumerWidget {
     final expenseState = ref.watch(expenseProvider);
     final paidBy = ref.watch(aePaidByProvider) ?? currentUserId;
     final groupColor = AppColors.groupThemeColors[
-        group.groupId.hashCode.abs() %
-            AppColors.groupThemeColors.length];
+        group.groupId.hashCode.abs() % AppColors.groupThemeColors.length];
 
     // Init from expenseToEdit once or default initialization
-    if (expenseToEdit != null && selectedMembers.isEmpty && members.isNotEmpty) {
+    if (expenseToEdit != null &&
+        selectedMembers.isEmpty &&
+        members.isNotEmpty) {
       Future.microtask(() {
         amountCtrl.text = expenseToEdit!.amount.toStringAsFixed(0);
         titleCtrl.text = expenseToEdit!.title;
         ref.read(aePaidByProvider.notifier).state = expenseToEdit!.paidBy;
         ref.read(aeDateProvider.notifier).state = expenseToEdit!.date;
         ref.read(aeNotesControllerProvider).text = expenseToEdit!.notes ?? '';
-        ref.read(aeReceiptUrlProvider.notifier).state = expenseToEdit!.receiptUrl;
+        ref.read(aeReceiptUrlProvider.notifier).state =
+            expenseToEdit!.receiptUrl;
         ref.read(aeReceiptFileProvider.notifier).state = null;
 
         // Map category
@@ -92,7 +96,8 @@ class AddExpenseScreen extends ConsumerWidget {
 
         // Set split type directly from database or fallback to dynamic calculation
         String initialSplitType = expenseToEdit!.splitType;
-        if (initialSplitType == 'Equal' && expenseToEdit!.splitAmong.isNotEmpty) {
+        if (initialSplitType == 'Equal' &&
+            expenseToEdit!.splitAmong.isNotEmpty) {
           final splits = expenseToEdit!.splitAmong.values.toList();
           bool isEqual = true;
           if (expenseToEdit!.splitAmong.length != members.length) {
@@ -113,10 +118,12 @@ class AddExpenseScreen extends ConsumerWidget {
 
         final bool isEqual = initialSplitType == 'Equal';
         ref.read(aeSplitTypeProvider.notifier).state = initialSplitType;
-        ref.read(aeSelectedMembersProvider.notifier).state = expenseToEdit!.splitAmong.keys.toSet();
+        ref.read(aeSelectedMembersProvider.notifier).state =
+            expenseToEdit!.splitAmong.keys.toSet();
         if (!isEqual) {
           if (initialSplitType == 'Custom') {
-            ref.read(aeCustomSplitsProvider.notifier).state = Map<String, double>.from(expenseToEdit!.splitAmong);
+            ref.read(aeCustomSplitsProvider.notifier).state =
+                Map<String, double>.from(expenseToEdit!.splitAmong);
             ref.read(aePercentSplitsProvider.notifier).state = {};
           } else if (initialSplitType == '%') {
             ref.read(aeCustomSplitsProvider.notifier).state = {};
@@ -124,7 +131,8 @@ class AddExpenseScreen extends ConsumerWidget {
             final totalAmt = expenseToEdit!.amount;
             if (totalAmt > 0) {
               expenseToEdit!.splitAmong.forEach((userId, amt) {
-                percentMap[userId] = double.parse(((amt / totalAmt) * 100.0).toStringAsFixed(0));
+                percentMap[userId] =
+                    double.parse(((amt / totalAmt) * 100.0).toStringAsFixed(0));
               });
             }
             ref.read(aePercentSplitsProvider.notifier).state = percentMap;
@@ -134,7 +142,9 @@ class AddExpenseScreen extends ConsumerWidget {
           ref.read(aePercentSplitsProvider.notifier).state = {};
         }
       });
-    } else if (expenseToEdit == null && selectedMembers.isEmpty && members.isNotEmpty) {
+    } else if (expenseToEdit == null &&
+        selectedMembers.isEmpty &&
+        members.isNotEmpty) {
       Future.microtask(() {
         ref.read(aePaidByProvider.notifier).state = currentUserId;
         ref.read(aeSelectedMembersProvider.notifier).state =
@@ -146,6 +156,10 @@ class AddExpenseScreen extends ConsumerWidget {
         }
         if (scannedTitle != null) {
           titleCtrl.text = scannedTitle!;
+        }
+        if (scannedImagePath != null) {
+          ref.read(aeReceiptFileProvider.notifier).state =
+              File(scannedImagePath!);
         }
         ref.read(aeDateProvider.notifier).state = DateTime.now();
         ref.read(aeNotesControllerProvider).clear();
@@ -346,7 +360,8 @@ class AddExpenseScreen extends ConsumerWidget {
                           context: context,
                           backgroundColor: AppColors.backgroundDark,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+                            borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(20.r)),
                           ),
                           builder: (context) {
                             final groups = ref.read(groupProvider).groups;
@@ -365,7 +380,9 @@ class AddExpenseScreen extends ConsumerWidget {
                                     ),
                                     SizedBox(height: 16.h),
                                     if (groups.isEmpty)
-                                      const Center(child: AppText('No groups found', color: Colors.white54))
+                                      const Center(
+                                          child: AppText('No groups found',
+                                              color: Colors.white54))
                                     else
                                       Flexible(
                                         child: ListView.builder(
@@ -373,21 +390,30 @@ class AddExpenseScreen extends ConsumerWidget {
                                           itemCount: groups.length,
                                           itemBuilder: (context, index) {
                                             final g = groups[index];
-                                            final iconColor = AppColors.groupThemeColors[
-                                                g.groupId.hashCode.abs() %
-                                                    AppColors.groupThemeColors.length];
+                                            final iconColor =
+                                                AppColors.groupThemeColors[
+                                                    g.groupId.hashCode.abs() %
+                                                        AppColors
+                                                            .groupThemeColors
+                                                            .length];
                                             return ListTile(
                                               leading: Container(
                                                 width: 32.w,
                                                 height: 32.w,
                                                 decoration: BoxDecoration(
                                                   color: iconColor,
-                                                  borderRadius: BorderRadius.circular(8.r),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          8.r),
                                                 ),
-                                                child: Icon(GroupIconHelper.getIconForGroup(g),
-                                                    color: AppColors.white, size: 16.sp),
+                                                child: Icon(
+                                                    GroupIconHelper
+                                                        .getIconForGroup(g),
+                                                    color: AppColors.white,
+                                                    size: 16.sp),
                                               ),
-                                              title: AppText(g.name, color: AppColors.white),
+                                              title: AppText(g.name,
+                                                  color: AppColors.white),
                                               onTap: () {
                                                 Navigator.pop(context);
                                                 context.replace(
@@ -425,8 +451,10 @@ class AddExpenseScreen extends ConsumerWidget {
                                 color: groupColor.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8.r),
                               ),
-                              child: Icon(GroupIconHelper.getIconForGroup(group),
-                                  color: groupColor, size: 16.sp),
+                              child: Icon(
+                                  GroupIconHelper.getIconForGroup(group),
+                                  color: groupColor,
+                                  size: 16.sp),
                             ),
                             SizedBox(width: 12.w),
                             Expanded(
@@ -511,22 +539,29 @@ class AddExpenseScreen extends ConsumerWidget {
                               final member = displayMembers[index];
                               final isPayer = member.id == paidBy;
                               final isMe = member.id == currentUserId;
-                              
-                              final nameParts = member.fullName.trim().split(' ');
-                              final displayName = isMe ? 'You' : (nameParts.isNotEmpty ? nameParts[0] : 'User');
+
+                              final nameParts =
+                                  member.fullName.trim().split(' ');
+                              final displayName = isMe
+                                  ? 'You'
+                                  : (nameParts.isNotEmpty
+                                      ? nameParts[0]
+                                      : 'User');
                               final initials = nameParts.length >= 2
                                   ? '${nameParts[0][0]}${nameParts[1][0]}'
-                                  : nameParts.isNotEmpty && nameParts[0].isNotEmpty
+                                  : nameParts.isNotEmpty &&
+                                          nameParts[0].isNotEmpty
                                       ? nameParts[0][0]
                                       : 'U';
-                                      
+
                               final avatarColor = AppColors.avatarColors[
                                   member.id.hashCode.abs() %
                                       AppColors.avatarColors.length];
 
                               return GestureDetector(
                                 onTap: () {
-                                  ref.read(aePaidByProvider.notifier).state = member.id;
+                                  ref.read(aePaidByProvider.notifier).state =
+                                      member.id;
                                 },
                                 child: Container(
                                   margin: EdgeInsets.only(right: 16.w),
@@ -535,7 +570,8 @@ class AddExpenseScreen extends ConsumerWidget {
                                       Stack(
                                         children: [
                                           AnimatedContainer(
-                                            duration: const Duration(milliseconds: 180),
+                                            duration: const Duration(
+                                                milliseconds: 180),
                                             width: 46.w,
                                             height: 46.w,
                                             decoration: BoxDecoration(
@@ -549,7 +585,8 @@ class AddExpenseScreen extends ConsumerWidget {
                                               ),
                                               image: member.avatarUrl.isNotEmpty
                                                   ? DecorationImage(
-                                                      image: NetworkImage(member.avatarUrl),
+                                                      image: NetworkImage(
+                                                          member.avatarUrl),
                                                       fit: BoxFit.cover,
                                                     )
                                                   : null,
@@ -571,7 +608,8 @@ class AddExpenseScreen extends ConsumerWidget {
                                               child: Container(
                                                 padding: EdgeInsets.all(2.w),
                                                 decoration: const BoxDecoration(
-                                                  color: AppColors.onboardingViolet,
+                                                  color: AppColors
+                                                      .onboardingViolet,
                                                   shape: BoxShape.circle,
                                                 ),
                                                 child: Icon(
@@ -587,8 +625,13 @@ class AddExpenseScreen extends ConsumerWidget {
                                       AppText(
                                         displayName,
                                         fontSize: 12,
-                                        fontWeight: isPayer ? FontWeight.w700 : FontWeight.w500,
-                                        color: isPayer ? AppColors.white : AppColors.white.withValues(alpha: 0.5),
+                                        fontWeight: isPayer
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        color: isPayer
+                                            ? AppColors.white
+                                            : AppColors.white
+                                                .withValues(alpha: 0.5),
                                       ),
                                     ],
                                   ),
@@ -659,8 +702,6 @@ class AddExpenseScreen extends ConsumerWidget {
                               final member = members[i];
                               final isMe = member.id == currentUserId;
 
-
-
                               final isSelected =
                                   selectedMembers.contains(member.id);
                               final avatarColor = AppColors.avatarColors[
@@ -699,8 +740,14 @@ class AddExpenseScreen extends ConsumerWidget {
                     GestureDetector(
                       onTap: expenseState.isLoading
                           ? null
-                          : () => _saveExpense(context, ref, amountCtrl,
-                              titleCtrl, selectedMembers, perPerson, currentUserId),
+                          : () => _saveExpense(
+                              context,
+                              ref,
+                              amountCtrl,
+                              titleCtrl,
+                              selectedMembers,
+                              perPerson,
+                              currentUserId),
                       child: Container(
                         width: double.infinity,
                         height: 54.h,
@@ -708,8 +755,10 @@ class AddExpenseScreen extends ConsumerWidget {
                           gradient: LinearGradient(
                             colors: expenseState.isLoading
                                 ? [
-                                    AppColors.onboardingViolet.withValues(alpha: 0.5),
-                                    AppColors.primaryPurpleDarker.withValues(alpha: 0.5),
+                                    AppColors.onboardingViolet
+                                        .withValues(alpha: 0.5),
+                                    AppColors.primaryPurpleDarker
+                                        .withValues(alpha: 0.5),
                                   ]
                                 : [
                                     AppColors.onboardingViolet,
@@ -719,8 +768,8 @@ class AddExpenseScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(28.r),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.onboardingViolet
-                                  .withValues(alpha: expenseState.isLoading ? 0.15 : 0.35),
+                              color: AppColors.onboardingViolet.withValues(
+                                  alpha: expenseState.isLoading ? 0.15 : 0.35),
                               blurRadius: 16,
                               offset: const Offset(0, 6),
                             ),
@@ -832,9 +881,8 @@ class AddExpenseScreen extends ConsumerWidget {
     final amount = double.tryParse(amountCtrl.text) ?? 0;
     final splitType = ref.read(aeSplitTypeProvider);
     final groupCurrency = group.currency;
-    final currencyCode = groupCurrency.length >= 3
-        ? groupCurrency.substring(0, 3)
-        : 'PKR';
+    final currencyCode =
+        groupCurrency.length >= 3 ? groupCurrency.substring(0, 3) : 'PKR';
 
     if (title.isEmpty) {
       AppSnackBar.showError(context, 'Please enter a description');
@@ -861,9 +909,11 @@ class AddExpenseScreen extends ConsumerWidget {
       };
     } else if (splitType == 'Custom') {
       final customMap = ref.read(aeCustomSplitsProvider);
-      final totalCustom = selectedMembers.fold(0.0, (sum, m) => sum + (customMap[m] ?? 0.0));
+      final totalCustom =
+          selectedMembers.fold(0.0, (sum, m) => sum + (customMap[m] ?? 0.0));
       if ((totalCustom - amount).abs() > 0.05) {
-        AppSnackBar.showError(context, 'The sum of custom splits ($currencyCode $totalCustom) must equal the total amount ($currencyCode $amount)');
+        AppSnackBar.showError(context,
+            'The sum of custom splits ($currencyCode $totalCustom) must equal the total amount ($currencyCode $amount)');
         return;
       }
       splitAmong = {
@@ -871,13 +921,16 @@ class AddExpenseScreen extends ConsumerWidget {
       };
     } else if (splitType == '%') {
       final percentMap = ref.read(aePercentSplitsProvider);
-      final totalPercent = selectedMembers.fold(0.0, (sum, m) => sum + (percentMap[m] ?? 0.0));
+      final totalPercent =
+          selectedMembers.fold(0.0, (sum, m) => sum + (percentMap[m] ?? 0.0));
       if ((totalPercent - 100.0).abs() > 0.05) {
-        AppSnackBar.showError(context, 'The sum of percentages ($totalPercent%) must equal 100%');
+        AppSnackBar.showError(
+            context, 'The sum of percentages ($totalPercent%) must equal 100%');
         return;
       }
       splitAmong = {
-        for (final m in selectedMembers) m: ((percentMap[m] ?? 0.0) / 100.0) * amount,
+        for (final m in selectedMembers)
+          m: ((percentMap[m] ?? 0.0) / 100.0) * amount,
       };
     }
 
@@ -892,12 +945,13 @@ class AddExpenseScreen extends ConsumerWidget {
       final date = ref.read(aeDateProvider);
       final notes = ref.read(aeNotesControllerProvider).text.trim();
       final notesOrNull = notes.isEmpty ? null : notes;
-      
+
       String? finalReceiptUrl = ref.read(aeReceiptUrlProvider);
       final file = ref.read(aeReceiptFileProvider);
-      
+
       if (file != null) {
-        finalReceiptUrl = await ref.read(expenseProvider.notifier).uploadReceipt(file);
+        finalReceiptUrl =
+            await ref.read(expenseProvider.notifier).uploadReceipt(file);
       }
 
       if (expenseToEdit != null) {
@@ -940,7 +994,8 @@ class AddExpenseScreen extends ConsumerWidget {
           AppSnackBar.showSuccess(context, 'Expense added!');
           context.pop();
         }
-      }    } catch (e) {
+      }
+    } catch (e) {
       if (context.mounted) {
         AppSnackBar.showError(context, 'Failed to save expense: $e');
       }
@@ -985,7 +1040,8 @@ class _MemberSplitRowState extends ConsumerState<MemberSplitRow> {
   @override
   void didUpdateWidget(MemberSplitRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.splitType != oldWidget.splitType || widget.equalAmount != oldWidget.equalAmount) {
+    if (widget.splitType != oldWidget.splitType ||
+        widget.equalAmount != oldWidget.equalAmount) {
       _updateText();
     }
   }
@@ -1028,7 +1084,8 @@ class _MemberSplitRowState extends ConsumerState<MemberSplitRow> {
           // Checkbox toggle
           GestureDetector(
             onTap: () {
-              final selected = Set<String>.from(ref.read(aeSelectedMembersProvider));
+              final selected =
+                  Set<String>.from(ref.read(aeSelectedMembersProvider));
               if (selected.contains(widget.member.id)) {
                 selected.remove(widget.member.id);
               } else {
@@ -1046,7 +1103,8 @@ class _MemberSplitRowState extends ConsumerState<MemberSplitRow> {
                 borderRadius: BorderRadius.circular(8.r),
               ),
               child: isSelected
-                  ? Icon(Icons.check_rounded, color: AppColors.white, size: 16.sp)
+                  ? Icon(Icons.check_rounded,
+                      color: AppColors.white, size: 16.sp)
                   : null,
             ),
           ),
@@ -1091,7 +1149,9 @@ class _MemberSplitRowState extends ConsumerState<MemberSplitRow> {
               '${widget.currency} ${widget.equalAmount.toStringAsFixed(0)}',
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: isSelected ? AppColors.white : AppColors.white.withValues(alpha: 0.25),
+              color: isSelected
+                  ? AppColors.white
+                  : AppColors.white.withValues(alpha: 0.25),
             )
           else if (widget.splitType == 'Custom')
             Row(
@@ -1116,7 +1176,8 @@ class _MemberSplitRowState extends ConsumerState<MemberSplitRow> {
                       fontSize: 14,
                     ),
                     decoration: InputDecoration(
-                      contentPadding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
                       filled: true,
                       fillColor: AppColors.white.withValues(alpha: 0.05),
                       border: OutlineInputBorder(
@@ -1126,9 +1187,11 @@ class _MemberSplitRowState extends ConsumerState<MemberSplitRow> {
                     ),
                     onChanged: (val) {
                       final parsed = double.tryParse(val) ?? 0.0;
-                      final customMap = Map<String, double>.from(ref.read(aeCustomSplitsProvider));
+                      final customMap = Map<String, double>.from(
+                          ref.read(aeCustomSplitsProvider));
                       customMap[widget.member.id] = parsed;
-                      ref.read(aeCustomSplitsProvider.notifier).state = customMap;
+                      ref.read(aeCustomSplitsProvider.notifier).state =
+                          customMap;
                     },
                   ),
                 ),
@@ -1151,7 +1214,8 @@ class _MemberSplitRowState extends ConsumerState<MemberSplitRow> {
                       fontSize: 14,
                     ),
                     decoration: InputDecoration(
-                      contentPadding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
                       filled: true,
                       fillColor: AppColors.white.withValues(alpha: 0.05),
                       border: OutlineInputBorder(
@@ -1161,9 +1225,11 @@ class _MemberSplitRowState extends ConsumerState<MemberSplitRow> {
                     ),
                     onChanged: (val) {
                       final parsed = double.tryParse(val) ?? 0.0;
-                      final percentMap = Map<String, double>.from(ref.read(aePercentSplitsProvider));
+                      final percentMap = Map<String, double>.from(
+                          ref.read(aePercentSplitsProvider));
                       percentMap[widget.member.id] = parsed;
-                      ref.read(aePercentSplitsProvider.notifier).state = percentMap;
+                      ref.read(aePercentSplitsProvider.notifier).state =
+                          percentMap;
                     },
                   ),
                 ),

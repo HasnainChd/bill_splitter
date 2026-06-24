@@ -400,13 +400,15 @@ class ProfileTab extends ConsumerWidget {
                         ),
                       ),
                     );
-                    final router = GoRouter.of(context);
-                    await Supabase.instance.client.auth.signOut();
-                    ref.read(homeTabIndexProvider.notifier).state = 0;
-                    if (context.mounted) {
-                      Navigator.of(context).pop();
+                    try {
+                      await Supabase.instance.client.auth.signOut();
+                      ref.read(homeTabIndexProvider.notifier).state = 0;
+                      // No need to manually pop or route; GoRouter redirect handles it via auth state listener
+                    } catch (e) {
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                      }
                     }
-                    router.go(AppRouter.login);
                   },
                 ),
               ],

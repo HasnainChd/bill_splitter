@@ -1,3 +1,4 @@
+import 'package:bill_splitter/core/router/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -6,9 +7,11 @@ import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_empty_state.dart';
 import '../../providers/notifications_provider.dart';
 
-final activityFilterProvider = StateProvider.autoDispose<String>((ref) => 'All');
+final activityFilterProvider =
+    StateProvider.autoDispose<String>((ref) => 'All');
 
 class ActivityScreen extends ConsumerWidget {
   const ActivityScreen({super.key});
@@ -55,7 +58,7 @@ class ActivityScreen extends ConsumerWidget {
                     width: 42.w,
                     height: 42.w,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E1C38),
+                      color: AppColors.primaryMid,
                       borderRadius: BorderRadius.circular(12.r),
                     ),
                     child: IconButton(
@@ -102,12 +105,12 @@ class ActivityScreen extends ConsumerWidget {
             // ── Scrollable Activity Content ──
             Expanded(
               child: filtered.isEmpty
-                  ? Center(
-                      child: AppText(
-                        'No activities found',
-                        fontSize: 14,
-                        color: AppColors.white.withValues(alpha: 0.3),
-                      ),
+                  ? AppEmptyState(
+                      title: 'No Activity Yet',
+                      subtitle: activeFilter == 'All'
+                          ? 'When you or your group members add expenses, they will appear here.'
+                          : 'No activities found for $activeFilter.',
+                      icon: Icons.notifications_off_rounded,
                     )
                   : ListView.builder(
                       physics: const BouncingScrollPhysics(),
@@ -122,7 +125,8 @@ class ActivityScreen extends ConsumerWidget {
                           children: [
                             _buildSectionHeader(
                               title: monthStr,
-                              amountBadge: '${items.length} ${items.length == 1 ? 'item' : 'items'}',
+                              amountBadge:
+                                  '${items.length} ${items.length == 1 ? 'item' : 'items'}',
                               isPositive: true,
                             ),
                             SizedBox(height: 12.h),
@@ -133,12 +137,23 @@ class ActivityScreen extends ConsumerWidget {
                                   final item = items[idx];
                                   return Column(
                                     children: [
-                                      _buildActivityItem(
-                                        emoji: _getEmojiForCategory(item.category),
-                                        title: item.title,
-                                        subtitle: '${item.groupName} • ${item.subtitle}',
-                                        amount: item.amount ?? '',
-                                        amountColor: item.amountColor ?? AppColors.white,
+                                      InkWell(
+                                        onTap: () {
+                                          if (item.groupId != null) {
+                                            context.push(AppRouter.groupDetail,
+                                                extra: item.groupId);
+                                          }
+                                        },
+                                        child: _buildActivityItem(
+                                          emoji: _getEmojiForCategory(
+                                              item.category),
+                                          title: item.title,
+                                          subtitle:
+                                              '${item.groupName} • ${item.subtitle}',
+                                          amount: item.amount ?? '',
+                                          amountColor: item.amountColor ??
+                                              AppColors.white,
+                                        ),
                                       ),
                                       if (idx < items.length - 1)
                                         _buildDivider(),
@@ -167,8 +182,7 @@ class ActivityScreen extends ConsumerWidget {
         margin: EdgeInsets.only(right: 8.w),
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color:
-              isSelected ? AppColors.onboardingViolet : const Color(0xFF1E1C38),
+          color: isSelected ? AppColors.onboardingViolet : AppColors.primaryMid,
           borderRadius: BorderRadius.circular(18.r),
         ),
         alignment: Alignment.center,
@@ -230,7 +244,7 @@ class ActivityScreen extends ConsumerWidget {
             width: 40.w,
             height: 40.w,
             decoration: BoxDecoration(
-              color: const Color(0xFF1E1C38),
+              color: AppColors.primaryMid,
               borderRadius: BorderRadius.circular(12.r),
             ),
             alignment: Alignment.center,
