@@ -78,7 +78,7 @@ class LoginScreen extends ConsumerWidget {
                         ),
                         SizedBox(height: 6.h),
                         const AppText(
-                          'Sign in to your Divvy account',
+                          'Sign in to your Equaly account',
                           fontSize: 15,
                           color: AppColors.textGrey,
                         ),

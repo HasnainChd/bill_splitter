@@ -66,7 +66,7 @@ class SplashScreen extends ConsumerWidget {
                     .shimmer(delay: 950.ms, duration: 1200.ms),
                 SizedBox(height: 24.h),
                 const AppText(
-                  'Divvy',
+                  'Equaly',
                   fontSize: 38,
                   fontWeight: FontWeight.w800,
                   color: AppColors.white,

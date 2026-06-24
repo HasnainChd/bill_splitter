@@ -205,7 +205,7 @@ class SettingsScreen extends ConsumerWidget {
                             icon: Icons.person_outline_rounded,
                             iconColor: AppColors.onboardingViolet,
                             title: 'Edit Profile',
-                            subtitle: 'Alex Johnson · @alexj',
+                            subtitle: '${ref.watch(profileProvider).profile?.fullName ?? "User"} · @${(ref.watch(profileProvider).profile?.username ?? "username").replaceAll(" ", "")}',
                             onTap: () => context.push(AppRouter.editProfile),
                           ),
                           _buildDivider(),
@@ -343,7 +343,7 @@ class SettingsScreen extends ConsumerWidget {
                           _buildSettingsRowItem(
                             icon: Icons.bolt_rounded,
                             iconColor: AppColors.orange,
-                            title: 'Divvy Pro',
+                            title: 'Equaly Pro',
                             subtitle: 'Active · \$4.99/mo',
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -371,7 +371,7 @@ class SettingsScreen extends ConsumerWidget {
                                 ),
                               ],
                             ),
-                            onTap: () => context.push(AppRouter.divvyPro),
+                            onTap: () => context.push(AppRouter.equalyPro),
                           ),
                           _buildDivider(),
                           _buildSettingsRowItem(
@@ -379,7 +379,7 @@ class SettingsScreen extends ConsumerWidget {
                             iconColor: AppColors.onboardingViolet,
                             title: 'Manage Subscription',
                             subtitle: 'Billing, cancel',
-                            onTap: () => context.push(AppRouter.divvyPro),
+                            onTap: () => context.push(AppRouter.equalyPro),
                           ),
                         ],
                       ),
@@ -410,7 +410,7 @@ class SettingsScreen extends ConsumerWidget {
                           _buildSettingsRowItem(
                             icon: Icons.star_outline_rounded,
                             iconColor: AppColors.orange,
-                            title: 'Rate Divvy',
+                            title: 'Rate Equaly',
                             onTap: () => _showRatingDialog(context),
                           ),
                           _buildDivider(),
@@ -552,7 +552,7 @@ class SettingsScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(16.r)),
               title: const Center(
                 child: AppText(
-                  'Rate Divvy',
+                  'Rate Equaly',
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
@@ -562,7 +562,7 @@ class SettingsScreen extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const AppText(
-                    'How is your experience splitting bills with Divvy?',
+                    'How is your experience splitting bills with Equaly?',
                     fontSize: 13,
                     color: AppColors.textGrey,
                     align: TextAlign.center,

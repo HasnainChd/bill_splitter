@@ -78,7 +78,7 @@ class RegisterScreen extends ConsumerWidget {
                     ),
                     SizedBox(height: 6.h),
                     const AppText(
-                      'Join Divvy and split smarter.',
+                      'Join Equaly and split smarter.',
                       fontSize: 15,
                       color: AppColors.textGrey,
                     ),

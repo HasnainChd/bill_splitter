@@ -22,7 +22,7 @@ import '../../presentation/screens/payment_methods_screen.dart';
 import '../../presentation/screens/notifications_screen.dart';
 import '../../presentation/screens/notification_settings_screen.dart';
 import '../../presentation/screens/security_screen.dart';
-import '../../presentation/screens/divvy_pro_screen.dart';
+import '../../presentation/screens/equaly_pro_screen.dart';
 import '../../presentation/onboarding/onboarding_screen.dart';
 import '../../presentation/onboarding/onboarding_walkthrough_screen.dart';
 import '../../presentation/screens/privacy_settings_screen.dart';
@@ -57,7 +57,7 @@ class AppRouter {
   static const String notifications = '/notifications';
   static const String notificationSettings = '/notificationSettings';
   static const String security = '/security';
-  static const String divvyPro = '/divvyPro';
+  static const String equalyPro = '/equalyPro';
   static const String privacySettings = '/privacySettings';
   static const String defaultCurrency = '/defaultCurrency';
   static const String language = '/language';
@@ -236,9 +236,9 @@ class AppRouter {
         builder: (context, state) => const SecurityScreen(),
       ),
       GoRoute(
-        path: divvyPro,
-        name: 'divvyPro',
-        builder: (context, state) => const DivvyProScreen(),
+        path: equalyPro,
+        name: 'equalyPro',
+        builder: (context, state) => const EqualyProScreen(),
       ),
       GoRoute(
         path: privacySettings,

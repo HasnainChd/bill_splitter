@@ -22,7 +22,7 @@ class HelpSupportScreen extends ConsumerWidget {
     {
       'question': 'Can I add expenses in other currencies?',
       'answer':
-          'Yes, Divvy supports multiple currencies. When creating a group, you can specify its primary currency, and you can also add individual expenses with custom exchange rates.',
+          'Yes, Equaly supports multiple currencies. When creating a group, you can specify its primary currency, and you can also add individual expenses with custom exchange rates.',
     },
     {
       'question': 'How do I connect my Venmo?',
@@ -54,7 +54,7 @@ class HelpSupportScreen extends ConsumerWidget {
       'color': Color(0xFF10B981)
     },
     {'label': 'Payments', 'emoji': '💳', 'color': AppColors.orange},
-    {'label': 'Divvy Pro', 'emoji': '⚡', 'color': Colors.amber},
+    {'label': 'Equaly Pro', 'emoji': '⚡', 'color': Colors.amber},
     {'label': 'Privacy & Security', 'emoji': '🔒', 'color': AppColors.coralRed},
   ];
 
@@ -283,7 +283,7 @@ class HelpSupportScreen extends ConsumerWidget {
                       child: Column(
                         children: [
                           AppText(
-                            'Divvy v2.4.1 · Built with ♥ in NYC',
+                            'Equaly v2.4.1 · Built with ♥ in NYC',
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: AppColors.white.withValues(alpha: 0.25),
@@ -298,7 +298,7 @@ class HelpSupportScreen extends ConsumerWidget {
                                     color: Colors.amber, size: 14.sp),
                                 SizedBox(width: 4.w),
                                 const AppText(
-                                  'Rate Divvy on the App Store',
+                                  'Rate Equaly on the App Store',
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.onboardingViolet,

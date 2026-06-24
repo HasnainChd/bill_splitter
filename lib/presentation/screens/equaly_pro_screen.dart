@@ -6,15 +6,15 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../providers/settings_provider.dart';
 
-final divvyProBillingCycleProvider =
+final equalyProBillingCycleProvider =
     StateProvider.autoDispose<String>((ref) => 'Yearly');
 
-class DivvyProScreen extends ConsumerWidget {
-  const DivvyProScreen({super.key});
+class EqualyProScreen extends ConsumerWidget {
+  const EqualyProScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final billingCycle = ref.watch(divvyProBillingCycleProvider);
+    final billingCycle = ref.watch(equalyProBillingCycleProvider);
     final isYearly = billingCycle == 'Yearly';
 
     final defaultCurrency = ref.watch(defaultCurrencyProvider);
@@ -51,14 +51,14 @@ class DivvyProScreen extends ConsumerWidget {
                     ),
                   ),
                   const Spacer(),
-                  // Gold Bolt + Divvy Pro Header
+                  // Gold Bolt + Equaly Pro Header
                   Row(
                     children: [
                       Icon(Icons.bolt_rounded,
                           color: Colors.amber, size: 20.sp),
                       SizedBox(width: 4.w),
                       const AppText(
-                        'Divvy Pro',
+                        'Equaly Pro',
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: Colors.amber,
@@ -433,7 +433,7 @@ class DivvyProScreen extends ConsumerWidget {
     final isSelected = activeCycle == cycleKey;
     return GestureDetector(
       onTap: () {
-        ref.read(divvyProBillingCycleProvider.notifier).state = cycleKey;
+        ref.read(equalyProBillingCycleProvider.notifier).state = cycleKey;
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),

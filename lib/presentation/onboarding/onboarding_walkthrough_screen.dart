@@ -57,7 +57,7 @@ class OnboardingWalkthroughScreen extends ConsumerWidget {
                     pageIndexText: '1 / 3',
                     title: 'Split any expense\ninstantly',
                     description:
-                        'Dinners, trips, rent — add an expense and it\'s split in seconds. Divvy handles the math.',
+                        'Dinners, trips, rent — add an expense and it\'s split in seconds. Equaly handles the math.',
                     cardColor: AppColors.onboardingViolet,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,

@@ -84,7 +84,7 @@ class NotificationSettingsScreen extends ConsumerWidget {
                         ),
                         SizedBox(height: 2.h),
                         AppText(
-                          'Control what Divvy tells you',
+                          'Control what Equaly tells you',
                           fontSize: 12,
                           color: AppColors.white.withValues(alpha: 0.4),
                         ),
@@ -296,7 +296,7 @@ class NotificationSettingsScreen extends ConsumerWidget {
                           ),
                           _buildDivider(),
                           _buildSwitchRow(
-                            label: 'Divvy Tips & Tricks',
+                            label: 'Equaly Tips & Tricks',
                             sublabel: 'How to get more from the app',
                             value: isMuted ? false : settings['tipsTricks']!,
                             onChanged: isMuted ? null : () => toggleSetting('tipsTricks'),

@@ -111,7 +111,7 @@ class OnboardingScreen extends StatelessWidget {
         ),
         SizedBox(height: 14.h),
         const AppText(
-          'Divvy',
+          'Equaly',
           fontSize: 32,
           fontWeight: FontWeight.w700,
           color: AppColors.white,

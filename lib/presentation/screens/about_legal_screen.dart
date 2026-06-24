@@ -79,7 +79,7 @@ class AboutLegalScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 16.h),
                     const AppText(
-                      'Divvy',
+                      'Equaly',
                       fontSize: 24,
                       fontWeight: FontWeight.w900,
                       color: AppColors.white,
@@ -108,13 +108,13 @@ class AboutLegalScreen extends StatelessWidget {
                           _buildListTile(
                             context: context,
                             title: 'Terms of Service',
-                            onTap: () => _showDialogText(context, 'Terms of Service', 'Placeholder for Divvy Terms of Service agreement document content...'),
+                            onTap: () => _showDialogText(context, 'Terms of Service', 'Placeholder for Equaly Terms of Service agreement document content...'),
                           ),
                           _buildDivider(),
                           _buildListTile(
                             context: context,
                             title: 'Privacy Policy',
-                            onTap: () => _showDialogText(context, 'Privacy Policy', 'Placeholder for Divvy Privacy Policy details...'),
+                            onTap: () => _showDialogText(context, 'Privacy Policy', 'Placeholder for Equaly Privacy Policy details...'),
                           ),
                           _buildDivider(),
                           _buildListTile(
@@ -135,19 +135,19 @@ class AboutLegalScreen extends StatelessWidget {
                           _buildLinkRow(
                             icon: Icons.language_rounded,
                             label: 'Official Website',
-                            url: 'https://divvy.app',
+                            url: 'https://equaly.app',
                           ),
                           _buildDivider(),
                           _buildLinkRow(
                             icon: Icons.chat_bubble_outline_rounded,
                             label: 'Twitter / X',
-                            url: '@divvy_app',
+                            url: '@equaly_app',
                           ),
                           _buildDivider(),
                           _buildLinkRow(
                             icon: Icons.code_rounded,
                             label: 'GitHub Repository',
-                            url: 'github.com/divvy/bill_splitter',
+                            url: 'github.com/equaly/bill_splitter',
                           ),
                         ],
                       ),
@@ -156,7 +156,7 @@ class AboutLegalScreen extends StatelessWidget {
 
                     // Copyright
                     AppText(
-                      '© 2026 Divvy Technologies Inc.',
+                      '© 2026 Equaly Technologies Inc.',
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
                       color: AppColors.white.withValues(alpha: 0.25),
