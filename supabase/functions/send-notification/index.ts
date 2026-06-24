@@ -1,6 +1,9 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+// @ts-ignore: Deno LSP cannot resolve subpath types for firebase-admin
 import { initializeApp, cert } from "npm:firebase-admin@12/app";
+// @ts-ignore: Deno LSP cannot resolve subpath types for firebase-admin
 import { getMessaging } from "npm:firebase-admin@12/messaging";
 
 // Initialize Firebase Admin SDK using service account credentials from Environment variables
@@ -61,13 +64,19 @@ serve(async (req) => {
 
     if (table === "expenses") {
       initiatorId = record.paid_by;
-      const expenseTitle = record.title || "Expense";
-      const expenseAmount = record.amount || 0;
+      const expenseTitle = record.description || "Expense";
+      const expenseAmount = Number(record.amount || 0).toFixed(0);
       const currency = group.currency || "PKR";
 
       if (operation === "INSERT") {
-        title = `New Expense in ${group.name}`;
-        body = `{initiator} added '${expenseTitle}' of ${currency} ${expenseAmount}.`;
+        const isSettlement = expenseTitle === 'Settle Payment' || expenseTitle === 'Payment';
+        if (isSettlement) {
+          title = `Payment in ${group.name}`;
+          body = `{initiator} paid ${currency} ${expenseAmount} to settle up.`;
+        } else {
+          title = `New Expense in ${group.name}`;
+          body = `{initiator} added '${expenseTitle}' of ${currency} ${expenseAmount}.`;
+        }
       } else if (operation === "UPDATE") {
         title = `Expense Updated in ${group.name}`;
         body = `{initiator} updated '${expenseTitle}'.`;
@@ -84,18 +93,23 @@ serve(async (req) => {
         title = `Member Left ${group.name}`;
         body = `{initiator} left the group.`;
       }
+    } else if (table === "requests") {
+      initiatorId = record.user_id;
+      title = `Payment Request in ${group.name}`;
+      body = `{initiator} has requested to settle up in ${group.name}.`;
     }
 
     // 3. Resolve Initiator Full Name
     let initiatorName = "Someone";
     if (initiatorId) {
-      const { data: profile } = await supabase
+      const { data: profile, error: profErr } = await supabase
         .from("users")
-        .select("fullName")
+        .select("fullName, full_name")
         .eq("id", initiatorId)
         .single();
-      if (profile && profile.fullName) {
-        initiatorName = profile.fullName;
+      
+      if (!profErr && profile) {
+        initiatorName = profile.fullName || profile.full_name || "Someone";
       }
     }
     body = body.replace("{initiator}", initiatorName);

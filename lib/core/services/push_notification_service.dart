@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import 'package:uuid/uuid.dart';
 import '../../providers/auth_provider.dart';
+import '../router/app_router.dart';
 
 final pushNotificationServiceProvider = Provider<PushNotificationService>((ref) {
   final service = PushNotificationService(ref);
@@ -38,15 +40,10 @@ class PushNotificationService {
     // Clean up if needed
   }
 
-  // Helper to get/create a persistent unique device ID
-  String _getOrCreateDeviceId() {
-    final box = Hive.box('settings');
-    String? deviceId = box.get('device_id') as String?;
-    if (deviceId == null) {
-      deviceId = const Uuid().v4();
-      box.put('device_id', deviceId);
-    }
-    return deviceId;
+  // Helper to generate a stable device ID from the FCM token
+  String _getDeviceIdFromToken(String token) {
+    // Use the last 32 characters of the token as a unique device ID
+    return token.length > 32 ? token.substring(token.length - 32) : token;
   }
 
   Future<void> _init() async {
@@ -84,7 +81,16 @@ class PushNotificationService {
           iOS: initializationSettingsIOS,
         );
 
-        await _localNotifications.initialize(initializationSettings);
+        await _localNotifications.initialize(
+          initializationSettings,
+          onDidReceiveNotificationResponse: (NotificationResponse response) {
+            debugPrint('🔔 PushNotificationService: Notification tapped from foreground.');
+            // We don't have the full RemoteMessage data here easily, but we can pass payload
+            if (response.payload != null && response.payload!.isNotEmpty) {
+              AppRouter.router.push(AppRouter.settleUp, extra: response.payload);
+            }
+          },
+        );
       }
 
       // 3. Listen to foreground messages
@@ -94,6 +100,12 @@ class PushNotificationService {
         AndroidNotification? android = message.notification?.android;
 
         if (notification != null && !kIsWeb) {
+          // Extract groupId for payload
+          String? payloadGroupId;
+          if (message.data.containsKey('groupId')) {
+            payloadGroupId = message.data['groupId'];
+          }
+
           _localNotifications.show(
             notification.hashCode,
             notification.title,
@@ -111,6 +123,7 @@ class PushNotificationService {
                 presentSound: true,
               ),
             ),
+            payload: payloadGroupId,
           );
         }
       });
@@ -143,8 +156,30 @@ class PushNotificationService {
           await _uploadToken(token);
         }
       }
+
+      // 7. Handle Background/Terminated Taps
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        debugPrint('🔔 PushNotificationService: Notification tapped in background.');
+        _handleNotificationTap(message);
+      });
+
+      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      if (initialMessage != null) {
+        debugPrint('🔔 PushNotificationService: Notification tapped from terminated state.');
+        _handleNotificationTap(initialMessage);
+      }
     } catch (e) {
       debugPrint('🔔 PushNotificationService error during init: $e');
+    }
+  }
+
+  void _handleNotificationTap(RemoteMessage message) {
+    final data = message.data;
+    if (data.containsKey('table') && data['table'] == 'requests') {
+      final groupId = data['groupId'];
+      if (groupId != null) {
+        AppRouter.router.push(AppRouter.settleUp, extra: groupId);
+      }
     }
   }
 
@@ -153,7 +188,12 @@ class PushNotificationService {
     final user = _supabase.auth.currentUser;
     if (user == null) return;
 
-    final deviceId = _getOrCreateDeviceId();
+    final deviceId = _getDeviceIdFromToken(token);
+    
+    // First, delete this token if it belongs to any other user (prevents cross-account notifications)
+    try {
+      await _supabase.from('user_tokens').delete().eq('fcm_token', token).neq('user_id', user.id);
+    } catch (_) {}
     try {
       await _supabase.from('user_tokens').upsert({
         'user_id': user.id,
@@ -169,8 +209,11 @@ class PushNotificationService {
 
   // Remove token from Supabase user_tokens table
   Future<void> _deleteToken(String userId) async {
-    final deviceId = _getOrCreateDeviceId();
     try {
+      final token = await _fcm.getToken();
+      if (token == null) return;
+      
+      final deviceId = _getDeviceIdFromToken(token);
       await _supabase
           .from('user_tokens')
           .delete()

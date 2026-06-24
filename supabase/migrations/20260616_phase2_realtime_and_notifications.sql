@@ -48,6 +48,7 @@ create table if not exists public.user_tokens (
 -- Enable RLS and add policies
 alter table public.user_tokens enable row level security;
 
+drop policy if exists "Users can manage their own tokens" on public.user_tokens;
 create policy "Users can manage their own tokens" on public.user_tokens
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 

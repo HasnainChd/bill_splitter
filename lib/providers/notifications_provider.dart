@@ -8,6 +8,7 @@ import 'expense_provider.dart';
 import 'profile_provider.dart';
 import '../presentation/providers/screen_providers.dart';
 import '../core/utils/group_icon_helper.dart';
+import 'requests_provider.dart';
 
 class NotificationItem {
   final String id;
@@ -23,6 +24,7 @@ class NotificationItem {
   final Color badgeColor;
   final bool isUnread;
   final DateTime date;
+  final String? groupId;
 
   NotificationItem({
     required this.id,
@@ -38,6 +40,7 @@ class NotificationItem {
     required this.badgeColor,
     required this.isUnread,
     required this.date,
+    this.groupId,
   });
 }
 
@@ -51,6 +54,7 @@ final dynamicNotificationsProvider = Provider<List<NotificationItem>>((ref) {
   final expenseState = ref.watch(expenseProvider);
   final usersMap = ref.watch(notificationUsersMapProvider);
   final currentUser = ref.watch(supabaseUserProvider);
+  final requestsState = ref.watch(requestsProvider);
 
   if (currentUser == null) return [];
 
@@ -97,6 +101,57 @@ final dynamicNotificationsProvider = Provider<List<NotificationItem>>((ref) {
         badgeColor: const Color(0xFF38BDF8),
         isUnread: false,
         date: group.createdAt,
+      ),
+    );
+  }
+
+  // 3. Request Money notifications
+  for (final req in requestsState.requests) {
+    final group = groupState.groups.firstWhere(
+      (g) => g.groupId == req.groupId,
+      orElse: () => Group(
+        groupId: req.groupId,
+        name: 'Unknown Group',
+        members: const [],
+        currency: 'USD',
+        createdAt: DateTime.now(),
+      ),
+    );
+
+    if (group.name == 'Unknown Group') continue;
+
+    final requesterProfile = usersMap[req.userId];
+    final String requesterName = req.userId == currentUser.id
+        ? 'You'
+        : (requesterProfile?.fullName ?? 'Someone');
+
+    final String initials = req.userId == currentUser.id
+        ? 'U'
+        : requesterProfile != null && requesterProfile.fullName.isNotEmpty
+            ? requesterProfile.fullName.trim().split(' ').length >= 2
+                ? '${requesterProfile.fullName.trim().split(' ')[0][0]}${requesterProfile.fullName.trim().split(' ')[1][0]}'.toUpperCase()
+                : requesterProfile.fullName[0].toUpperCase()
+            : 'S';
+
+    final avatarColor = avatarColors[req.userId.hashCode.abs() % avatarColors.length];
+
+    final String title = req.userId == currentUser.id
+        ? 'You requested a settlement'
+        : '$requesterName requested a settlement';
+
+    notifications.add(
+      NotificationItem(
+        id: 'req-${req.id}',
+        category: 'Payments',
+        groupName: group.name,
+        title: title,
+        subtitle: _formatTimeAgo(req.createdAt),
+        avatarText: initials,
+        avatarColor: avatarColor,
+        badgeIcon: Icons.handshake_rounded,
+        badgeColor: AppColors.onboardingViolet,
+        isUnread: false,
+        date: req.createdAt,
       ),
     );
   }
@@ -161,6 +216,7 @@ final dynamicNotificationsProvider = Provider<List<NotificationItem>>((ref) {
           badgeColor: const Color(0xFF00C896),
           isUnread: false,
           date: expense.date,
+          groupId: group.groupId,
         ),
       );
     } else {
@@ -182,6 +238,7 @@ final dynamicNotificationsProvider = Provider<List<NotificationItem>>((ref) {
           badgeColor: AppColors.onboardingViolet,
           isUnread: false,
           date: expense.date,
+          groupId: group.groupId,
         ),
       );
     }
