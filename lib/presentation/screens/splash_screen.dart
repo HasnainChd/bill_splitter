@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/router/app_router.dart';
@@ -23,7 +24,14 @@ class SplashScreen extends ConsumerWidget {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               final auth = Supabase.instance.client.auth.currentUser;
               if (auth != null) {
-                context.go(AppRouter.home);
+                final box = Hive.box('settings');
+                final faceIdEnabled = box.get('face_id_enabled', defaultValue: true) as bool;
+                
+                if (faceIdEnabled) {
+                  context.go('${AppRouter.lockScreen}?next=${AppRouter.home}');
+                } else {
+                  context.go(AppRouter.home);
+                }
               } else {
                 context.go(AppRouter.onboarding);
               }

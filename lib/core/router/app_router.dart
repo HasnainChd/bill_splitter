@@ -33,6 +33,7 @@ import '../../presentation/screens/two_factor_auth_screen.dart';
 import '../../presentation/screens/change_password_screen.dart';
 import '../../presentation/screens/report_bug_screen.dart';
 import '../../presentation/screens/about_legal_screen.dart';
+import '../../presentation/screens/lock_screen.dart';
 
 import '../../presentation/screens/splash_screen.dart';
 
@@ -66,6 +67,7 @@ class AppRouter {
   static const String changePassword = '/changePassword';
   static const String reportBug = '/reportBug';
   static const String aboutLegal = '/aboutLegal';
+  static const String lockScreen = '/lockScreen';
 
   static final GoRouter router = GoRouter(
     initialLocation: splash,
@@ -76,11 +78,12 @@ class AppRouter {
       final isRegistering = state.matchedLocation == register;
       final isForgotPassword = state.matchedLocation == forgotPassword;
       final isChangePassword = state.matchedLocation == changePassword;
+      final isLockScreen = state.matchedLocation == lockScreen;
       final isOnboarding = state.matchedLocation == onboarding ||
           state.matchedLocation == walkthrough;
 
-      // Always allow splash, onboarding, auth, and change password screens
-      if (isSplash || isOnboarding || isLoggingIn || isRegistering || isForgotPassword || isChangePassword) {
+      // Always allow splash, onboarding, auth, change password, and lock screens
+      if (isSplash || isOnboarding || isLoggingIn || isRegistering || isForgotPassword || isChangePassword || isLockScreen) {
         return null;
       }
 
@@ -96,6 +99,14 @@ class AppRouter {
         path: splash,
         name: 'splash',
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: lockScreen,
+        name: 'lockScreen',
+        builder: (context, state) {
+          final nextRoute = state.uri.queryParameters['next'] ?? home;
+          return LockScreen(nextRoute: nextRoute);
+        },
       ),
       GoRoute(
         path: onboarding,
