@@ -5,25 +5,66 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
-final notificationSettingsStateProvider = StateProvider.autoDispose<Map<String, bool>>((ref) => {
-      'muteAll': false,
-      'push': true,
-      'email': true,
-      'sms': false,
-      'newExpense': true,
-      'expenseEdited': false,
-      'addedToGroup': true,
-      'someoneLeaves': false,
-      'paymentReceived': true,
-      'paymentReminder': true,
-      'autoRemind': false,
-      'unsettledBalances': true,
-      'monthlyRecap': true,
-      'streakReminders': false,
-      'productUpdates': false,
-      'tipsTricks': false,
-    });
+class NotificationSettingsNotifier extends StateNotifier<Map<String, bool>> {
+  NotificationSettingsNotifier() : super(_defaultSettings) {
+    _loadSettings();
+  }
+
+  static const Map<String, bool> _defaultSettings = {
+    'muteAll': false,
+    'push': true,
+    'email': true,
+    'sms': false,
+    'newExpense': true,
+    'expenseEdited': false,
+    'addedToGroup': true,
+    'someoneLeaves': false,
+    'paymentReceived': true,
+    'paymentReminder': true,
+    'autoRemind': false,
+    'unsettledBalances': true,
+    'monthlyRecap': true,
+    'streakReminders': false,
+    'productUpdates': false,
+    'tipsTricks': false,
+  };
+
+  void _loadSettings() {
+    final box = Hive.box('settings');
+    final saved = box.get('notification_settings');
+    if (saved != null) {
+      if (saved is Map) {
+        final Map<String, bool> casted = {};
+        saved.forEach((key, value) {
+          if (key is String && value is bool) {
+            casted[key] = value;
+          }
+        });
+        state = {
+          ..._defaultSettings,
+          ...casted,
+        };
+      }
+    }
+  }
+
+  void toggleSetting(String key) {
+    final nextValue = !state[key]!;
+    state = {
+      ...state,
+      key: nextValue,
+    };
+    final box = Hive.box('settings');
+    box.put('notification_settings', state);
+  }
+}
+
+final notificationSettingsStateProvider =
+    StateNotifierProvider.autoDispose<NotificationSettingsNotifier, Map<String, bool>>((ref) {
+  return NotificationSettingsNotifier();
+});
 
 class NotificationSettingsScreen extends ConsumerWidget {
   const NotificationSettingsScreen({super.key});
@@ -33,11 +74,7 @@ class NotificationSettingsScreen extends ConsumerWidget {
     final settings = ref.watch(notificationSettingsStateProvider);
 
     void toggleSetting(String key) {
-      final currentMap = ref.read(notificationSettingsStateProvider);
-      ref.read(notificationSettingsStateProvider.notifier).state = {
-        ...currentMap,
-        key: !currentMap[key]!,
-      };
+      ref.read(notificationSettingsStateProvider.notifier).toggleSetting(key);
     }
 
     final isMuted = settings['muteAll']!;

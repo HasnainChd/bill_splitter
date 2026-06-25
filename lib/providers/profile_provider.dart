@@ -136,6 +136,21 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         _dbColumns.addAll(response.keys);
         debugPrint('👤 Profile response from Supabase: $response');
         debugPrint('👤 Available database columns: $_dbColumns');
+        // Sync database privacy settings to Hive
+        final box = Hive.box('settings');
+        if (response['is_public'] != null) {
+          box.put('privacy_public_${user.id}', response['is_public'] as bool);
+        }
+        if (response['allow_invites'] != null) {
+          box.put('privacy_invites_${user.id}', response['allow_invites'] as String);
+        }
+        if (response['share_analytics'] != null) {
+          box.put('privacy_analytics_${user.id}', response['share_analytics'] as bool);
+        }
+        if (response['read_receipts'] != null) {
+          box.put('privacy_read_receipts_${user.id}', response['read_receipts'] as bool);
+        }
+
         final profile = UserProfile.fromMap(response, user.email ?? '');
         debugPrint('👤 Parsed avatarUrl: ${profile.avatarUrl}');
         if (mounted) {
@@ -210,6 +225,12 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         }
       }
 
+      final box = Hive.box('settings');
+      final isPublic = box.get('privacy_public_${user.id}', defaultValue: true) as bool;
+      final allowInvites = box.get('privacy_invites_${user.id}', defaultValue: 'Everyone') as String;
+      final shareAnalytics = box.get('privacy_analytics_${user.id}', defaultValue: true) as bool;
+      final readReceipts = box.get('privacy_read_receipts_${user.id}', defaultValue: true) as bool;
+
       // If we don't have columns list yet, default to standard camelCase
       if (_dbColumns.isEmpty) {
         updateData['fullName'] = fullName;
@@ -219,6 +240,10 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         updateData['bio'] = bio;
         updateData['currency'] = currency;
         updateData['avatarUrl'] = avatarUrl;
+        updateData['is_public'] = isPublic;
+        updateData['allow_invites'] = allowInvites;
+        updateData['share_analytics'] = shareAnalytics;
+        updateData['read_receipts'] = readReceipts;
       } else {
         addIfColumnExists('fullName', fullName);
         addIfColumnExists('full_name', fullName);
@@ -231,6 +256,10 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         addIfColumnExists('defaultCurrency', currency);
         addIfColumnExists('avatarUrl', avatarUrl);
         addIfColumnExists('avatar_url', avatarUrl);
+        addIfColumnExists('is_public', isPublic);
+        addIfColumnExists('allow_invites', allowInvites);
+        addIfColumnExists('share_analytics', shareAnalytics);
+        addIfColumnExists('read_receipts', readReceipts);
       }
 
       // debugPrint('👤 Sending profile updates to Supabase: $updateData');

@@ -184,28 +184,6 @@ class PrivacySettingsScreen extends ConsumerWidget {
                               );
                             },
                           ),
-                          _buildDivider(),
-                          ListTile(
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16.w, vertical: 4.h),
-                            title: const AppText(
-                              'Delete Account',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFFEF4444),
-                            ),
-                            subtitle: const AppText(
-                              'Permanently delete your profile and logs',
-                              fontSize: 11,
-                              color: Color(0xFFEF4444),
-                            ),
-                            trailing: Icon(
-                              Icons.delete_forever_outlined,
-                              color: const Color(0xFFEF4444),
-                              size: 20.sp,
-                            ),
-                            onTap: () => _showDeleteConfirmDialog(context),
-                          ),
                         ],
                       ),
                     ),
@@ -303,53 +281,4 @@ class PrivacySettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showDeleteConfirmDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext ctx) {
-        return AlertDialog(
-          backgroundColor: AppColors.cardDark,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-          title: const AppText(
-            'Delete Account?',
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: Colors.white,
-          ),
-          content: const AppText(
-            'This action is permanent and cannot be undone. All expense details and group histories will be wiped.',
-            fontSize: 13,
-            color: AppColors.textGrey,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: AppText(
-                'Cancel',
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.white.withValues(alpha: 0.5),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                AppSnackBar.showSuccess(
-                  context,
-                  'Account successfully deleted.',
-                );
-              },
-              child: const AppText(
-                'Delete',
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFFEF4444),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
 }

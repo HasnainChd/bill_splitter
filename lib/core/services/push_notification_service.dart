@@ -4,10 +4,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
-import 'package:uuid/uuid.dart';
 import '../../providers/auth_provider.dart';
 import '../router/app_router.dart';
+import '../../presentation/screens/notification_settings_screen.dart';
 
 final pushNotificationServiceProvider = Provider<PushNotificationService>((ref) {
   final service = PushNotificationService(ref);
@@ -100,6 +99,21 @@ class PushNotificationService {
         AndroidNotification? android = message.notification?.android;
 
         if (notification != null && !kIsWeb) {
+          // Check local user preferences before displaying foreground notification
+          final settingsBox = Hive.box('settings');
+          final savedSettings = settingsBox.get('notification_settings');
+          bool isPushEnabled = true;
+          bool isMuteAll = false;
+          if (savedSettings != null && savedSettings is Map) {
+            isPushEnabled = savedSettings['push'] ?? true;
+            isMuteAll = savedSettings['muteAll'] ?? false;
+          }
+
+          if (!isPushEnabled || isMuteAll) {
+            debugPrint('🔔 PushNotificationService: Notification suppressed based on user settings (push: $isPushEnabled, muteAll: $isMuteAll).');
+            return;
+          }
+
           // Extract groupId for payload
           String? payloadGroupId;
           if (message.data.containsKey('groupId')) {
@@ -148,6 +162,25 @@ class PushNotificationService {
         }
       });
 
+      // Listen to notification settings changes to register/deregister FCM token
+      _ref.listen<Map<String, bool>>(notificationSettingsStateProvider, (previous, next) async {
+        final isPushEnabled = next['push'] ?? true;
+        final isMuteAll = next['muteAll'] ?? false;
+        final user = _supabase.auth.currentUser;
+        if (user != null) {
+          if (!isPushEnabled || isMuteAll) {
+            debugPrint('🔔 PushNotificationService: Preference changed. Deleting token...');
+            await _deleteToken(user.id);
+          } else {
+            debugPrint('🔔 PushNotificationService: Preference changed. Uploading token...');
+            final token = await _fcm.getToken();
+            if (token != null) {
+              await _uploadToken(token);
+            }
+          }
+        }
+      });
+
       // 6. Sync immediately if already logged in
       final currentUser = _supabase.auth.currentUser;
       if (currentUser != null) {
@@ -187,6 +220,22 @@ class PushNotificationService {
   Future<void> _uploadToken(String token) async {
     final user = _supabase.auth.currentUser;
     if (user == null) return;
+
+    // Check if push notifications are enabled
+    final settingsBox = Hive.box('settings');
+    final savedSettings = settingsBox.get('notification_settings');
+    bool isPushEnabled = true;
+    bool isMuteAll = false;
+    if (savedSettings != null && savedSettings is Map) {
+      isPushEnabled = savedSettings['push'] ?? true;
+      isMuteAll = savedSettings['muteAll'] ?? false;
+    }
+
+    if (!isPushEnabled || isMuteAll) {
+      debugPrint('🔔 PushNotificationService: Suppressing token upload because push notifications are disabled.');
+      await _deleteToken(user.id);
+      return;
+    }
 
     final deviceId = _getDeviceIdFromToken(token);
     
