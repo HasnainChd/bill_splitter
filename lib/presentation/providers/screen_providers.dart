@@ -100,6 +100,24 @@ final allUsersProvider = FutureProvider<List<UserProfile>>((ref) async {
   final currentUser = ref.watch(supabaseUserProvider);
   if (currentUser == null) return [];
 
+  // Setup Realtime listener on 'users' table to react when users change their privacy settings
+  final channel = supabase
+      .channel('public:users')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'users',
+        callback: (payload) {
+          debugPrint('👥 Realtime User update received, invalidating allUsersProvider');
+          ref.invalidateSelf();
+        },
+      );
+  channel.subscribe();
+
+  ref.onDispose(() {
+    channel.unsubscribe();
+  });
+
   try {
     final data = await supabase
         .from('users')

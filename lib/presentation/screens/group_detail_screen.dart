@@ -80,7 +80,8 @@ class GroupDetailScreen extends ConsumerWidget {
           slivers: [
             // ── Gradient Header ──
             SliverToBoxAdapter(
-              child: _buildGradientHeader(context, ref, group, myBalance, currencyCode),
+              child: _buildGradientHeader(
+                  context, ref, group, myBalance, currencyCode),
             ),
 
             // ── Members Section ──
@@ -266,7 +267,7 @@ class GroupDetailScreen extends ConsumerWidget {
                             color: AppColors.white.withValues(alpha: 0.6),
                           ),
                           AppText(
-                            '${currencyCode} ${totalExpenses.toStringAsFixed(2)}',
+                            '$currencyCode ${totalExpenses.toStringAsFixed(2)}',
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: AppColors.white,
@@ -285,8 +286,8 @@ class GroupDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildGradientHeader(
-      BuildContext context, WidgetRef ref, Group group, double myBalance, String currencyCode) {
+  Widget _buildGradientHeader(BuildContext context, WidgetRef ref, Group group,
+      double myBalance, String currencyCode) {
     final String balanceStr = myBalance == 0
         ? '$currencyCode 0.00'
         : myBalance > 0
@@ -684,14 +685,14 @@ class GroupDetailScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             AppText(
-              '${currencyCode} ${expense.amount.toStringAsFixed(2)}',
+              '$currencyCode ${expense.amount.toStringAsFixed(2)}',
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.white,
             ),
             if (!isSettlement)
               AppText(
-                '${currencyCode} ${perPerson.toStringAsFixed(0)}/person',
+                '$currencyCode ${perPerson.toStringAsFixed(0)}/person',
                 fontSize: 11,
                 color: AppColors.white.withValues(alpha: 0.4),
               ),
@@ -723,7 +724,8 @@ class GroupDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _showAddMemberBottomSheet(BuildContext context, WidgetRef ref, Group group) {
+  void _showAddMemberBottomSheet(
+      BuildContext context, WidgetRef ref, Group group) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.backgroundDark,
@@ -779,13 +781,15 @@ class _AddMemberBottomSheetContentState
     };
 
     // Filter out users who are already members
-    final nonMembers = usersList
-        .where((u) => !existingMemberIds.contains(u.id))
-        .toList();
+    final nonMembers =
+        usersList.where((u) => !existingMemberIds.contains(u.id)).toList();
 
     // Filter by search query (email or username or full name)
     final filteredUsers = nonMembers.where((u) {
-      final q = _searchQuery.toLowerCase();
+      final cleanQ = _searchQuery.trim().startsWith('@')
+          ? _searchQuery.trim().substring(1)
+          : _searchQuery.trim();
+      final q = cleanQ.toLowerCase();
       return u.fullName.toLowerCase().contains(q) ||
           u.username.toLowerCase().contains(q) ||
           u.email.toLowerCase().contains(q);
@@ -877,8 +881,7 @@ class _AddMemberBottomSheetContentState
                     // Compute initials
                     final nameParts = user.fullName.trim().split(' ');
                     final initials = nameParts.length >= 2
-                        ? '${nameParts[0][0]}${nameParts[1][0]}'
-                            .toUpperCase()
+                        ? '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase()
                         : nameParts.isNotEmpty && nameParts[0].isNotEmpty
                             ? nameParts[0][0].toUpperCase()
                             : 'U';
@@ -947,9 +950,10 @@ class _AddMemberBottomSheetContentState
                                         .read(groupProvider.notifier)
                                         .addMemberToGroup(
                                             widget.groupId, user.id);
-                                    
+
                                     // Invalidate group members future
-                                    ref.invalidate(groupMembersProvider(widget.groupId));
+                                    ref.invalidate(
+                                        groupMembersProvider(widget.groupId));
 
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(context)

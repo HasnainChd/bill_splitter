@@ -28,10 +28,13 @@ class CreateGroupScreen extends ConsumerWidget {
 
     final usersAsync = ref.watch(allUsersProvider);
     final usersList = usersAsync.value ?? [];
+    final cleanQuery = searchQuery.trim().startsWith('@')
+        ? searchQuery.trim().substring(1)
+        : searchQuery.trim();
     final filteredUsers = usersList
         .where((u) =>
-            u.fullName.toLowerCase().contains(searchQuery.toLowerCase()) ||
-            u.username.toLowerCase().contains(searchQuery.toLowerCase()))
+            u.fullName.toLowerCase().contains(cleanQuery.toLowerCase()) ||
+            u.username.toLowerCase().contains(cleanQuery.toLowerCase()))
         .toList();
 
     return Scaffold(
