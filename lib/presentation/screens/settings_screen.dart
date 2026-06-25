@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/profile_provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
@@ -37,6 +38,13 @@ final settingsFaceIdProvider =
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
+
+  Future<void> _launchUrl(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    if (!await launchUrl(url)) {
+      debugPrint('Could not launch $urlString');
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -161,6 +169,7 @@ class SettingsScreen extends ConsumerWidget {
                                 ),
                               ),
                               // Gold "PRO" Badge
+                              /*
                               Container(
                                 padding: EdgeInsets.symmetric(
                                     horizontal: 8.w, vertical: 4.h),
@@ -189,6 +198,7 @@ class SettingsScreen extends ConsumerWidget {
                                   ],
                                 ),
                               ),
+                              */
                             ],
                           ));
                     }),
@@ -208,6 +218,7 @@ class SettingsScreen extends ConsumerWidget {
                             subtitle: '${ref.watch(profileProvider).profile?.fullName ?? "User"} · @${(ref.watch(profileProvider).profile?.username ?? "username").replaceAll(" ", "")}',
                             onTap: () => context.push(AppRouter.editProfile),
                           ),
+                          /*
                           _buildDivider(),
                           _buildSettingsRowItem(
                             icon: Icons.credit_card_rounded,
@@ -224,6 +235,7 @@ class SettingsScreen extends ConsumerWidget {
                             subtitle: '2 connected',
                             onTap: () {},
                           ),
+                          */
                         ],
                       ),
                     ),
@@ -253,6 +265,7 @@ class SettingsScreen extends ConsumerWidget {
                             onTap: () =>
                                 context.push(AppRouter.defaultCurrency),
                           ),
+                          /*
                           _buildDivider(),
                           _buildSettingsRowItem(
                             icon: Icons.language_rounded,
@@ -261,6 +274,7 @@ class SettingsScreen extends ConsumerWidget {
                             subtitle: activeLanguage,
                             onTap: () => context.push(AppRouter.language),
                           ),
+                          */
                           _buildDivider(),
                           _buildSettingsRowItem(
                             icon: Icons.calendar_today_rounded,
@@ -301,6 +315,7 @@ class SettingsScreen extends ConsumerWidget {
                             ),
                             onTap: () => context.push(AppRouter.security),
                           ),
+                          /*
                           _buildDivider(),
                           _buildSettingsRowItem(
                             icon: Icons.shield_outlined,
@@ -311,6 +326,7 @@ class SettingsScreen extends ConsumerWidget {
                                 : 'Disabled',
                             onTap: () => context.push(AppRouter.twoFactorAuth),
                           ),
+                          */
                           _buildDivider(),
                           _buildSettingsRowItem(
                             icon: Icons.key_rounded,
@@ -323,16 +339,16 @@ class SettingsScreen extends ConsumerWidget {
                           _buildSettingsRowItem(
                             icon: Icons.privacy_tip_rounded,
                             iconColor: const Color(0xFF10B981),
-                            title: 'Privacy Settings',
+                            title: 'Terms & Privacy',
                             subtitle: 'Visibility, data sharing',
-                            onTap: () =>
-                                context.push(AppRouter.privacySettings),
+                            onTap: () => _launchUrl('https://devorastudios.dev/#/privacy'),
                           ),
                         ],
                       ),
                     ),
                     SizedBox(height: 24.h),
 
+                    /*
                     // SUBSCRIPTION Section
                     _sectionLabel('SUBSCRIPTION'),
                     SizedBox(height: 12.h),
@@ -385,6 +401,7 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                     ),
                     SizedBox(height: 24.h),
+                    */
 
                     // SUPPORT Section
                     _sectionLabel('SUPPORT'),
@@ -397,14 +414,14 @@ class SettingsScreen extends ConsumerWidget {
                             icon: Icons.help_outline_rounded,
                             iconColor: AppColors.coralRed,
                             title: 'Help Center',
-                            onTap: () => context.push(AppRouter.helpSupport),
+                            onTap: () => _launchUrl('https://devorastudios.dev/#/support'),
                           ),
                           _buildDivider(),
                           _buildSettingsRowItem(
                             icon: Icons.bug_report_outlined,
                             iconColor: const Color(0xFF10B981),
                             title: 'Report a Bug',
-                            onTap: () => context.push(AppRouter.reportBug),
+                            onTap: () => _launchUrl('mailto:hello@devorastudios.dev?subject=Equaly%20Bug%20Report'),
                           ),
                           _buildDivider(),
                           _buildSettingsRowItem(
@@ -413,6 +430,7 @@ class SettingsScreen extends ConsumerWidget {
                             title: 'Rate Equaly',
                             onTap: () => _showRatingDialog(context),
                           ),
+                          /*
                           _buildDivider(),
                           _buildSettingsRowItem(
                             icon: Icons.info_outline_rounded,
@@ -421,6 +439,7 @@ class SettingsScreen extends ConsumerWidget {
                             subtitle: 'v2.4.1',
                             onTap: () => context.push(AppRouter.aboutLegal),
                           ),
+                          */
                         ],
                       ),
                     ),
@@ -546,85 +565,151 @@ class SettingsScreen extends ConsumerWidget {
         return Consumer(
           builder: (context, ref, child) {
             final rating = ref.watch(ratingStarsProvider);
-            return AlertDialog(
-              backgroundColor: AppColors.cardDark,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16.r)),
-              title: const Center(
-                child: AppText(
-                  'Rate Equaly',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const AppText(
-                    'How is your experience splitting bills with Equaly?',
-                    fontSize: 13,
-                    color: AppColors.textGrey,
-                    align: TextAlign.center,
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: Container(
+                padding: EdgeInsets.all(24.w),
+                decoration: BoxDecoration(
+                  color: AppColors.cardDark,
+                  borderRadius: BorderRadius.circular(24.r),
+                  border: Border.all(
+                    color: AppColors.orange.withValues(alpha: 0.3),
+                    width: 1.5,
                   ),
-                  SizedBox(height: 16.h),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) {
-                      final starIndex = index + 1;
-                      final isSelected = starIndex <= rating;
-                      return GestureDetector(
-                        onTap: () {
-                          ref.read(ratingStarsProvider.notifier).state =
-                              starIndex;
-                        },
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 4.w),
-                          child: Icon(
-                            isSelected
-                                ? Icons.star_rounded
-                                : Icons.star_outline_rounded,
-                            color: isSelected
-                                ? AppColors.orange
-                                : AppColors.white.withValues(alpha: 0.2),
-                            size: 36.sp,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.orange.withValues(alpha: 0.15),
+                      blurRadius: 30,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(16.w),
+                      decoration: BoxDecoration(
+                        color: AppColors.orange.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.star_rounded,
+                        color: AppColors.orange,
+                        size: 36.sp,
+                      ),
+                    ),
+                    SizedBox(height: 20.h),
+                    const AppText(
+                      'Rate Equaly',
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.white,
+                    ),
+                    SizedBox(height: 12.h),
+                    const AppText(
+                      'How is your experience splitting bills with Equaly so far?',
+                      fontSize: 14,
+                      color: AppColors.textGrey,
+                      align: TextAlign.center,
+                      height: 1.4,
+                    ),
+                    SizedBox(height: 24.h),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        final starIndex = index + 1;
+                        final isSelected = starIndex <= rating;
+                        return GestureDetector(
+                          onTap: () {
+                            ref.read(ratingStarsProvider.notifier).state =
+                                starIndex;
+                          },
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4.w),
+                            child: Icon(
+                              isSelected
+                                  ? Icons.star_rounded
+                                  : Icons.star_outline_rounded,
+                              color: isSelected
+                                  ? AppColors.orange
+                                  : AppColors.white.withValues(alpha: 0.2),
+                              size: 40.sp,
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    SizedBox(height: 32.h),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => Navigator.of(ctx).pop(),
+                            child: Container(
+                              height: 52.h,
+                              decoration: BoxDecoration(
+                                color: AppColors.white.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(16.r),
+                              ),
+                              alignment: Alignment.center,
+                              child: const AppText(
+                                'Not Now',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.white,
+                              ),
+                            ),
                           ),
                         ),
-                      );
-                    }),
-                  ),
-                ],
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: rating == 0
+                                ? null
+                                : () {
+                                    Navigator.of(ctx).pop();
+                                    AppSnackBar.showSuccess(
+                                      context,
+                                      'Thank you for rating us $rating stars!',
+                                    );
+                                  },
+                            child: Container(
+                              height: 52.h,
+                              decoration: BoxDecoration(
+                                color: rating == 0
+                                    ? AppColors.white.withValues(alpha: 0.05)
+                                    : AppColors.orange,
+                                borderRadius: BorderRadius.circular(16.r),
+                                boxShadow: rating == 0
+                                    ? []
+                                    : [
+                                        BoxShadow(
+                                          color: AppColors.orange
+                                              .withValues(alpha: 0.3),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                              ),
+                              alignment: Alignment.center,
+                              child: AppText(
+                                'Submit',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: rating == 0
+                                    ? AppColors.white.withValues(alpha: 0.3)
+                                    : AppColors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: AppText(
-                    'Not Now',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.white.withValues(alpha: 0.5),
-                  ),
-                ),
-                TextButton(
-                  onPressed: rating == 0
-                      ? null
-                      : () {
-                          Navigator.of(ctx).pop();
-                          AppSnackBar.showSuccess(
-                            context,
-                            'Thank you for rating us $rating stars!',
-                          );
-                        },
-                  child: AppText(
-                    'Submit',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: rating == 0
-                        ? AppColors.white.withValues(alpha: 0.2)
-                        : AppColors.onboardingViolet,
-                  ),
-                ),
-              ],
             );
           },
         );

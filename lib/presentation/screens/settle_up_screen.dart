@@ -56,8 +56,22 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       }).toList();
 
       final settlements = DebtCalculator.calculate(members);
-      final allSettled = settlements.every((s) => s.isPaid);
-      final paidSettlements = settlements.where((s) => s.isPaid).toList();
+      final allSettled = settlements.isEmpty;
+
+      final expenseState = ref.watch(expenseProvider);
+      final groupExpenses = expenseState.expenses.where((e) => e.groupId == widget.groupId).toList();
+      final paidSettlements = groupExpenses.where((exp) => 
+        exp.title == 'Settle Payment' || 
+        exp.categoryIconCodePoint == Icons.handshake_rounded.codePoint
+      ).map((exp) {
+        final toMember = exp.splitAmong.keys.firstWhere((k) => k != exp.paidBy, orElse: () => '');
+        return Settlement(
+          fromMember: exp.paidBy,
+          toMember: toMember,
+          amount: exp.amount,
+          isPaid: true,
+        );
+      }).toList().reversed.toList();
 
       // Lookup names map from UUIDs
       final memberMap = {

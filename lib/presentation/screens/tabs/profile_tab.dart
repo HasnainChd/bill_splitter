@@ -365,12 +365,14 @@ class ProfileTab extends ConsumerWidget {
             padding: EdgeInsets.zero,
             child: Column(
               children: [
+                /*
                 _buildMenuRowItem(
                   emoji: '💳',
                   title: 'Payment Methods',
                   onTap: () => context.push(AppRouter.paymentMethods),
                 ),
                 _buildDivider(),
+                */
                 _buildMenuRowItem(
                   emoji: '🔒',
                   title: 'Privacy Settings',

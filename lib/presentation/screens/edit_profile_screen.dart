@@ -13,6 +13,7 @@ import '../../core/widgets/app_text_field.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../providers/profile_provider.dart';
 import '../../providers/edit_profile_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EditProfileScreen extends ConsumerWidget {
   const EditProfileScreen({super.key});
@@ -50,6 +51,149 @@ class EditProfileScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         AppSnackBar.showError(context, 'Failed to pick image: $e');
+      }
+    }
+  }
+
+  Future<void> _showDeleteAccountDialog(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          padding: EdgeInsets.all(24.w),
+          decoration: BoxDecoration(
+            color: AppColors.cardDark,
+            borderRadius: BorderRadius.circular(24.r),
+            border: Border.all(
+              color: AppColors.coralRed.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.coralRed.withValues(alpha: 0.15),
+                blurRadius: 30,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  color: AppColors.coralRed.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  color: AppColors.coralRed,
+                  size: 32.sp,
+                ),
+              ),
+              SizedBox(height: 20.h),
+              const AppText(
+                'Delete Account?',
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.white,
+              ),
+              SizedBox(height: 12.h),
+              const AppText(
+                'Are you sure you want to permanently delete your account and all associated data? This action cannot be undone.',
+                fontSize: 14,
+                color: AppColors.textGrey,
+                align: TextAlign.center,
+                height: 1.4,
+              ),
+              SizedBox(height: 32.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context, false),
+                      child: Container(
+                        height: 52.h,
+                        decoration: BoxDecoration(
+                          color: AppColors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(16.r),
+                        ),
+                        alignment: Alignment.center,
+                        child: const AppText(
+                          'Cancel',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context, true),
+                      child: Container(
+                        height: 52.h,
+                        decoration: BoxDecoration(
+                          color: AppColors.coralRed,
+                          borderRadius: BorderRadius.circular(16.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.coralRed.withValues(alpha: 0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: const AppText(
+                          'Delete',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(
+            color: AppColors.coralRed,
+          ),
+        ),
+      );
+
+      try {
+        final supabase = Supabase.instance.client;
+        final user = supabase.auth.currentUser;
+        if (user != null) {
+          // Delete from public.users (relies on RLS allowing delete for own user)
+          await supabase.from('users').delete().eq('id', user.id);
+          await supabase.auth.signOut();
+          
+          if (context.mounted) {
+            Navigator.pop(context); // pop loading dialog
+            context.go('/login');
+          }
+        }
+      } catch (e) {
+        if (context.mounted) {
+          Navigator.pop(context); // pop loading dialog
+          AppSnackBar.showError(context, 'Failed to delete account: $e');
+        }
       }
     }
   }
@@ -398,13 +542,8 @@ class EditProfileScreen extends ConsumerWidget {
                           child: Column(
                             children: [
                               _buildDangerZoneRow(
-                                title: 'Delete All My Data',
-                                onTap: () {},
-                              ),
-                              _buildDivider(),
-                              _buildDangerZoneRow(
-                                title: 'Close Account',
-                                onTap: () {},
+                                title: 'Delete Account',
+                                onTap: () => _showDeleteAccountDialog(context, ref),
                               ),
                             ],
                           ),

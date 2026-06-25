@@ -122,6 +122,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     final user = _supabase.auth.currentUser;
     if (user == null) return;
 
+    if (!mounted) return;
     state = state.copyWith(isLoading: true);
     try {
       final response = await _supabase
@@ -137,10 +138,12 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         debugPrint('👤 Available database columns: $_dbColumns');
         final profile = UserProfile.fromMap(response, user.email ?? '');
         debugPrint('👤 Parsed avatarUrl: ${profile.avatarUrl}');
-        state = state.copyWith(
-          profile: profile,
-          isLoading: false,
-        );
+        if (mounted) {
+          state = state.copyWith(
+            profile: profile,
+            isLoading: false,
+          );
+        }
       } else {
         // If not found in public.users, create default structure and try inserting
         final defaultProfile = UserProfile(
@@ -155,11 +158,15 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
           currency: 'USD (\$)',
           avatarUrl: user.userMetadata?['avatar_url'] ?? '',
         );
-        state = state.copyWith(profile: defaultProfile, isLoading: false);
+        if (mounted) {
+          state = state.copyWith(profile: defaultProfile, isLoading: false);
+        }
       }
     } catch (e, stack) {
       debugPrint('Error fetching profile: $e\n$stack');
-      state = state.copyWith(error: e.toString(), isLoading: false);
+      if (mounted) {
+        state = state.copyWith(error: e.toString(), isLoading: false);
+      }
     }
   }
 
