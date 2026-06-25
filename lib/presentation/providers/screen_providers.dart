@@ -106,7 +106,16 @@ final allUsersProvider = FutureProvider<List<UserProfile>>((ref) async {
         .select()
         .neq('id', currentUser.id);
 
-    return (data as List).map((row) => UserProfile.fromMap(row, '')).toList();
+    final rawList = (data as List).map((row) => UserProfile.fromMap(row, '')).toList();
+    final List<UserProfile> filtered = [];
+    for (var i = 0; i < data.length; i++) {
+      final row = data[i];
+      final isPublic = row['is_public'] ?? row['isPublic'] ?? true;
+      if (isPublic == true) {
+        filtered.add(rawList[i]);
+      }
+    }
+    return filtered;
   } catch (e) {
     debugPrint('Error fetching registered users: $e');
     return [];

@@ -617,14 +617,6 @@ class EditProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDivider() {
-    return Divider(
-      color: Colors.white.withValues(alpha: 0.04),
-      height: 1,
-      thickness: 1,
-    );
-  }
-
   Widget _sectionLabel(String text) {
     return AppText(
       text,
