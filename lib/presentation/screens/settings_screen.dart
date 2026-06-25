@@ -50,10 +50,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final faceIdEnabled = ref.watch(settingsFaceIdProvider);
     final activeCurrency = ref.watch(defaultCurrencyProvider);
-    final activeLanguage = ref.watch(languageProvider);
     final activeDateFormat = ref.watch(dateFormatProvider);
-    final tfaEnabled = ref.watch(twoFactorAuthEnabledProvider);
-    final tfaMethod = ref.watch(twoFactorMethodProvider);
 
     return SafeArea(
       top: false,
@@ -313,7 +310,11 @@ class SettingsScreen extends ConsumerWidget {
                                   AppColors.white.withValues(alpha: 0.6),
                               inactiveTrackColor: const Color(0xFF1E1C38),
                             ),
-                            onTap: () => context.push(AppRouter.security),
+                            onTap: () {
+                              ref
+                                  .read(settingsFaceIdProvider.notifier)
+                                  .state = !faceIdEnabled;
+                            },
                           ),
                           /*
                           _buildDivider(),
@@ -414,14 +415,14 @@ class SettingsScreen extends ConsumerWidget {
                             icon: Icons.help_outline_rounded,
                             iconColor: AppColors.coralRed,
                             title: 'Help Center',
-                            onTap: () => _launchUrl('https://devorastudios.dev/#/support'),
+                            onTap: () => context.push(AppRouter.helpSupport),
                           ),
                           _buildDivider(),
                           _buildSettingsRowItem(
                             icon: Icons.bug_report_outlined,
                             iconColor: const Color(0xFF10B981),
                             title: 'Report a Bug',
-                            onTap: () => _launchUrl('mailto:hello@devorastudios.dev?subject=Equaly%20Bug%20Report'),
+                            onTap: () => _launchUrl('mailto:devcodeinnovations@gmail.com?subject=Equaly%20Bug%20Report'),
                           ),
                           _buildDivider(),
                           _buildSettingsRowItem(

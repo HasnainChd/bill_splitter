@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_text_field.dart';
+import '../../providers/settings_provider.dart';
+import '../../core/utils/app_date_formatter.dart';
 import '../providers/screen_providers.dart';
 
 class DatePickerField extends ConsumerWidget {
@@ -16,7 +17,8 @@ class DatePickerField extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedDate = ref.watch(aeDateProvider);
-    final dateStr = DateFormat('MMM d, yyyy').format(selectedDate);
+    final activeDateFormat = ref.watch(dateFormatProvider);
+    final dateStr = AppDateFormatter.format(selectedDate, activeDateFormat);
 
     return GestureDetector(
       onTap: () async {

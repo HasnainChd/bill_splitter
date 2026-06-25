@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/expense.dart';
 import '../../core/models/group.dart';
@@ -16,6 +15,8 @@ import '../providers/screen_providers.dart';
 import '../../core/utils/app_dialog.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/utils/group_icon_helper.dart';
+import '../../providers/settings_provider.dart';
+import '../../core/utils/app_date_formatter.dart';
 
 class GroupDetailScreen extends ConsumerWidget {
   final String groupId;
@@ -32,6 +33,7 @@ class GroupDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final activeDateFormat = ref.watch(dateFormatProvider);
     final groupState = ref.watch(groupProvider);
     final expenses = ref.watch(expensesForGroupProvider(groupId));
     final balances = ref.watch(balancesForGroupProvider(groupId));
@@ -231,6 +233,7 @@ class GroupDetailScreen extends ConsumerWidget {
                           },
                           currentUserId ?? '',
                           currencyCode,
+                          activeDateFormat,
                         ),
                       ),
                       childCount: expenses.length,
@@ -618,10 +621,11 @@ class GroupDetailScreen extends ConsumerWidget {
     Map<String, String> memberMap,
     String currentUserId,
     String currencyCode,
+    String activeDateFormat,
   ) {
     final isSettlement = expense.title == 'Settle Payment' ||
         expense.categoryIconCodePoint == Icons.handshake_rounded.codePoint;
-    final dateStr = DateFormat('MMM d').format(expense.date);
+    final dateStr = AppDateFormatter.format(expense.date, activeDateFormat);
 
     // Customize title and icon for settlements
     String displayTitle = expense.title;

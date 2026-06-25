@@ -20,6 +20,7 @@ import '../../core/router/app_router.dart';
 import '../../core/utils/group_icon_helper.dart';
 import '../../core/utils/debt_calculator.dart';
 import '../../providers/settings_provider.dart';
+import '../../core/utils/app_date_formatter.dart';
 
 class ExpenseDetailScreen extends ConsumerWidget {
   final Expense expense;
@@ -57,8 +58,8 @@ class ExpenseDetailScreen extends ConsumerWidget {
       ),
     );
 
-    final dateStr = DateFormat('MMMM d, yyyy').format(expense.date);
-    final shortDateStr = DateFormat('MMM d').format(expense.date);
+    final activeDateFormat = ref.watch(dateFormatProvider);
+    final dateStr = AppDateFormatter.format(expense.date, activeDateFormat);
 
     final totalAmount = expense.amount;
     final emoji = _getEmoji(expense.title, expense.categoryIconCodePoint);
@@ -366,11 +367,17 @@ class ExpenseDetailScreen extends ConsumerWidget {
                         _buildDetailRow('Date', dateStr),
                         if (expense.createdAt != null) ...[
                           _buildDivider(),
-                          _buildDetailRow('Added On', DateFormat('MMM d, yyyy h:mm a').format(expense.createdAt!)),
+                          _buildDetailRow(
+                            'Added On',
+                            '${AppDateFormatter.format(expense.createdAt!, activeDateFormat)} ${DateFormat('h:mm a').format(expense.createdAt!)}',
+                          ),
                         ],
                         if (expense.updatedAt != null) ...[
                           _buildDivider(),
-                          _buildDetailRow('Updated On', DateFormat('MMM d, yyyy h:mm a').format(expense.updatedAt!)),
+                          _buildDetailRow(
+                            'Updated On',
+                            '${AppDateFormatter.format(expense.updatedAt!, activeDateFormat)} ${DateFormat('h:mm a').format(expense.updatedAt!)}',
+                          ),
                         ],
                         _buildDivider(),
                         _buildDetailRow(
@@ -487,11 +494,15 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                           children: [
                                             Row(
                                               children: [
-                                                AppText(
-                                                  isMe ? 'You' : m.fullName,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: AppColors.white,
+                                                Flexible(
+                                                  child: AppText(
+                                                    isMe ? 'You' : m.fullName,
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: AppColors.white,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
                                                 ),
                                                 SizedBox(width: 8.w),
                                                 _buildStatusBadge(isPayer),
@@ -598,6 +609,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
                           currentUserId ?? '',
                           payerName,
                           currencyCode,
+                          activeDateFormat,
                         );
                       },
                       child: Row(
@@ -646,17 +658,20 @@ class ExpenseDetailScreen extends ConsumerWidget {
                     SizedBox(height: 28.h),
                   ],
 
-                  // Notes Box
+                   // Notes Box
                   if (expense.notes != null && expense.notes!.isNotEmpty) ...[
                     _sectionLabel('NOTES'),
                     SizedBox(height: 12.h),
                     AppCard(
                       padding: EdgeInsets.all(16.w),
-                      child: AppText(
-                        expense.notes!,
-                        fontSize: 14,
-                        color: AppColors.white.withValues(alpha: 0.8),
-                        height: 1.5,
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: AppText(
+                          expense.notes!,
+                          fontSize: 14,
+                          color: AppColors.white.withValues(alpha: 0.8),
+                          height: 1.5,
+                        ),
                       ),
                     ),
                     SizedBox(height: 28.h),
@@ -756,36 +771,6 @@ class ExpenseDetailScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoCard({required String label, required String content}) {
-    return AppCard(
-      borderRadius: 16.r,
-      padding: EdgeInsets.zero,
-      child: Container(
-        width: 108.w,
-        height: 64.h,
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AppText(
-              label,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.white.withValues(alpha: 0.4),
-            ),
-            SizedBox(height: 6.h),
-            AppText(
-              content,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AppColors.white,
-            ),
           ],
         ),
       ),
@@ -898,6 +883,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
     String currentUserId,
     String payerName,
     String currencyCode,
+    String activeDateFormat,
   ) {
     bool isDownloading = false;
     showDialog(
@@ -942,8 +928,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
                     ),
                     SizedBox(height: 4.h),
                     AppText(
-                      DateFormat('MMMM dd, yyyy · hh:mm a')
-                          .format(expense.date),
+                      '${AppDateFormatter.format(expense.date, activeDateFormat)} · ${DateFormat('hh:mm a').format(expense.date)}',
                       fontSize: 11,
                       color: AppColors.textGrey,
                     ),
@@ -998,7 +983,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                 fontSize: 13,
                                 color: AppColors.white.withValues(alpha: 0.7)),
                             AppText(
-                                'currencyCod ${entry.value.toStringAsFixed(2)}',
+                                '$currencyCode ${entry.value.toStringAsFixed(2)}',
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.white),
@@ -1105,7 +1090,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                       Navigator.pop(context);
                                       AppSnackBar.showSuccess(
                                         context,
-                                        'Receipt PDF downloaded to device!',
+                                        'PDF Receipt Download: Feature coming soon!',
                                       );
                                     }
                                   },
