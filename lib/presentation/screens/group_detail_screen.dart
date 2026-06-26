@@ -76,7 +76,7 @@ class GroupDetailScreen extends ConsumerWidget {
       child: Scaffold(
         backgroundColor: AppColors.backgroundDark,
         body: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
           slivers: [
             // ── Gradient Header ──
             SliverToBoxAdapter(
@@ -898,12 +898,17 @@ class _AddMemberBottomSheetContentState
                           leading: CircleAvatar(
                             backgroundColor: avatarColor,
                             radius: 18.r,
-                            child: AppText(
-                              initials,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.white,
-                            ),
+                            backgroundImage: user.avatarUrl.isNotEmpty
+                                ? NetworkImage(user.avatarUrl)
+                                : null,
+                            child: user.avatarUrl.isEmpty
+                                ? AppText(
+                                    initials,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.white,
+                                  )
+                                : null,
                           ),
                           title: AppText(
                             user.fullName,

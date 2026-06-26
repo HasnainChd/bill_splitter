@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
 import '../../providers/auth_provider.dart';
 import '../../providers/profile_provider.dart';
+import '../../providers/settings_provider.dart';
 
 /// Selected category chip
 final aeCategoryProvider = StateProvider.autoDispose<String>((ref) => 'Food');
@@ -69,6 +70,11 @@ final cgSelectedIconCodePointProvider = StateProvider.autoDispose<int>((ref) => 
 
 /// Selected color index (0-based)
 final cgColorIndexProvider = StateProvider.autoDispose<int>((ref) => 1);
+
+/// Selected group currency code (e.g. 'PKR (Rs)', 'USD ($)')
+final cgSelectedCurrencyProvider = StateProvider.autoDispose<String>((ref) {
+  return ref.watch(defaultCurrencyProvider);
+});
 
 /// Selected members set (contains user IDs)
 final cgSelectedMembersProvider =

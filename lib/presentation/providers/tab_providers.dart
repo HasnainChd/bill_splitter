@@ -20,3 +20,6 @@ final groupSearchControllerProvider =
 
 /// Settle tab — active filter chip ('All', 'I Owe', 'Owed to Me')
 final settleFilterProvider = StateProvider<String>((ref) => 'All');
+
+/// Home tab — active balance card index
+final homeBalancePageIndexProvider = StateProvider.autoDispose<int>((ref) => 0);

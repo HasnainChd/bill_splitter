@@ -45,6 +45,33 @@ class FinancialCalculator {
     };
   }
 
+  /// Calculate net balances per currency for a specific user across all groups
+  static Map<String, double> calculateUserGlobalBalancesPerCurrency(String userId, List<Expense> allExpenses) {
+    final Map<String, double> netBalances = {};
+
+    // Group expenses by groupId
+    final Map<String, List<Expense>> groupExpensesMap = {};
+    for (final e in allExpenses) {
+      groupExpensesMap.putIfAbsent(e.groupId, () => []).add(e);
+    }
+
+    // Calculate per-group balance and add to the corresponding currency
+    for (final entry in groupExpensesMap.entries) {
+      final groupExps = entry.value;
+      if (groupExps.isEmpty) continue;
+
+      final currency = groupExps.first.currency;
+      final balances = calculateGroupBalances(groupExps);
+      final myBalance = balances[userId] ?? 0.0;
+
+      if (myBalance.abs() > 0.01) {
+        netBalances[currency] = (netBalances[currency] ?? 0.0) + myBalance;
+      }
+    }
+
+    return netBalances;
+  }
+
   /// Calculate total settled amount from all expenses
   static double calculateTotalSettled(List<Expense> expenses) {
     double totalSettled = 0.0;

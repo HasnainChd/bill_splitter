@@ -105,9 +105,24 @@ class SettleTab extends ConsumerWidget {
       return gs.settlement.toMember == currentUserId && gs.settlement.amount > 0.01;
     }).toList();
 
-    // Summarize amounts
-    final totalOwe = myOwe.fold<double>(0.0, (sum, gs) => sum + gs.settlement.amount);
-    final totalOwedTo = myOwed.fold<double>(0.0, (sum, gs) => sum + gs.settlement.amount);
+    // Summarize amounts per currency
+    final Map<String, double> owesPerCurrency = {};
+    for (final gs in myOwe) {
+      owesPerCurrency[gs.group.currency] = (owesPerCurrency[gs.group.currency] ?? 0.0) + gs.settlement.amount;
+    }
+
+    final Map<String, double> owedPerCurrency = {};
+    for (final gs in myOwed) {
+      owedPerCurrency[gs.group.currency] = (owedPerCurrency[gs.group.currency] ?? 0.0) + gs.settlement.amount;
+    }
+
+    final String owesSummaryStr = owesPerCurrency.isEmpty
+        ? '${_getSymbolForCurrency(defaultCurrency)} 0'
+        : owesPerCurrency.entries.map((e) => '${_getSymbolForCurrency(e.key)} ${e.value.toStringAsFixed(0)}').join(', ');
+
+    final String owedSummaryStr = owedPerCurrency.isEmpty
+        ? '${_getSymbolForCurrency(defaultCurrency)} 0'
+        : owedPerCurrency.entries.map((e) => '${_getSymbolForCurrency(e.key)} ${e.value.toStringAsFixed(0)}').join(', ');
 
     final owePeopleCount = myOwe.map((gs) => gs.settlement.toMember).toSet().length;
     final owedPeopleCount = myOwed.map((gs) => gs.settlement.fromMember).toSet().length;
@@ -134,14 +149,14 @@ class SettleTab extends ConsumerWidget {
             children: [
               _buildSummaryCard(
                 'You Owe Others',
-                '$defaultCurrency ${totalOwe.toStringAsFixed(0)}',
+                owesSummaryStr,
                 '$owePeopleCount ${owePeopleCount == 1 ? 'person' : 'people'}',
                 AppColors.balanceOwed,
               ),
               SizedBox(width: 12.w),
               _buildSummaryCard(
                 'Others Owe You',
-                '$defaultCurrency ${totalOwedTo.toStringAsFixed(0)}',
+                owedSummaryStr,
                 '$owedPeopleCount ${owedPeopleCount == 1 ? 'person' : 'people'}',
                 AppColors.balanceOwedTo,
               ),
@@ -216,7 +231,7 @@ class SettleTab extends ConsumerWidget {
                                 context,
                                 name: otherName,
                                 sub: GroupIconHelper.getCleanGroupName(gs.group.name),
-                                amount: '-$defaultCurrency ${gs.settlement.amount.toStringAsFixed(0)}',
+                                amount: '-${_getSymbolForCurrency(gs.group.currency)} ${gs.settlement.amount.toStringAsFixed(0)}',
                                 amountColor: AppColors.balanceOwed,
                                 buttonLabel: 'Pay',
                                 isOwe: true,
@@ -224,10 +239,11 @@ class SettleTab extends ConsumerWidget {
                                 avatarColor: _getAvatarColor(otherName),
                                 isLoading: isLoading,
                                 onTapButton: () async {
+                                  final grpSymbol = _getSymbolForCurrency(gs.group.currency);
                                   final confirm = await AppDialog.showConfirm(
                                     context,
                                     title: 'Confirm Payment',
-                                    message: 'Settle your debt of $defaultCurrency ${gs.settlement.amount.toStringAsFixed(0)} with $otherName?',
+                                    message: 'Settle your debt of $grpSymbol ${gs.settlement.amount.toStringAsFixed(0)} with $otherName?',
                                     confirmText: 'Settle',
                                     cancelText: 'Cancel',
                                   );
@@ -247,7 +263,7 @@ class SettleTab extends ConsumerWidget {
                                       if (context.mounted) {
                                         AppSnackBar.showSuccess(
                                           context,
-                                          'Payment of $defaultCurrency ${gs.settlement.amount.toStringAsFixed(0)} to $otherName registered!',
+                                          'Payment of $grpSymbol ${gs.settlement.amount.toStringAsFixed(0)} to $otherName registered!',
                                         );
                                       }
                                     } catch (e) {
@@ -282,7 +298,7 @@ class SettleTab extends ConsumerWidget {
                                 context,
                                 name: otherName,
                                 sub: GroupIconHelper.getCleanGroupName(gs.group.name),
-                                amount: '+$defaultCurrency ${gs.settlement.amount.toStringAsFixed(0)}',
+                                amount: '+${_getSymbolForCurrency(gs.group.currency)} ${gs.settlement.amount.toStringAsFixed(0)}',
                                 amountColor: AppColors.balanceOwedTo,
                                 buttonLabel: 'Remind',
                                 isOwe: false,
@@ -290,10 +306,11 @@ class SettleTab extends ConsumerWidget {
                                 avatarColor: _getAvatarColor(otherName),
                                 isLoading: false,
                                 onTapButton: () async {
+                                  final grpSymbol = _getSymbolForCurrency(gs.group.currency);
                                   final confirm = await AppDialog.showConfirm(
                                     context,
                                     title: 'Send Reminder',
-                                    message: 'Send a payment reminder to $otherName for $defaultCurrency ${gs.settlement.amount.toStringAsFixed(0)}?',
+                                    message: 'Send a payment reminder to $otherName for $grpSymbol ${gs.settlement.amount.toStringAsFixed(0)}?',
                                     confirmText: 'Send',
                                     cancelText: 'Cancel',
                                   );
@@ -340,12 +357,12 @@ class SettleTab extends ConsumerWidget {
                       ? null
                       : () async {
                           final confirm = await AppDialog.showConfirm(
-                            context,
-                            title: 'Confirm Settlement',
-                            message: 'Settle all your pending debts totaling $defaultCurrency ${totalOwe.toStringAsFixed(0)}?',
-                            confirmText: 'Settle All',
-                            cancelText: 'Cancel',
-                          );
+                                                            context,
+                                                            title: 'Confirm Settlement',
+                                                            message: 'Settle all your pending debts totaling $owesSummaryStr?',
+                                                            confirmText: 'Settle All',
+                                                            cancelText: 'Cancel',
+                                                          );
                           if (confirm == true) {
                             ref.read(settleAllLoadingProvider.notifier).state = true;
                             try {
@@ -391,8 +408,8 @@ class SettleTab extends ConsumerWidget {
                         )
                       : const Icon(Icons.check_circle_rounded, color: AppColors.white, size: 20),
                   label: AppText(
-                    'Settle All — Pay $defaultCurrency ${totalOwe.toStringAsFixed(0)}',
-                    fontSize: 15,
+                    'Settle All — Pay $owesSummaryStr',
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: AppColors.white,
                   ),
@@ -578,6 +595,29 @@ class SettleTab extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  String _getSymbolForCurrency(String code) {
+    if (code.contains('(') && code.contains(')')) {
+      final open = code.indexOf('(');
+      final close = code.indexOf(')');
+      if (close > open) return code.substring(open + 1, close);
+    }
+    final Map<String, String> symbols = {
+      'USD': '\$',
+      'EUR': '€',
+      'GBP': '£',
+      'INR': '₹',
+      'PKR': 'Rs',
+      'JPY': '¥',
+      'AUD': 'A\$',
+      'CAD': 'C\$',
+      'CHF': 'CHF',
+      'CNY': '¥',
+      'SGD': 'S\$',
+      'NZD': 'NZ\$',
+    };
+    return symbols[code] ?? code;
   }
 }
 

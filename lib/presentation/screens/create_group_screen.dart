@@ -13,6 +13,21 @@ import '../../core/utils/group_icon_helper.dart';
 class CreateGroupScreen extends ConsumerWidget {
   const CreateGroupScreen({super.key});
 
+  static const List<Map<String, String>> _currencies = [
+    {'code': 'USD (\$)', 'name': 'US Dollar', 'flag': '🇺🇸'},
+    {'code': 'EUR (€)', 'name': 'Euro', 'flag': '🇪🇺'},
+    {'code': 'GBP (£)', 'name': 'British Pound', 'flag': '🇬🇧'},
+    {'code': 'INR (₹)', 'name': 'Indian Rupee', 'flag': '🇮🇳'},
+    {'code': 'PKR (Rs)', 'name': 'Pakistani Rupee', 'flag': '🇵🇰'},
+    {'code': 'JPY (¥)', 'name': 'Japanese Yen', 'flag': '🇯🇵'},
+    {'code': 'AUD (A\$)', 'name': 'Australian Dollar', 'flag': '🇦🇺'},
+    {'code': 'CAD (C\$)', 'name': 'Canadian Dollar', 'flag': '🇨🇦'},
+    {'code': 'CHF (CHF)', 'name': 'Swiss Franc', 'flag': '🇨🇭'},
+    {'code': 'CNY (¥)', 'name': 'Chinese Yuan', 'flag': '🇨🇳'},
+    {'code': 'SGD (S\$)', 'name': 'Singapore Dollar', 'flag': '🇸🇬'},
+    {'code': 'NZD (NZ\$)', 'name': 'New Zealand Dollar', 'flag': '🇳🇿'},
+  ];
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final nameCtrl = ref.watch(cgNameControllerProvider);
@@ -22,6 +37,7 @@ class CreateGroupScreen extends ConsumerWidget {
     final selectedMembers = ref.watch(cgSelectedMembersProvider);
     final searchQuery = ref.watch(cgMemberSearchProvider);
     final groupState = ref.watch(createGroupProvider);
+    final selectedCurrency = ref.watch(cgSelectedCurrencyProvider);
 
     final groupName = nameCtrl.text.isEmpty ? 'New Group' : nameCtrl.text;
     final selectedColor = AppColors.groupThemeColors[colorIndex];
@@ -189,43 +205,93 @@ class CreateGroupScreen extends ConsumerWidget {
                     // ── COLOR ──
                     _label('COLOR'),
                     SizedBox(height: 12.h),
-                    Row(
+                    Wrap(
+                      spacing: 10.w,
+                      runSpacing: 10.h,
                       children:
                           List.generate(AppColors.groupThemeColors.length, (i) {
                         final isSelected = i == colorIndex;
-                        return Padding(
-                          padding: EdgeInsets.only(right: 10.w),
-                          child: GestureDetector(
-                            onTap: () => ref
-                                .read(cgColorIndexProvider.notifier)
-                                .state = i,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              width: 30.w,
-                              height: 30.w,
-                              decoration: BoxDecoration(
-                                color: AppColors.groupThemeColors[i],
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isSelected
-                                      ? AppColors.white
-                                      : AppColors.transparent,
-                                  width: 2.5,
-                                ),
-                                boxShadow: isSelected
-                                    ? [
-                                        BoxShadow(
-                                          color: AppColors.groupThemeColors[i]
-                                              .withValues(alpha: 0.5),
-                                          blurRadius: 8,
-                                        )
-                                      ]
-                                    : null,
+                        return GestureDetector(
+                          onTap: () => ref
+                              .read(cgColorIndexProvider.notifier)
+                              .state = i,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            width: 30.w,
+                            height: 30.w,
+                            decoration: BoxDecoration(
+                              color: AppColors.groupThemeColors[i],
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.white
+                                    : AppColors.transparent,
+                                width: 2.5,
                               ),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: AppColors.groupThemeColors[i]
+                                            .withValues(alpha: 0.5),
+                                        blurRadius: 8,
+                                      )
+                                    ]
+                                  : null,
                             ),
                           ),
                         );
                       }),
+                    ),
+                    SizedBox(height: 28.h),
+
+                    // ── CURRENCY ──
+                    _label('CURRENCY'),
+                    SizedBox(height: 12.h),
+                    GestureDetector(
+                      onTap: () => _showCurrencyPickerSheet(context, ref),
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 16.w, vertical: 14.h),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardDark,
+                          borderRadius: BorderRadius.circular(14.r),
+                          border: Border.all(
+                            color: AppColors.white.withValues(alpha: 0.05),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32.w,
+                              height: 32.w,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E1C38),
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                _getFlagForCurrency(selectedCurrency),
+                                style: TextStyle(fontSize: 16.sp),
+                              ),
+                            ),
+                            SizedBox(width: 12.w),
+                            Expanded(
+                              child: AppText(
+                                selectedCurrency,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.white,
+                              ),
+                            ),
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: AppColors.white.withValues(alpha: 0.4),
+                              size: 20.sp,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                     SizedBox(height: 28.h),
 
@@ -550,6 +616,7 @@ class CreateGroupScreen extends ConsumerWidget {
     Set<String> selectedMembers,
     int selectedIconCodePoint,
   ) {
+    final selectedCurrency = ref.read(cgSelectedCurrencyProvider);
     final notifier = ref.read(createGroupProvider.notifier);
     notifier.createGroup(
       name: nameCtrl.text.trim(),
@@ -558,6 +625,68 @@ class CreateGroupScreen extends ConsumerWidget {
       iconFontFamily: 'MaterialIcons',
       ref: ref,
       context: context,
+      currency: selectedCurrency,
+    );
+  }
+
+  String _getFlagForCurrency(String currencyCode) {
+    final found = _currencies.firstWhere(
+      (c) => c['code'] == currencyCode,
+      orElse: () => {'flag': '🏳️'},
+    );
+    return found['flag']!;
+  }
+
+  void _showCurrencyPickerSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.backgroundDark,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.all(20.w),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const AppText(
+                  'Select Group Currency',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.white,
+                ),
+                SizedBox(height: 16.h),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: _currencies.length,
+                    itemBuilder: (context, index) {
+                      final cur = _currencies[index];
+                      final isSelected = ref.read(cgSelectedCurrencyProvider) == cur['code'];
+                      return ListTile(
+                        leading: Text(cur['flag']!, style: TextStyle(fontSize: 20.sp)),
+                        title: AppText(cur['code']!, color: AppColors.white, fontWeight: FontWeight.bold),
+                        subtitle: AppText(cur['name']!, color: Colors.white54, fontSize: 12),
+                        trailing: isSelected
+                            ? const Icon(Icons.check_circle_rounded, color: AppColors.onboardingViolet)
+                            : null,
+                        onTap: () {
+                          ref.read(cgSelectedCurrencyProvider.notifier).state = cur['code']!;
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

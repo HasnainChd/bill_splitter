@@ -52,6 +52,7 @@ class CreateGroupNotifier extends StateNotifier<CreateGroupState> {
     required String iconFontFamily,
     required WidgetRef ref,
     required BuildContext context,
+    String? currency,
   }) async {
     if (name.trim().isEmpty) {
       AppSnackBar.showError(context, 'Please enter a group name');
@@ -66,10 +67,12 @@ class CreateGroupNotifier extends StateNotifier<CreateGroupState> {
     state = state.copyWith(isLoading: true);
 
     try {
-      final defaultCurrency = ref.read(defaultCurrencyProvider);
-      final currencyCode = defaultCurrency.length >= 3
-          ? defaultCurrency.substring(0, 3)
-          : 'USD';
+      final String chosenCurrency =
+          currency ?? ref.read(defaultCurrencyProvider) ?? 'USD (\$)';
+      final String currencyCode = chosenCurrency.length >= 3
+          ? chosenCurrency.substring(
+              0, chosenCurrency.contains(' ') ? chosenCurrency.indexOf(' ') : 3)
+          : chosenCurrency;
 
       await ref.read(groupProvider.notifier).addGroup(
             name: name.trim(),
