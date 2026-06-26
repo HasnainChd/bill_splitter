@@ -200,21 +200,11 @@ class AddExpenseScreen extends ConsumerWidget {
             ),
           ),
         ),
-        title: Column(
-          children: [
-            AppText(
-              expenseToEdit != null ? 'Edit' : 'Add',
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.white,
-            ),
-            const AppText(
-              'Expense',
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: AppColors.white,
-            ),
-          ],
+        title: AppText(
+          expenseToEdit != null ? 'Edit  Expense' : 'Add  Expense',
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: AppColors.white,
         ),
       ),
       body: SafeArea(

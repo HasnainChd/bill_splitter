@@ -107,8 +107,12 @@ class StatsTab extends ConsumerWidget {
       } else {
           double netDiff = net - prevNet;
           double netPct = (netDiff.abs() / prevNet.abs()) * 100;
-          if (netPct < 1) netSubtitle = 'No change vs last period';
-          else netSubtitle = '${netDiff > 0 ? '↑' : '↓'} ${netPct.toStringAsFixed(0)}% vs last period';
+          if (netPct < 1) {
+            netSubtitle = 'No change vs last period';
+          } else {
+            netSubtitle =
+                '${netDiff > 0 ? '↑' : '↓'} ${netPct.toStringAsFixed(0)}% vs last period';
+          }
       }
     }
 

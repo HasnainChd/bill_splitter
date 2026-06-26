@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/group.dart';
+import '../../../core/models/expense.dart';
 import '../../../core/widgets/app_text.dart';
 import '../../../core/router/app_router.dart';
 import '../../../providers/group_provider.dart';
@@ -46,14 +47,6 @@ class HomeTab extends ConsumerWidget {
     final defaultCurrency = ref.watch(defaultCurrencyProvider);
     final currencyCode =
         defaultCurrency.length >= 3 ? defaultCurrency.substring(0, 3) : 'PKR';
-    final currencySymbol = (() {
-      final openParen = defaultCurrency.indexOf('(');
-      final closeParen = defaultCurrency.indexOf(')');
-      if (openParen != -1 && closeParen != -1 && closeParen > openParen) {
-        return defaultCurrency.substring(openParen + 1, closeParen);
-      }
-      return currencyCode;
-    })();
     final currentUserId = ref.watch(supabaseUserProvider)?.id;
     final profile = ref.watch(profileProvider).profile;
     final notifications = ref.watch(dynamicNotificationsProvider);
@@ -79,14 +72,27 @@ class HomeTab extends ConsumerWidget {
 
     // Calculate dynamic balance totals using central FinancialCalculator
     final expenseState = ref.watch(expenseProvider);
-    final totals = currentUserId != null
-        ? FinancialCalculator.calculateUserGlobalBalances(
-            currentUserId, expenseState.expenses)
-        : {'owes': 0.0, 'owedToYou': 0.0, 'net': 0.0};
+    final pageIndex = ref.watch(homeBalancePageIndexProvider);
 
-    final totalOwe = totals['owes'] ?? 0.0;
-    final totalOwed = totals['owedToYou'] ?? 0.0;
-    final netBalance = totals['net'] ?? 0.0;
+    // Group expenses by currency code
+    final Map<String, List<Expense>> currencyExpensesMap = {};
+    if (currentUserId != null) {
+      for (final e in expenseState.expenses) {
+        currencyExpensesMap.putIfAbsent(e.currency, () => []).add(e);
+      }
+    }
+
+    // If empty, default to user's default currency
+    if (currencyExpensesMap.isEmpty) {
+      currencyExpensesMap[currencyCode] = [];
+    }
+
+    final currencyKeys = currencyExpensesMap.keys.toList();
+    currencyKeys.sort((a, b) {
+      if (a == currencyCode) return -1;
+      if (b == currencyCode) return 1;
+      return a.compareTo(b);
+    });
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -147,80 +153,160 @@ class HomeTab extends ConsumerWidget {
             ),
 
             // ── Balance Summary Card ──
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(16.w),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      AppColors.onboardingViolet,
-                      AppColors.primaryPurpleDarker,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24.r),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AppText(
-                      "Total Others Owe You",
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.white.withValues(alpha: 0.8),
-                    ),
-                    SizedBox(height: 8.h),
-                    (groupState.isLoading && groups.isEmpty)
-                        ? Padding(
-                            padding: EdgeInsets.symmetric(vertical: 6.h),
-                            child: AppShimmer(width: 120.w, height: 28.h),
-                          )
-                        : AppText(
-                            '$currencySymbol ${totalOwed.toStringAsFixed(0)}',
-                            fontSize: 36,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.white,
+            () {
+              final List<Widget> balanceCards = [];
+
+              for (final curKey in currencyKeys) {
+                final curExps = currencyExpensesMap[curKey] ?? [];
+                final totals = currentUserId != null
+                    ? FinancialCalculator.calculateUserGlobalBalances(
+                        currentUserId, curExps)
+                    : {'owes': 0.0, 'owedToYou': 0.0, 'net': 0.0};
+
+                final totalOwe = totals['owes'] ?? 0.0;
+                final totalOwed = totals['owedToYou'] ?? 0.0;
+                final netBalance = totals['net'] ?? 0.0;
+                final curSymbol = _getSymbolForCurrency(curKey);
+
+                balanceCards.add(
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    child: Container(
+                      width: double.infinity,
+                      height: 170.h,
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 16.w, vertical: 12.h),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            AppColors.onboardingViolet,
+                            AppColors.primaryPurpleDarker,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24.r),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.max,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              AppText(
+                                "Total Others Owe You",
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.white.withValues(alpha: 0.8),
+                              ),
+                              if (currencyKeys.length > 1)
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 8.w, vertical: 2.h),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        AppColors.white.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8.r),
+                                  ),
+                                  child: AppText(
+                                    curKey,
+                                    fontSize: 10.sp,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.white,
+                                  ),
+                                ),
+                            ],
                           ),
-                    SizedBox(height: 24.h),
-                    Row(
-                      children: [
-                        _buildBalanceSubCol(
-                            'You owe others',
-                            (groupState.isLoading && groups.isEmpty)
-                                ? null
-                                : '$currencySymbol ${totalOwe.toStringAsFixed(0)}',
-                            AppColors.balanceOwed),
-                        _buildBalanceDivider(),
-                        _buildBalanceSubCol(
-                            'Others owe you',
-                            (groupState.isLoading && groups.isEmpty)
-                                ? null
-                                : '$currencySymbol ${totalOwed.toStringAsFixed(0)}',
-                            AppColors.balanceOwedTo),
-                        _buildBalanceDivider(),
-                        _buildBalanceSubCol(
-                            'Overall net balance',
-                            (groupState.isLoading && groups.isEmpty)
-                                ? null
-                                : (netBalance > 0
-                                    ? '+$currencySymbol ${netBalance.toStringAsFixed(0)}'
-                                    : netBalance < 0
-                                        ? '-$currencySymbol ${netBalance.abs().toStringAsFixed(0)}'
-                                        : '$currencySymbol 0'),
-                            netBalance > 0
-                                ? AppColors.balanceOwedTo
-                                : netBalance < 0
-                                    ? AppColors.balanceOwed
-                                    : AppColors.white),
-                      ],
+                          SizedBox(height: 6.h),
+                          (groupState.isLoading && groups.isEmpty)
+                              ? Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 6.h),
+                                  child: AppShimmer(width: 120.w, height: 28.h),
+                                )
+                              : AppText(
+                                  '$curSymbol ${totalOwed.toStringAsFixed(0)}',
+                                  fontSize: 32.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.white,
+                                ),
+                          const Spacer(),
+                          Row(
+                            children: [
+                              _buildBalanceSubCol(
+                                  'You owe others',
+                                  (groupState.isLoading && groups.isEmpty)
+                                      ? null
+                                      : '$curSymbol ${totalOwe.toStringAsFixed(0)}',
+                                  AppColors.balanceOwed),
+                              _buildBalanceDivider(),
+                              _buildBalanceSubCol(
+                                  'Others owe you',
+                                  (groupState.isLoading && groups.isEmpty)
+                                      ? null
+                                      : '$curSymbol ${totalOwed.toStringAsFixed(0)}',
+                                  AppColors.balanceOwedTo),
+                              _buildBalanceDivider(),
+                              _buildBalanceSubCol(
+                                  'Overall net balance',
+                                  (groupState.isLoading && groups.isEmpty)
+                                      ? null
+                                      : (netBalance > 0
+                                          ? '+$curSymbol ${netBalance.toStringAsFixed(0)}'
+                                          : netBalance < 0
+                                              ? '-$curSymbol ${netBalance.abs().toStringAsFixed(0)}'
+                                              : '$curSymbol 0'),
+                                  netBalance > 0
+                                      ? AppColors.balanceOwedTo
+                                      : netBalance < 0
+                                          ? AppColors.balanceOwed
+                                          : AppColors.white),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
-            ),
+                  ),
+                );
+              }
+
+              if (balanceCards.length == 1) {
+                return balanceCards.first;
+              }
+
+              return Column(
+                children: [
+                  SizedBox(
+                    height: 170.h,
+                    child: PageView(
+                      onPageChanged: (idx) {
+                        ref.read(homeBalancePageIndexProvider.notifier).state =
+                            idx;
+                      },
+                      children: balanceCards,
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      balanceCards.length,
+                      (index) => Container(
+                        width: 6.w,
+                        height: 6.w,
+                        margin: EdgeInsets.symmetric(horizontal: 3.w),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: pageIndex == index
+                              ? AppColors.onboardingViolet
+                              : AppColors.white.withValues(alpha: 0.2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }(),
             SizedBox(height: 24.h),
 
             // ── Quick Actions ──
@@ -552,10 +638,15 @@ class HomeTab extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppText(
-            label,
-            fontSize: 12,
-            color: AppColors.white.withValues(alpha: 0.6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: AppText(
+              label,
+              fontSize: 11.sp,
+              color: AppColors.white.withValues(alpha: 0.6),
+              maxLines: 1,
+            ),
           ),
           SizedBox(height: 4.h),
           value == null
@@ -563,11 +654,16 @@ class HomeTab extends ConsumerWidget {
                   padding: EdgeInsets.symmetric(vertical: 2.h),
                   child: AppShimmer(width: 60.w, height: 14.h),
                 )
-              : AppText(
-                  value,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: valueColor,
+              : FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: AppText(
+                    value,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                    color: valueColor,
+                    maxLines: 1,
+                  ),
                 ),
         ],
       ),
@@ -1102,6 +1198,29 @@ class HomeTab extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _getSymbolForCurrency(String code) {
+    if (code.contains('(') && code.contains(')')) {
+      final open = code.indexOf('(');
+      final close = code.indexOf(')');
+      if (close > open) return code.substring(open + 1, close);
+    }
+    final Map<String, String> symbols = {
+      'USD': '\$',
+      'EUR': '€',
+      'GBP': '£',
+      'INR': '₹',
+      'PKR': 'Rs',
+      'JPY': '¥',
+      'AUD': 'A\$',
+      'CAD': 'C\$',
+      'CHF': 'CHF',
+      'CNY': '¥',
+      'SGD': 'S\$',
+      'NZD': 'NZ\$',
+    };
+    return symbols[code] ?? code;
   }
 }
 

@@ -52,7 +52,8 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
   final SupabaseClient _supabase = Supabase.instance.client;
   RealtimeChannel? _expensesSubscription;
 
-  ExpenseNotifier(Ref ref) : super(const ExpenseState(expenses: [], isLoading: false)) {
+  ExpenseNotifier(Ref ref)
+      : super(const ExpenseState(expenses: [], isLoading: false)) {
     _loadExpensesFromCache();
     _setupRealtimeListeners();
   }
@@ -70,7 +71,8 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
           callback: (payload) {
             final newRecord = payload.newRecord;
             final oldRecord = payload.oldRecord;
-            final groupId = (newRecord['group_id'] ?? oldRecord['group_id'])?.toString();
+            final groupId =
+                (newRecord['group_id'] ?? oldRecord['group_id'])?.toString();
             if (groupId != null) {
               loadExpensesForGroup(groupId);
             }
@@ -148,9 +150,8 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
       final box = await Hive.openBox<Expense>('expenses');
 
       // Clear cached expenses for this group
-      final keysToRemove = box.keys
-          .where((k) => box.get(k)?.groupId == groupId)
-          .toList();
+      final keysToRemove =
+          box.keys.where((k) => box.get(k)?.groupId == groupId).toList();
       await box.deleteAll(keysToRemove);
 
       for (final row in response as List) {
@@ -176,8 +177,12 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
           categoryIconCodePoint: _getIconCodePoint(row['category'] as String?),
           splitType: row['split_type'] as String? ?? 'Equal',
           receiptUrl: row['receipt_url'] as String?,
-          createdAt: row['created_at'] != null ? parseUtcDateTime(row['created_at'] as String) : null,
-          updatedAt: row['updated_at'] != null ? parseUtcDateTime(row['updated_at'] as String) : null,
+          createdAt: row['created_at'] != null
+              ? parseUtcDateTime(row['created_at'] as String)
+              : null,
+          updatedAt: row['updated_at'] != null
+              ? parseUtcDateTime(row['updated_at'] as String)
+              : null,
         );
 
         fetchedExpenses.add(expense);
@@ -254,8 +259,12 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
           categoryIconCodePoint: _getIconCodePoint(row['category'] as String?),
           splitType: row['split_type'] as String? ?? 'Equal',
           receiptUrl: row['receipt_url'] as String?,
-          createdAt: row['created_at'] != null ? parseUtcDateTime(row['created_at'] as String) : null,
-          updatedAt: row['updated_at'] != null ? parseUtcDateTime(row['updated_at'] as String) : null,
+          createdAt: row['created_at'] != null
+              ? parseUtcDateTime(row['created_at'] as String)
+              : null,
+          updatedAt: row['updated_at'] != null
+              ? parseUtcDateTime(row['updated_at'] as String)
+              : null,
         );
 
         fetchedExpenses.add(expense);
@@ -304,18 +313,22 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
       }
 
       // 1. Insert into expenses table
-      final expenseData = await _supabase.from('expenses').insert({
-        'group_id': groupId,
-        'paid_by': paidBy,
-        'amount': amount,
-        'currency': currency,
-        'description': title,
-        'category': _getCategoryName(categoryIconCodePoint),
-        'date': (date ?? DateTime.now()).toUtc().toIso8601String(),
-        'split_type': splitType,
-        'notes': notes,
-        'receipt_url': receiptUrl,
-      }).select().single();
+      final expenseData = await _supabase
+          .from('expenses')
+          .insert({
+            'group_id': groupId,
+            'paid_by': paidBy,
+            'amount': amount,
+            'currency': currency,
+            'description': title,
+            'category': _getCategoryName(categoryIconCodePoint),
+            'date': (date ?? DateTime.now()).toUtc().toIso8601String(),
+            'split_type': splitType,
+            'notes': notes,
+            'receipt_url': receiptUrl,
+          })
+          .select()
+          .single();
 
       final String expenseId = expenseData['id'] as String;
 
@@ -334,7 +347,8 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
       await loadExpensesForGroup(groupId);
     } catch (e) {
       final errorMsg = _getFriendlyErrorMsg(e);
-      state = state.copyWith(error: 'Failed to add expense: $errorMsg', isLoading: false);
+      state = state.copyWith(
+          error: 'Failed to add expense: $errorMsg', isLoading: false);
       rethrow;
     }
   }
@@ -351,25 +365,33 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
     try {
       state = state.copyWith(isLoading: true);
       // 1. Optimistic UI Update & Reversal of Old Data
-      final updatedExpensesList = state.expenses.map((e) => e.expenseId == updatedExpense.expenseId ? updatedExpense : e).toList();
+      final updatedExpensesList = state.expenses
+          .map((e) =>
+              e.expenseId == updatedExpense.expenseId ? updatedExpense : e)
+          .toList();
       state = state.copyWith(expenses: updatedExpensesList, isLoading: true);
 
       // 2. Update expenses table
-      final updateResponse = await _supabase.from('expenses').update({
-        'amount': updatedExpense.amount,
-        'currency': updatedExpense.currency,
-        'description': updatedExpense.title,
-        'category': _getCategoryName(updatedExpense.categoryIconCodePoint),
-        'paid_by': updatedExpense.paidBy,
-        'split_type': updatedExpense.splitType,
-        'date': updatedExpense.date.toUtc().toIso8601String(),
-        'notes': updatedExpense.notes,
-        'receipt_url': updatedExpense.receiptUrl,
-        'updated_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', updatedExpense.expenseId).select();
+      final updateResponse = await _supabase
+          .from('expenses')
+          .update({
+            'amount': updatedExpense.amount,
+            'currency': updatedExpense.currency,
+            'description': updatedExpense.title,
+            'category': _getCategoryName(updatedExpense.categoryIconCodePoint),
+            'paid_by': updatedExpense.paidBy,
+            'split_type': updatedExpense.splitType,
+            'date': updatedExpense.date.toUtc().toIso8601String(),
+            'notes': updatedExpense.notes,
+            'receipt_url': updatedExpense.receiptUrl,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', updatedExpense.expenseId)
+          .select();
 
       if (updateResponse.isEmpty) {
-        throw Exception('You do not have permission to modify this expense (RLS blocked), or it no longer exists.');
+        throw Exception(
+            'You do not have permission to modify this expense (RLS blocked), or it no longer exists.');
       }
 
       // 2. Delete and insert splits table
@@ -394,7 +416,8 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
       state = state.copyWith(isLoading: false);
     } catch (e) {
       final errorMsg = _getFriendlyErrorMsg(e);
-      state = state.copyWith(error: 'Failed to update expense: $errorMsg', isLoading: false);
+      state = state.copyWith(
+          error: 'Failed to update expense: $errorMsg', isLoading: false);
       rethrow;
     }
   }
@@ -402,24 +425,33 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
   // Delete an expense
   Future<void> deleteExpense(String groupId, String expenseId) async {
     try {
-      print('🗑️ Attempting to delete expense with ID: $expenseId for group: $groupId');
+      debugPrint(
+          '🗑️ Attempting to delete expense with ID: $expenseId for group: $groupId');
       // Optimistic removal
-      final updatedList = state.expenses.where((e) => e.expenseId != expenseId).toList();
+      final updatedList =
+          state.expenses.where((e) => e.expenseId != expenseId).toList();
       state = state.copyWith(expenses: updatedList, isLoading: true);
-      
-      final deleteResponse = await _supabase.from('expenses').delete().eq('id', expenseId).select();
-      print('🗑️ Delete response from Supabase: $deleteResponse');
+
+      final deleteResponse = await _supabase
+          .from('expenses')
+          .delete()
+          .eq('id', expenseId)
+          .select();
+      debugPrint('🗑️ Delete response from Supabase: $deleteResponse');
 
       if (deleteResponse.isEmpty) {
-        print('⚠️ WARNING: Delete succeeded but returned 0 rows! RLS or ID mismatch?');
-        throw Exception('You do not have permission to delete this expense (RLS blocked), or it no longer exists.');
+        debugPrint(
+            '⚠️ WARNING: Delete succeeded but returned 0 rows! RLS or ID mismatch?');
+        throw Exception(
+            'You do not have permission to delete this expense (RLS blocked), or it no longer exists.');
       }
-      
+
       await loadExpensesForGroup(groupId);
       state = state.copyWith(isLoading: false);
     } catch (e) {
       final errorMsg = _getFriendlyErrorMsg(e);
-      state = state.copyWith(error: 'Failed to delete expense: $errorMsg', isLoading: false);
+      state = state.copyWith(
+          error: 'Failed to delete expense: $errorMsg', isLoading: false);
       rethrow;
     }
   }
