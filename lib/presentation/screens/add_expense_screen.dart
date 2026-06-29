@@ -10,6 +10,7 @@ import '../../core/widgets/app_text_field.dart';
 import '../../core/models/group.dart';
 import '../../core/models/expense.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../core/utils/app_dialog.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/group_provider.dart';
@@ -17,6 +18,7 @@ import '../../core/router/app_router.dart';
 import '../../providers/profile_provider.dart';
 import '../providers/screen_providers.dart';
 import '../../core/utils/group_icon_helper.dart';
+import '../../core/utils/financial_calculator.dart';
 import '../widgets/add_expense_form_elements.dart';
 
 class AddExpenseScreen extends ConsumerWidget {
@@ -75,6 +77,7 @@ class AddExpenseScreen extends ConsumerWidget {
         members.isNotEmpty) {
       Future.microtask(() {
         amountCtrl.text = expenseToEdit!.amount.toStringAsFixed(0);
+        ref.read(aeAmountValueProvider.notifier).state = expenseToEdit!.amount;
         titleCtrl.text = expenseToEdit!.title;
         ref.read(aePaidByProvider.notifier).state = expenseToEdit!.paidBy;
         ref.read(aeDateProvider.notifier).state = expenseToEdit!.date;
@@ -153,6 +156,10 @@ class AddExpenseScreen extends ConsumerWidget {
         ref.read(aePercentSplitsProvider.notifier).state = {};
         if (scannedAmount != null) {
           amountCtrl.text = scannedAmount!;
+          ref.read(aeAmountValueProvider.notifier).state =
+              double.tryParse(scannedAmount!) ?? 0.0;
+        } else {
+          ref.read(aeAmountValueProvider.notifier).state = 0.0;
         }
         if (scannedTitle != null) {
           titleCtrl.text = scannedTitle!;
@@ -164,11 +171,13 @@ class AddExpenseScreen extends ConsumerWidget {
         ref.read(aeDateProvider.notifier).state = DateTime.now();
         ref.read(aeNotesControllerProvider).clear();
         ref.read(aeReceiptUrlProvider.notifier).state = null;
-        ref.read(aeReceiptFileProvider.notifier).state = null;
+        if (scannedImagePath == null) {
+          ref.read(aeReceiptFileProvider.notifier).state = null;
+        }
       });
     }
 
-    final amountValue = double.tryParse(amountCtrl.text) ?? 0;
+    final amountValue = ref.watch(aeAmountValueProvider);
     final perPerson =
         selectedMembers.isNotEmpty ? amountValue / selectedMembers.length : 0.0;
 
@@ -240,6 +249,10 @@ class AddExpenseScreen extends ConsumerWidget {
                               IntrinsicWidth(
                                 child: TextField(
                                   controller: amountCtrl,
+                                  onChanged: (val) {
+                                    ref.read(aeAmountValueProvider.notifier).state =
+                                        double.tryParse(val) ?? 0.0;
+                                  },
                                   keyboardType:
                                       const TextInputType.numberWithOptions(
                                           decimal: true),
@@ -730,14 +743,15 @@ class AddExpenseScreen extends ConsumerWidget {
                     GestureDetector(
                       onTap: expenseState.isLoading
                           ? null
-                          : () => _saveExpense(
-                              context,
-                              ref,
-                              amountCtrl,
-                              titleCtrl,
-                              selectedMembers,
-                              perPerson,
-                              currentUserId),
+                          : () {
+                              _saveExpense(
+                                  context,
+                                  ref,
+                                  amountCtrl,
+                                  titleCtrl,
+                                  selectedMembers,
+                                  currentUserId);
+                            },
                       child: Container(
                         width: double.infinity,
                         height: 54.h,
@@ -864,7 +878,6 @@ class AddExpenseScreen extends ConsumerWidget {
     TextEditingController amountCtrl,
     TextEditingController titleCtrl,
     Set<String> selectedMembers,
-    double perPerson,
     String? currentUserId,
   ) async {
     final title = titleCtrl.text.trim();
@@ -894,16 +907,21 @@ class AddExpenseScreen extends ConsumerWidget {
     Map<String, double> splitAmong = {};
 
     if (splitType == 'Equal') {
-      splitAmong = {
-        for (final m in selectedMembers) m: perPerson,
-      };
+      splitAmong = FinancialCalculator.generateEqualSplits(
+          amount, selectedMembers.toList());
     } else if (splitType == 'Custom') {
       final customMap = ref.read(aeCustomSplitsProvider);
       final totalCustom =
           selectedMembers.fold(0.0, (sum, m) => sum + (customMap[m] ?? 0.0));
       if ((totalCustom - amount).abs() > 0.05) {
+        final totalCustomStr = totalCustom % 1 == 0
+            ? totalCustom.toStringAsFixed(0)
+            : totalCustom.toStringAsFixed(2);
+        final amountStr = amount % 1 == 0
+            ? amount.toStringAsFixed(0)
+            : amount.toStringAsFixed(2);
         AppSnackBar.showError(context,
-            'The sum of custom splits ($currencyCode $totalCustom) must equal the total amount ($currencyCode $amount)');
+            'The sum of custom splits ($currencyCode $totalCustomStr) must equal the total amount ($currencyCode $amountStr)');
         return;
       }
       splitAmong = {
@@ -914,14 +932,30 @@ class AddExpenseScreen extends ConsumerWidget {
       final totalPercent =
           selectedMembers.fold(0.0, (sum, m) => sum + (percentMap[m] ?? 0.0));
       if ((totalPercent - 100.0).abs() > 0.05) {
-        AppSnackBar.showError(
-            context, 'The sum of percentages ($totalPercent%) must equal 100%');
+        final totalPercentStr = totalPercent % 1 == 0
+            ? totalPercent.toStringAsFixed(0)
+            : totalPercent.toStringAsFixed(2);
+        AppSnackBar.showError(context,
+            'The sum of percentages ($totalPercentStr%) must equal 100%');
         return;
       }
-      splitAmong = {
-        for (final m in selectedMembers)
-          m: ((percentMap[m] ?? 0.0) / 100.0) * amount,
-      };
+      final Map<String, double> pctSplits = {};
+      final memberList = selectedMembers.toList();
+      for (final m in memberList) {
+        final pct = percentMap[m] ?? 0.0;
+        pctSplits[m] = double.parse(((pct / 100.0) * amount).toStringAsFixed(2));
+      }
+      if (memberList.isNotEmpty) {
+        final firstMember = memberList.first;
+        double sum = 0.0;
+        pctSplits.forEach((key, val) {
+          if (key != firstMember) {
+            sum += val;
+          }
+        });
+        pctSplits[firstMember] = double.parse((amount - sum).toStringAsFixed(2));
+      }
+      splitAmong = pctSplits;
     }
 
     final selectedCatLabel = ref.read(aeCategoryProvider);
@@ -987,7 +1021,17 @@ class AddExpenseScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        AppSnackBar.showError(context, 'Failed to save expense: $e');
+        if (expenseToEdit != null) {
+          await AppDialog.showInfo(
+            context,
+            title: 'Update Failed',
+            message:
+                'Failed to save expense changes. The local cache has been reverted to prevent mismatch.\n\nError: $e',
+            buttonText: 'OK',
+          );
+        } else {
+          AppSnackBar.showError(context, 'Failed to save expense: $e');
+        }
       }
     }
   }

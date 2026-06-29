@@ -362,6 +362,7 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
 
   // Update an expense
   Future<void> updateExpense(Expense updatedExpense) async {
+    final originalExpenses = List<Expense>.from(state.expenses);
     try {
       state = state.copyWith(isLoading: true);
       // 1. Optimistic UI Update & Reversal of Old Data
@@ -417,13 +418,16 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
     } catch (e) {
       final errorMsg = _getFriendlyErrorMsg(e);
       state = state.copyWith(
-          error: 'Failed to update expense: $errorMsg', isLoading: false);
+          expenses: originalExpenses,
+          error: 'Failed to update expense: $errorMsg',
+          isLoading: false);
       rethrow;
     }
   }
 
   // Delete an expense
   Future<void> deleteExpense(String groupId, String expenseId) async {
+    final originalExpenses = List<Expense>.from(state.expenses);
     try {
       debugPrint(
           '🗑️ Attempting to delete expense with ID: $expenseId for group: $groupId');
@@ -451,7 +455,9 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
     } catch (e) {
       final errorMsg = _getFriendlyErrorMsg(e);
       state = state.copyWith(
-          error: 'Failed to delete expense: $errorMsg', isLoading: false);
+          expenses: originalExpenses,
+          error: 'Failed to delete expense: $errorMsg',
+          isLoading: false);
       rethrow;
     }
   }
@@ -483,6 +489,75 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
       state = state.copyWith(
           error: 'Failed to upload receipt: $errorMsg', isLoading: false);
       rethrow;
+    }
+  }
+
+  // Fetch a single expense by ID directly from Supabase, updates Hive cache and in-memory state
+  Future<void> loadExpense(String expenseId) async {
+    try {
+      final response = await _supabase
+          .from('expenses')
+          .select('*, splits(*)')
+          .eq('id', expenseId)
+          .maybeSingle();
+
+      final box = await Hive.openBox<Expense>('expenses');
+
+      if (response == null) {
+        // If not found in remote database, delete from local cache and in-memory state
+        debugPrint('⚠️ Single expense $expenseId not found in Supabase. Removing from local cache.');
+        await box.delete(expenseId);
+        final updatedList = state.expenses
+            .where((e) => e.expenseId != expenseId)
+            .toList();
+        state = state.copyWith(expenses: updatedList);
+        return;
+      }
+
+      final List splitsList = response['splits'] ?? [];
+      final Map<String, double> splitAmong = {};
+      for (final split in splitsList) {
+        splitAmong[split['user_id']?.toString() ?? ''] =
+            (split['amount'] as num).toDouble();
+      }
+
+      final expense = Expense(
+        expenseId: response['id']?.toString() ?? '',
+        title: response['description'] as String? ?? '',
+        amount: (response['amount'] as num).toDouble(),
+        currency: response['currency'] as String? ?? 'PKR',
+        paidBy: response['paid_by']?.toString() ?? '',
+        splitAmong: splitAmong,
+        date: response['date'] != null
+            ? parseUtcDateTime(response['date'] as String)
+            : DateTime.now(),
+        notes: response['notes'] as String?,
+        groupId: response['group_id']?.toString() ?? '',
+        categoryIconCodePoint: _getIconCodePoint(response['category'] as String?),
+        splitType: response['split_type'] as String? ?? 'Equal',
+        receiptUrl: response['receipt_url'] as String?,
+        createdAt: response['created_at'] != null
+            ? parseUtcDateTime(response['created_at'] as String)
+            : null,
+        updatedAt: response['updated_at'] != null
+            ? parseUtcDateTime(response['updated_at'] as String)
+            : null,
+      );
+
+      await box.put(expense.expenseId, expense);
+
+      // Update in-memory state: replace if exists, or append if new
+      final list = List<Expense>.from(state.expenses);
+      final idx = list.indexWhere((e) => e.expenseId == expenseId);
+      if (idx != -1) {
+        list[idx] = expense;
+      } else {
+        list.add(expense);
+      }
+      state = state.copyWith(expenses: list);
+      debugPrint('✅ Single expense $expenseId successfully synced and updated in state.');
+    } catch (e) {
+      debugPrint('❌ Error loading single expense $expenseId: $e');
     }
   }
 

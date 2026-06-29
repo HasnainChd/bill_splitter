@@ -12,6 +12,7 @@ import '../../../providers/auth_provider.dart';
 import '../../../providers/group_provider.dart';
 import '../../../providers/expense_provider.dart';
 import '../../../providers/profile_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/utils/debt_calculator.dart';
 import '../../../core/utils/group_icon_helper.dart';
 import '../../../core/models/group.dart';
@@ -22,8 +23,10 @@ class GlobalSettlement {
   GlobalSettlement({required this.group, required this.settlement});
 }
 
-final settleLoadingProvider = StateProvider.autoDispose<Set<String>>((ref) => {});
-final settleAllLoadingProvider = StateProvider.autoDispose<bool>((ref) => false);
+final settleLoadingProvider =
+    StateProvider.autoDispose<Set<String>>((ref) => {});
+final settleAllLoadingProvider =
+    StateProvider.autoDispose<bool>((ref) => false);
 
 class SettleTab extends ConsumerWidget {
   const SettleTab({super.key});
@@ -46,7 +49,8 @@ class SettleTab extends ConsumerWidget {
       AppColors.primaryPurple,
     ];
     if (name.isEmpty) return colors[0];
-    final index = name.codeUnits.fold<int>(0, (sum, next) => sum + next) % colors.length;
+    final index =
+        name.codeUnits.fold<int>(0, (sum, next) => sum + next) % colors.length;
     return colors[index];
   }
 
@@ -69,9 +73,11 @@ class SettleTab extends ConsumerWidget {
 
     final List<GlobalSettlement> globalSettlements = [];
     final Map<String, UserProfile> userProfiles = {};
+    final Map<String, Map<String, double>> groupBalances = {};
 
     for (final group in groups) {
       final balances = ref.watch(balancesForGroupProvider(group.groupId));
+      groupBalances[group.groupId] = balances;
       final membersAsync = ref.watch(groupMembersProvider(group.groupId));
 
       membersAsync.whenData((members) {
@@ -98,34 +104,46 @@ class SettleTab extends ConsumerWidget {
 
     // Filter settlements where current user is involved
     final myOwe = globalSettlements.where((gs) {
-      return gs.settlement.fromMember == currentUserId && gs.settlement.amount > 0.01;
+      return gs.settlement.fromMember == currentUserId &&
+          gs.settlement.amount > 0.01;
     }).toList();
 
     final myOwed = globalSettlements.where((gs) {
-      return gs.settlement.toMember == currentUserId && gs.settlement.amount > 0.01;
+      return gs.settlement.toMember == currentUserId &&
+          gs.settlement.amount > 0.01;
     }).toList();
 
     // Summarize amounts per currency
     final Map<String, double> owesPerCurrency = {};
     for (final gs in myOwe) {
-      owesPerCurrency[gs.group.currency] = (owesPerCurrency[gs.group.currency] ?? 0.0) + gs.settlement.amount;
+      owesPerCurrency[gs.group.currency] =
+          (owesPerCurrency[gs.group.currency] ?? 0.0) + gs.settlement.amount;
     }
 
     final Map<String, double> owedPerCurrency = {};
     for (final gs in myOwed) {
-      owedPerCurrency[gs.group.currency] = (owedPerCurrency[gs.group.currency] ?? 0.0) + gs.settlement.amount;
+      owedPerCurrency[gs.group.currency] =
+          (owedPerCurrency[gs.group.currency] ?? 0.0) + gs.settlement.amount;
     }
 
     final String owesSummaryStr = owesPerCurrency.isEmpty
         ? '${_getSymbolForCurrency(defaultCurrency)} 0'
-        : owesPerCurrency.entries.map((e) => '${_getSymbolForCurrency(e.key)} ${e.value.toStringAsFixed(0)}').join(', ');
+        : owesPerCurrency.entries
+            .map((e) =>
+                '${_getSymbolForCurrency(e.key)} ${e.value.toStringAsFixed(0)}')
+            .join(', ');
 
     final String owedSummaryStr = owedPerCurrency.isEmpty
         ? '${_getSymbolForCurrency(defaultCurrency)} 0'
-        : owedPerCurrency.entries.map((e) => '${_getSymbolForCurrency(e.key)} ${e.value.toStringAsFixed(0)}').join(', ');
+        : owedPerCurrency.entries
+            .map((e) =>
+                '${_getSymbolForCurrency(e.key)} ${e.value.toStringAsFixed(0)}')
+            .join(', ');
 
-    final owePeopleCount = myOwe.map((gs) => gs.settlement.toMember).toSet().length;
-    final owedPeopleCount = myOwed.map((gs) => gs.settlement.fromMember).toSet().length;
+    final owePeopleCount =
+        myOwe.map((gs) => gs.settlement.toMember).toSet().length;
+    final owedPeopleCount =
+        myOwed.map((gs) => gs.settlement.fromMember).toSet().length;
 
     final hasSettlements = myOwe.isNotEmpty || myOwed.isNotEmpty;
 
@@ -221,8 +239,11 @@ class SettleTab extends ConsumerWidget {
                           _buildSectionLabel('YOU OWE OTHERS'),
                           ...myOwe.map((gs) {
                             final otherUserId = gs.settlement.toMember;
-                            final otherName = userProfiles[otherUserId]?.fullName ?? 'Other User';
-                            final key = '${gs.group.groupId}_${otherUserId}_${gs.settlement.amount}';
+                            final otherName =
+                                userProfiles[otherUserId]?.fullName ??
+                                    'Other User';
+                            final key =
+                                '${gs.group.groupId}_${otherUserId}_${gs.settlement.amount}';
                             final isLoading = loadingSettlements.contains(key);
 
                             return Padding(
@@ -230,8 +251,14 @@ class SettleTab extends ConsumerWidget {
                               child: _buildPersonCard(
                                 context,
                                 name: otherName,
-                                sub: GroupIconHelper.getCleanGroupName(gs.group.name),
-                                amount: '-${_getSymbolForCurrency(gs.group.currency)} ${gs.settlement.amount.toStringAsFixed(0)}',
+                                sub: GroupIconHelper.getCleanGroupName(
+                                    gs.group.name),
+                                amount: (() {
+                                  final rawCurrency = gs.group.currency;
+                                  final clean = rawCurrency.contains(' ') ? rawCurrency.split(' ')[0] : rawCurrency;
+                                  final clean3 = clean.length >= 3 ? clean.substring(0, 3) : clean;
+                                  return '-$clean3 ${_getSymbolForCurrency(rawCurrency)}${gs.settlement.amount.toStringAsFixed(0)}';
+                                })(),
                                 amountColor: AppColors.balanceOwed,
                                 buttonLabel: 'Pay',
                                 isOwe: true,
@@ -239,27 +266,38 @@ class SettleTab extends ConsumerWidget {
                                 avatarColor: _getAvatarColor(otherName),
                                 isLoading: isLoading,
                                 onTapButton: () async {
-                                  final grpSymbol = _getSymbolForCurrency(gs.group.currency);
+                                  final rawCurrency = gs.group.currency;
+                                  final clean = rawCurrency.contains(' ') ? rawCurrency.split(' ')[0] : rawCurrency;
+                                  final clean3 = clean.length >= 3 ? clean.substring(0, 3) : clean;
+                                  final grpSymbol = _getSymbolForCurrency(rawCurrency);
                                   final confirm = await AppDialog.showConfirm(
                                     context,
                                     title: 'Confirm Payment',
-                                    message: 'Settle your debt of $grpSymbol ${gs.settlement.amount.toStringAsFixed(0)} with $otherName?',
+                                    message:
+                                        'Settle your debt of $clean3 $grpSymbol${gs.settlement.amount.toStringAsFixed(0)} with $otherName?',
                                     confirmText: 'Settle',
                                     cancelText: 'Cancel',
                                   );
                                   if (confirm == true) {
-                                    ref.read(settleLoadingProvider.notifier).update((state) => {...state, key});
+                                    ref
+                                        .read(settleLoadingProvider.notifier)
+                                        .update((state) => {...state, key});
                                     try {
-                                      await ref.read(expenseProvider.notifier).addExpense(
-                                        groupId: gs.group.groupId,
-                                        title: 'Settle Payment',
-                                        amount: gs.settlement.amount,
-                                        currency: gs.group.currency,
-                                        paidBy: currentUserId,
-                                        splitAmong: {otherUserId: gs.settlement.amount},
-                                        categoryIconCodePoint: Icons.handshake_rounded.codePoint,
-                                        splitType: 'Equal',
-                                      );
+                                      await ref
+                                          .read(expenseProvider.notifier)
+                                          .addExpense(
+                                            groupId: gs.group.groupId,
+                                            title: 'Settle Payment',
+                                            amount: gs.settlement.amount,
+                                            currency: gs.group.currency,
+                                            paidBy: currentUserId,
+                                            splitAmong: {
+                                              otherUserId: gs.settlement.amount
+                                            },
+                                            categoryIconCodePoint: Icons
+                                                .handshake_rounded.codePoint,
+                                            splitType: 'Equal',
+                                          );
                                       if (context.mounted) {
                                         AppSnackBar.showSuccess(
                                           context,
@@ -274,9 +312,13 @@ class SettleTab extends ConsumerWidget {
                                         );
                                       }
                                     } finally {
-                                      ref.read(settleLoadingProvider.notifier).update(
-                                        (state) => state.where((k) => k != key).toSet(),
-                                      );
+                                      ref
+                                          .read(settleLoadingProvider.notifier)
+                                          .update(
+                                            (state) => state
+                                                .where((k) => k != key)
+                                                .toSet(),
+                                          );
                                     }
                                   }
                                 },
@@ -285,41 +327,117 @@ class SettleTab extends ConsumerWidget {
                           }),
                         ],
                       ],
-                      if (settleFilter == 'All' || settleFilter == 'Others Owe Me') ...[
+                      if (settleFilter == 'All' ||
+                          settleFilter == 'Others Owe Me') ...[
                         if (myOwed.isNotEmpty) ...[
                           _buildSectionLabel('OTHERS OWE YOU'),
                           ...myOwed.map((gs) {
                             final otherUserId = gs.settlement.fromMember;
-                            final otherName = userProfiles[otherUserId]?.fullName ?? 'Other User';
+                            final balances = groupBalances[gs.group.groupId] ?? {};
+                            final otherBalance = balances[otherUserId] ?? 0.0;
+                            if (otherBalance >= -0.01) {
+                              return const SizedBox.shrink();
+                            }
+
+                            final otherName =
+                                userProfiles[otherUserId]?.fullName ??
+                                    'Other User';
+                            final remindKey =
+                                'remind_${gs.group.groupId}_${otherUserId}_${gs.settlement.amount}';
+                            final isLoading =
+                                loadingSettlements.contains(remindKey);
 
                             return Padding(
                               padding: EdgeInsets.only(bottom: 12.h),
                               child: _buildPersonCard(
                                 context,
                                 name: otherName,
-                                sub: GroupIconHelper.getCleanGroupName(gs.group.name),
-                                amount: '+${_getSymbolForCurrency(gs.group.currency)} ${gs.settlement.amount.toStringAsFixed(0)}',
+                                sub: GroupIconHelper.getCleanGroupName(
+                                    gs.group.name),
+                                amount: (() {
+                                  final rawCurrency = gs.group.currency;
+                                  final clean = rawCurrency.contains(' ') ? rawCurrency.split(' ')[0] : rawCurrency;
+                                  final clean3 = clean.length >= 3 ? clean.substring(0, 3) : clean;
+                                  return '+$clean3 ${_getSymbolForCurrency(rawCurrency)}${gs.settlement.amount.toStringAsFixed(0)}';
+                                })(),
                                 amountColor: AppColors.balanceOwedTo,
                                 buttonLabel: 'Remind',
                                 isOwe: false,
                                 initials: _getInitials(otherName),
                                 avatarColor: _getAvatarColor(otherName),
-                                isLoading: false,
+                                isLoading: isLoading,
                                 onTapButton: () async {
-                                  final grpSymbol = _getSymbolForCurrency(gs.group.currency);
+                                  final currentBalances = ref.read(balancesForGroupProvider(gs.group.groupId));
+                                  final currentOtherBalance = currentBalances[otherUserId] ?? 0.0;
+                                  if (currentOtherBalance >= -0.01) {
+                                    AppSnackBar.showError(
+                                      context,
+                                      'This member does not owe any money!',
+                                    );
+                                    return;
+                                  }
+
+                                  final rawCurrency = gs.group.currency;
+                                  final clean = rawCurrency.contains(' ') ? rawCurrency.split(' ')[0] : rawCurrency;
+                                  final clean3 = clean.length >= 3 ? clean.substring(0, 3) : clean;
+                                  final grpSymbol = _getSymbolForCurrency(rawCurrency);
                                   final confirm = await AppDialog.showConfirm(
                                     context,
                                     title: 'Send Reminder',
-                                    message: 'Send a payment reminder to $otherName for $grpSymbol ${gs.settlement.amount.toStringAsFixed(0)}?',
+                                    message:
+                                        'Send a payment reminder to $otherName for $clean3 $grpSymbol${gs.settlement.amount.toStringAsFixed(0)}?',
                                     confirmText: 'Send',
                                     cancelText: 'Cancel',
                                   );
                                   if (confirm == true) {
-                                    if (context.mounted) {
-                                      AppSnackBar.showSuccess(
-                                        context,
-                                        'Reminder sent to $otherName!',
+                                    ref
+                                        .read(settleLoadingProvider.notifier)
+                                        .update(
+                                            (state) => {...state, remindKey});
+                                    try {
+                                      final response = await Supabase
+                                          .instance.client.functions
+                                          .invoke(
+                                        'send-notification',
+                                        body: {
+                                          'table': 'payment_reminders',
+                                          'new_record': {
+                                            'group_id': gs.group.groupId,
+                                            'sender_id': currentUserId,
+                                            'target_user_id': otherUserId,
+                                            'amount': gs.settlement.amount,
+                                            'currency': gs.group.currency,
+                                          },
+                                        },
                                       );
+
+                                      if (response.status != 200 &&
+                                          response.status != 204) {
+                                        throw Exception(
+                                            'Server returned status code ${response.status}');
+                                      }
+
+                                      if (context.mounted) {
+                                        AppSnackBar.showSuccess(
+                                          context,
+                                          'Reminder sent to $otherName!',
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        AppSnackBar.showError(
+                                          context,
+                                          'Failed to send reminder: $e',
+                                        );
+                                      }
+                                    } finally {
+                                      ref
+                                          .read(settleLoadingProvider.notifier)
+                                          .update(
+                                            (state) => state
+                                                .where((k) => k != remindKey)
+                                                .toSet(),
+                                          );
                                     }
                                   }
                                 },
@@ -333,7 +451,8 @@ class SettleTab extends ConsumerWidget {
           ),
 
           // ── Settle All button ──
-          if ((settleFilter == 'All' || settleFilter == 'I Owe') && myOwe.isNotEmpty)
+          if ((settleFilter == 'All' || settleFilter == 'I Owe') &&
+              myOwe.isNotEmpty)
             Padding(
               padding: EdgeInsets.only(bottom: 16.h, top: 8.h),
               child: Container(
@@ -357,27 +476,34 @@ class SettleTab extends ConsumerWidget {
                       ? null
                       : () async {
                           final confirm = await AppDialog.showConfirm(
-                                                            context,
-                                                            title: 'Confirm Settlement',
-                                                            message: 'Settle all your pending debts totaling $owesSummaryStr?',
-                                                            confirmText: 'Settle All',
-                                                            cancelText: 'Cancel',
-                                                          );
+                            context,
+                            title: 'Confirm Settlement',
+                            message:
+                                'Settle all your pending debts totaling $owesSummaryStr?',
+                            confirmText: 'Settle All',
+                            cancelText: 'Cancel',
+                          );
                           if (confirm == true) {
-                            ref.read(settleAllLoadingProvider.notifier).state = true;
+                            ref.read(settleAllLoadingProvider.notifier).state =
+                                true;
                             try {
                               for (final gs in myOwe) {
                                 final otherUserId = gs.settlement.toMember;
-                                await ref.read(expenseProvider.notifier).addExpense(
-                                  groupId: gs.group.groupId,
-                                  title: 'Settle Payment',
-                                  amount: gs.settlement.amount,
-                                  currency: gs.group.currency,
-                                  paidBy: currentUserId,
-                                  splitAmong: {otherUserId: gs.settlement.amount},
-                                  categoryIconCodePoint: Icons.handshake_rounded.codePoint,
-                                  splitType: 'Equal',
-                                );
+                                await ref
+                                    .read(expenseProvider.notifier)
+                                    .addExpense(
+                                      groupId: gs.group.groupId,
+                                      title: 'Settle Payment',
+                                      amount: gs.settlement.amount,
+                                      currency: gs.group.currency,
+                                      paidBy: currentUserId,
+                                      splitAmong: {
+                                        otherUserId: gs.settlement.amount
+                                      },
+                                      categoryIconCodePoint:
+                                          Icons.handshake_rounded.codePoint,
+                                      splitType: 'Equal',
+                                    );
                               }
                               if (context.mounted) {
                                 AppSnackBar.showSuccess(
@@ -393,7 +519,9 @@ class SettleTab extends ConsumerWidget {
                                 );
                               }
                             } finally {
-                              ref.read(settleAllLoadingProvider.notifier).state = false;
+                              ref
+                                  .read(settleAllLoadingProvider.notifier)
+                                  .state = false;
                             }
                           }
                         },
@@ -406,7 +534,8 @@ class SettleTab extends ConsumerWidget {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Icon(Icons.check_circle_rounded, color: AppColors.white, size: 20),
+                      : const Icon(Icons.check_circle_rounded,
+                          color: AppColors.white, size: 20),
                   label: AppText(
                     'Settle All — Pay $owesSummaryStr',
                     fontSize: 14,
@@ -430,7 +559,8 @@ class SettleTab extends ConsumerWidget {
 
   // ── Helpers ──
 
-  Widget _buildSummaryCard(String label, String value, String subtitle, Color color) {
+  Widget _buildSummaryCard(
+      String label, String value, String subtitle, Color color) {
     return Expanded(
       child: Container(
         padding: EdgeInsets.all(16.w),
@@ -442,7 +572,8 @@ class SettleTab extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AppText(label, fontSize: 12, color: AppColors.white.withValues(alpha: 0.5)),
+            AppText(label,
+                fontSize: 12, color: AppColors.white.withValues(alpha: 0.5)),
             SizedBox(height: 6.h),
             FittedBox(
               fit: BoxFit.scaleDown,
@@ -456,7 +587,8 @@ class SettleTab extends ConsumerWidget {
               ),
             ),
             SizedBox(height: 4.h),
-            AppText(subtitle, fontSize: 11, color: AppColors.white.withValues(alpha: 0.3)),
+            AppText(subtitle,
+                fontSize: 11, color: AppColors.white.withValues(alpha: 0.3)),
           ],
         ),
       ),
@@ -473,14 +605,18 @@ class SettleTab extends ConsumerWidget {
           color: isSelected ? AppColors.onboardingViolet : AppColors.cardDark,
           borderRadius: BorderRadius.circular(20.r),
           border: Border.all(
-            color: isSelected ? AppColors.transparent : AppColors.white.withValues(alpha: 0.06),
+            color: isSelected
+                ? AppColors.transparent
+                : AppColors.white.withValues(alpha: 0.06),
           ),
         ),
         child: AppText(
           label,
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: isSelected ? AppColors.white : AppColors.white.withValues(alpha: 0.6),
+          color: isSelected
+              ? AppColors.white
+              : AppColors.white.withValues(alpha: 0.6),
         ),
       ),
     );
@@ -524,18 +660,27 @@ class SettleTab extends ConsumerWidget {
           Container(
             width: 40.w,
             height: 40.w,
-            decoration: BoxDecoration(color: avatarColor, shape: BoxShape.circle),
+            decoration:
+                BoxDecoration(color: avatarColor, shape: BoxShape.circle),
             alignment: Alignment.center,
-            child: AppText(initials, fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.white),
+            child: AppText(initials,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.white),
           ),
           SizedBox(width: 14.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AppText(name, fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.white),
+                AppText(name,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white),
                 SizedBox(height: 4.h),
-                AppText(sub, fontSize: 11, color: AppColors.white.withValues(alpha: 0.4)),
+                AppText(sub,
+                    fontSize: 11,
+                    color: AppColors.white.withValues(alpha: 0.4)),
               ],
             ),
           ),
@@ -543,7 +688,10 @@ class SettleTab extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AppText(amount, fontSize: 14, fontWeight: FontWeight.w800, color: amountColor),
+              AppText(amount,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: amountColor),
               SizedBox(height: 8.h),
               SizedBox(
                 height: 28.h,
@@ -567,7 +715,10 @@ class SettleTab extends ConsumerWidget {
                                 borderRadius: BorderRadius.circular(14.r),
                               ),
                             ),
-                            child: AppText(buttonLabel, fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.white),
+                            child: AppText(buttonLabel,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.white),
                           )
                         : OutlinedButton(
                             onPressed: onTapButton,
@@ -583,9 +734,15 @@ class SettleTab extends ConsumerWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.notifications_none_rounded, color: AppColors.white.withValues(alpha: 0.6), size: 12.sp),
+                                Icon(Icons.notifications_none_rounded,
+                                    color:
+                                        AppColors.white.withValues(alpha: 0.6),
+                                    size: 12.sp),
                                 SizedBox(width: 4.w),
-                                AppText(buttonLabel, fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.white),
+                                AppText(buttonLabel,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.white),
                               ],
                             ),
                           ),
@@ -620,4 +777,3 @@ class SettleTab extends ConsumerWidget {
     return symbols[code] ?? code;
   }
 }
-

@@ -17,10 +17,14 @@ import '../../providers/expense_provider.dart';
 import '../../core/utils/app_dialog.dart';
 import '../../providers/profile_provider.dart';
 import '../../core/router/app_router.dart';
-import '../../core/utils/group_icon_helper.dart';
-import '../../core/utils/debt_calculator.dart';
 import '../../providers/settings_provider.dart';
+import '../../core/utils/group_icon_helper.dart';
 import '../../core/utils/app_date_formatter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../providers/screen_providers.dart';
+
+final expenseReminderLoadingProvider =
+    StateProvider.autoDispose<bool>((ref) => false);
 
 class ExpenseDetailScreen extends ConsumerWidget {
   final Expense expense;
@@ -29,6 +33,18 @@ class ExpenseDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Load latest remote details for this expense fresh on mount
+    final loadedExpenses = ref.watch(loadedSingleExpensesProvider);
+    if (!loadedExpenses.contains(this.expense.expenseId)) {
+      Future.microtask(() {
+        ref
+            .read(loadedSingleExpensesProvider.notifier)
+            .update((state) => {...state, this.expense.expenseId});
+        ref.read(expenseProvider.notifier).loadExpense(this.expense.expenseId);
+      });
+    }
+
+    final isReminding = ref.watch(expenseReminderLoadingProvider);
     final groupState = ref.watch(groupProvider);
     final expenseState = ref.watch(expenseProvider);
     final currentUserId = ref.watch(supabaseUserProvider)?.id;
@@ -109,55 +125,6 @@ class ExpenseDetailScreen extends ConsumerWidget {
 
     final balances = ref.watch(balancesForGroupProvider(group.groupId));
 
-    // Map balances to Member list for debt calculator
-    final membersList = balances.entries.map((entry) {
-      final balance = entry.value;
-      return Member(
-        name: entry.key,
-        totalPaid: balance > 0 ? balance : 0,
-        totalShare: balance < 0 ? balance.abs() : 0,
-      );
-    }).toList();
-
-    final groupSettlements = DebtCalculator.calculate(membersList);
-
-    // Calculate original amount owed by others
-    final originalOwedByOthers = expense.splitAmong.entries
-        .where((entry) => entry.key != expense.paidBy)
-        .fold<double>(0.0, (sum, entry) => sum + entry.value);
-
-    // Calculate total remaining owed by others for this expense
-    double totalRemaining = 0.0;
-    final isSettlement = expense.title == 'Settle Payment' ||
-        expense.categoryIconCodePoint == Icons.handshake_rounded.codePoint;
-
-    if (!isSettlement) {
-      expense.splitAmong.forEach((userId, originalShare) {
-        if (userId != expense.paidBy) {
-          final currentDebtToPayer = groupSettlements
-              .firstWhere(
-                (s) => s.fromMember == userId && s.toMember == expense.paidBy,
-                orElse: () => Settlement(
-                    fromMember: userId, toMember: expense.paidBy, amount: 0.0),
-              )
-              .amount;
-          totalRemaining += (originalShare < currentDebtToPayer)
-              ? originalShare
-              : currentDebtToPayer;
-        }
-      });
-    }
-
-    final String expenseStatus = (() {
-      if (isSettlement || totalRemaining <= 0.05) {
-        return 'Settled';
-      }
-      if ((totalRemaining - originalOwedByOthers).abs() < 0.05) {
-        return 'Unsettled';
-      }
-      return 'Partially Settled';
-    })();
-
     final memberMap = {
       for (final m in members) m.id: m.fullName,
     };
@@ -227,6 +194,32 @@ class ExpenseDetailScreen extends ConsumerWidget {
                               child: IconButton(
                                 padding: EdgeInsets.zero,
                                 icon: Icon(
+                                  Icons.refresh_rounded,
+                                  color: AppColors.white.withValues(alpha: 0.8),
+                                  size: 18.sp,
+                                ),
+                                onPressed: () async {
+                                  AppSnackBar.showInfo(context, 'Refreshing expense details...');
+                                  await ref
+                                      .read(expenseProvider.notifier)
+                                      .loadExpense(expense.expenseId);
+                                  if (context.mounted) {
+                                    AppSnackBar.showSuccess(context, 'Expense details refreshed!');
+                                  }
+                                },
+                              ),
+                            ),
+                            SizedBox(width: 8.w),
+                            Container(
+                              width: 42.w,
+                              height: 42.w,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E1C38),
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                icon: Icon(
                                   Icons.edit_outlined,
                                   color: const Color(0xFFFBBF24),
                                   size: 18.sp,
@@ -280,8 +273,13 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                     }
                                   } catch (e) {
                                     if (context.mounted) {
-                                      AppSnackBar.showError(
-                                          context, 'Failed to delete expense');
+                                      await AppDialog.showInfo(
+                                        context,
+                                        title: 'Delete Failed',
+                                        message:
+                                            'Failed to delete expense. The action has been reverted.\n\nError: $e',
+                                        buttonText: 'OK',
+                                      );
                                     }
                                   }
                                 },
@@ -385,24 +383,6 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                     '${AppDateFormatter.format(expense.updatedAt!, activeDateFormat)} ${DateFormat('h:mm a').format(expense.updatedAt!)}',
                                   ),
                                 ],
-                                _buildDivider(),
-                                _buildDetailRow(
-                                  'Status',
-                                  expenseStatus,
-                                  valueColor: expenseStatus == 'Settled'
-                                      ? const Color(0xFF00C896)
-                                      : expenseStatus == 'Partially Settled'
-                                          ? const Color(0xFFFFA500)
-                                          : const Color(0xFFFF5252),
-                                ),
-                                if (expenseStatus != 'Settled') ...[
-                                  _buildDivider(),
-                                  _buildDetailRow(
-                                    'Remaining Balance',
-                                    '$currencyCode ${totalRemaining.toStringAsFixed(2)}',
-                                    valueColor: const Color(0xFFFF5252),
-                                  ),
-                                ],
                               ],
                             ),
                           ),
@@ -435,6 +415,38 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                         color: Colors.white54),
                                   );
                                 }
+
+                                // Pre-calculate displayed amounts for all members to ensure exact sum matching the total expense amount
+                                final Map<String, double> displayedSplitAmounts = {};
+                                {
+                                  String? lastParticipatingMemberId;
+                                  for (int i = members.length - 1; i >= 0; i--) {
+                                    final m = members[i];
+                                    final owed = expense.splitAmong[m.id] ?? 0.0;
+                                    if (owed.abs() > 0.0001) {
+                                      lastParticipatingMemberId = m.id;
+                                      break;
+                                    }
+                                  }
+
+                                  double sumOfOthers = 0.0;
+                                  for (final m in members) {
+                                    final rawAmt = expense.splitAmong[m.id] ?? 0.0;
+                                    if (m.id == lastParticipatingMemberId) {
+                                      continue;
+                                    }
+                                    final rounded = double.parse(rawAmt.toStringAsFixed(2));
+                                    displayedSplitAmounts[m.id] = rounded;
+                                    if (rawAmt.abs() > 0.0001) {
+                                      sumOfOthers += rounded;
+                                    }
+                                  }
+
+                                  if (lastParticipatingMemberId != null) {
+                                    displayedSplitAmounts[lastParticipatingMemberId] = double.parse((expense.amount - sumOfOthers).toStringAsFixed(2));
+                                  }
+                                }
+
                                 return Column(
                                   children:
                                       List.generate(members.length, (index) {
@@ -457,11 +469,8 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                             AppColors.avatarColors.length];
 
                                     // Calculations
-                                    final double paidAmt =
-                                        isPayer ? totalAmount : 0.0;
                                     final double owedAmt =
-                                        expense.splitAmong[m.id] ?? 0.0;
-                                    final double netAmt = paidAmt - owedAmt;
+                                        displayedSplitAmounts[m.id] ?? 0.0;
 
                                     final isLast = index == members.length - 1;
 
@@ -523,16 +532,26 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                                                     .ellipsis,
                                                           ),
                                                         ),
-                                                        SizedBox(width: 8.w),
-                                                        _buildStatusBadge(
-                                                            isPayer),
                                                       ],
                                                     ),
                                                     SizedBox(height: 4.h),
                                                     AppText(
-                                                      isPayer
-                                                          ? 'Paid $currencyCode ${totalAmount.toStringAsFixed(0)}'
-                                                          : 'Owes $currencyCode ${owedAmt.toStringAsFixed(0)}',
+                                                      (() {
+                                                        final memberBalance =
+                                                            balances[m.id] ??
+                                                                0.0;
+                                                        final balanceSign =
+                                                            memberBalance > 0
+                                                                ? '+'
+                                                                : (memberBalance <
+                                                                        0
+                                                                    ? '-'
+                                                                    : '');
+                                                        final base = isPayer
+                                                            ? 'Paid $currencyCode ${totalAmount.toStringAsFixed(2)} · '
+                                                            : '';
+                                                        return "$base${isMe ? 'Your' : "${m.fullName}'s"} group balance: $balanceSign$currencyCode${memberBalance.abs().toStringAsFixed(2)}";
+                                                      })(),
                                                       fontSize: 11,
                                                       color: AppColors.white
                                                           .withValues(
@@ -542,17 +561,10 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                                 ),
                                               ),
                                               AppText(
-                                                netAmt == 0
-                                                    ? '0'
-                                                    : '${netAmt > 0 ? '+' : '-'}$currencyCode${netAmt.abs().toStringAsFixed(0)}',
+                                                '$currencyCode ${owedAmt.toStringAsFixed(2)}',
                                                 fontSize: 15,
                                                 fontWeight: FontWeight.w800,
-                                                color: netAmt == 0
-                                                    ? Colors.white54
-                                                    : netAmt > 0
-                                                        ? const Color(
-                                                            0xFF00C896)
-                                                        : AppColors.white,
+                                                color: AppColors.white,
                                               ),
                                             ],
                                           ),
@@ -714,13 +726,30 @@ class ExpenseDetailScreen extends ConsumerWidget {
                               expense.categoryIconCodePoint !=
                                   Icons.handshake_rounded.codePoint) ...[
                             if (isUserPayer) ...[
-                              if (totalAmount - myOwedAmt > 0)
+                              if (totalAmount - myOwedAmt > 0 &&
+                                  (balances[currentUserId] ?? 0.0) > 0.01 &&
+                                  expense.splitAmong.keys.any((id) =>
+                                      id != currentUserId &&
+                                      (balances[id] ?? 0.0) < -0.01))
                                 AppButton(
                                   label:
                                       'Remind members · $currencyCode ${(totalAmount - myOwedAmt).toStringAsFixed(0)}',
                                   color: AppColors.onboardingViolet,
                                   textColor: AppColors.white,
+                                  isLoading: isReminding,
                                   onTap: () async {
+                                    final targetIds = expense.splitAmong.keys
+                                        .where((id) =>
+                                            id != currentUserId &&
+                                            (balances[id] ?? 0.0) < -0.01)
+                                        .toList();
+
+                                    if (targetIds.isEmpty) {
+                                      AppSnackBar.showError(context,
+                                          'All members in this expense are already settled!');
+                                      return;
+                                    }
+
                                     final confirm = await AppDialog.showConfirm(
                                       context,
                                       title: 'Send Reminder',
@@ -730,33 +759,47 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                       cancelText: 'Cancel',
                                     );
                                     if (confirm == true) {
-                                      if (context.mounted) {
-                                        AppSnackBar.showSuccess(context,
-                                            'Reminder sent to members!');
-                                      }
-                                    }
-                                  },
-                                ),
-                            ] else ...[
-                              if (myOwedAmt > 0)
-                                AppButton(
-                                  label:
-                                      'Remind payer · $currencyCode ${myOwedAmt.toStringAsFixed(0)}',
-                                  color: AppColors.onboardingViolet,
-                                  textColor: AppColors.white,
-                                  onTap: () async {
-                                    final confirm = await AppDialog.showConfirm(
-                                      context,
-                                      title: 'Send Reminder',
-                                      message:
-                                          'Are you sure you want to send a payment reminder to $payerName?',
-                                      confirmText: 'Send',
-                                      cancelText: 'Cancel',
-                                    );
-                                    if (confirm == true) {
-                                      if (context.mounted) {
-                                        AppSnackBar.showSuccess(
-                                            context, 'Reminder sent to payer!');
+                                      ref
+                                          .read(expenseReminderLoadingProvider
+                                              .notifier)
+                                          .state = true;
+                                      try {
+                                        final response = await Supabase
+                                            .instance.client.functions
+                                            .invoke(
+                                          'send-notification',
+                                          body: {
+                                            'table': 'payment_reminders',
+                                            'new_record': {
+                                              'group_id': expense.groupId,
+                                              'sender_id': currentUserId,
+                                              'target_user_ids': targetIds,
+                                              'amount': totalAmount - myOwedAmt,
+                                              'currency': currencyCode,
+                                            },
+                                          },
+                                        );
+
+                                        if (response.status != 200 &&
+                                            response.status != 204) {
+                                          throw Exception(
+                                              'Server returned status code ${response.status}');
+                                        }
+
+                                        if (context.mounted) {
+                                          AppSnackBar.showSuccess(context,
+                                              'Reminder sent to members!');
+                                        }
+                                      } catch (e) {
+                                        if (context.mounted) {
+                                          AppSnackBar.showError(context,
+                                              'Failed to send reminder: $e');
+                                        }
+                                      } finally {
+                                        ref
+                                            .read(expenseReminderLoadingProvider
+                                                .notifier)
+                                            .state = false;
                                       }
                                     }
                                   },
@@ -874,34 +917,6 @@ class ExpenseDetailScreen extends ConsumerWidget {
     return '🍕 Food';
   }
 
-  Widget _buildStatusBadge(bool isPayer) {
-    final color = isPayer ? const Color(0xFF00C896) : const Color(0xFFFFA500);
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6.r),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isPayer ? Icons.check_circle_rounded : Icons.pending_rounded,
-            size: 10.sp,
-            color: color,
-          ),
-          SizedBox(width: 4.w),
-          AppText(
-            isPayer ? 'Settled' : 'Pending',
-            fontSize: 9,
-            fontWeight: FontWeight.w800,
-            color: color,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _sectionLabel(String text) {
     return AppText(
       text,
@@ -921,6 +936,38 @@ class ExpenseDetailScreen extends ConsumerWidget {
     String currencyCode,
     String activeDateFormat,
   ) {
+    // Pre-calculate displayed amounts for all members to ensure exact sum matching the total expense amount
+    final Map<String, double> displayedSplitAmounts = {};
+    {
+      final keys = expense.splitAmong.keys.toList();
+      String? lastParticipatingMemberId;
+      for (int i = keys.length - 1; i >= 0; i--) {
+        final key = keys[i];
+        final owed = expense.splitAmong[key] ?? 0.0;
+        if (owed.abs() > 0.0001) {
+          lastParticipatingMemberId = key;
+          break;
+        }
+      }
+
+      double sumOfOthers = 0.0;
+      for (final key in keys) {
+        final rawAmt = expense.splitAmong[key] ?? 0.0;
+        if (key == lastParticipatingMemberId) {
+          continue;
+        }
+        final rounded = double.parse(rawAmt.toStringAsFixed(2));
+        displayedSplitAmounts[key] = rounded;
+        if (rawAmt.abs() > 0.0001) {
+          sumOfOthers += rounded;
+        }
+      }
+
+      if (lastParticipatingMemberId != null) {
+        displayedSplitAmounts[lastParticipatingMemberId] = double.parse((expense.amount - sumOfOthers).toStringAsFixed(2));
+      }
+    }
+
     bool isDownloading = false;
     showDialog(
       context: context,
@@ -1019,7 +1066,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                 fontSize: 13,
                                 color: AppColors.white.withValues(alpha: 0.7)),
                             AppText(
-                                '$currencyCode ${entry.value.toStringAsFixed(2)}',
+                                '$currencyCode ${(displayedSplitAmounts[entry.key] ?? entry.value).toStringAsFixed(2)}',
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.white),

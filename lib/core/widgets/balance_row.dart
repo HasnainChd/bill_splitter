@@ -19,7 +19,7 @@ class BalanceRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPositive = balance > 0;
-    final isZero = balance == 0;
+    final isZero = balance.abs() < 0.01;
 
     String balanceText;
     Color balanceColor;
@@ -34,7 +34,8 @@ class BalanceRow extends StatelessWidget {
       balanceText = 'settled';
       balanceColor = AppColors.textHint;
     } else if (isPositive) {
-      balanceText = 'gets back $currencySymbol${balance.abs().toStringAsFixed(2)}';
+      balanceText =
+          'gets back $currencySymbol${balance.abs().toStringAsFixed(2)}';
       balanceColor = AppColors.success;
     } else {
       balanceText = 'owes $currencySymbol${balance.abs().toStringAsFixed(2)}';

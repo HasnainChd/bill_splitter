@@ -87,7 +87,17 @@ class FinancialCalculator {
   /// Regenerate equal splits dynamically based on current amount and members
   static Map<String, double> generateEqualSplits(double totalAmount, List<String> memberIds) {
     if (memberIds.isEmpty) return {};
-    final splitAmt = totalAmount / memberIds.length;
-    return {for (final mId in memberIds) mId: splitAmt};
+    final rawSplit = totalAmount / memberIds.length;
+    final roundedSplit = double.parse(rawSplit.toStringAsFixed(2));
+    final Map<String, double> splits = {
+      for (final mId in memberIds) mId: roundedSplit
+    };
+    final double currentSum = roundedSplit * memberIds.length;
+    final double remainder = double.parse((totalAmount - currentSum).toStringAsFixed(2));
+    if (remainder.abs() > 0.001) {
+      final firstMember = memberIds.first;
+      splits[firstMember] = double.parse((splits[firstMember]! + remainder).toStringAsFixed(2));
+    }
+    return splits;
   }
 }

@@ -31,11 +31,26 @@ class SettlementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formattedAmount = currency == 'EUR'
-        ? '€${amount.toStringAsFixed(0)}'
-        : currency == 'USD'
-            ? '\$${amount.toStringAsFixed(0)}'
-            : '$currency ${amount.toStringAsFixed(0)}';
+    final cleanCurrency = currency.contains(' ') ? currency.split(' ')[0] : currency;
+    final cleanCurrency3 = cleanCurrency.length >= 3 ? cleanCurrency.substring(0, 3) : cleanCurrency;
+    final symbol = (() {
+      final Map<String, String> symbols = {
+        'USD': '\$',
+        'EUR': '€',
+        'GBP': '£',
+        'INR': '₹',
+        'PKR': 'Rs',
+        'JPY': '¥',
+        'AUD': 'A\$',
+        'CAD': 'C\$',
+        'CHF': 'CHF',
+        'CNY': '¥',
+        'SGD': 'S\$',
+        'NZD': 'NZ\$',
+      };
+      return symbols[cleanCurrency3] ?? cleanCurrency3;
+    })();
+    final formattedAmount = '$cleanCurrency3 $symbol${amount.toStringAsFixed(0)}';
 
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
