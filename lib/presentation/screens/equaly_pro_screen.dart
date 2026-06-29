@@ -58,7 +58,7 @@ class EqualyProScreen extends ConsumerWidget {
                           color: Colors.amber, size: 20.sp),
                       SizedBox(width: 4.w),
                       const AppText(
-                        'Equaly Pro',
+                        'Equally Pro',
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: Colors.amber,

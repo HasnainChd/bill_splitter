@@ -36,7 +36,7 @@ class LockScreen extends ConsumerWidget {
       }
 
       final bool didAuthenticate = await auth.authenticate(
-        localizedReason: 'Please authenticate to access Equaly',
+        localizedReason: 'Please authenticate to access Equally',
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: false,

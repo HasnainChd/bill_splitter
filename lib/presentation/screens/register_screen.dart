@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_text_field.dart';
@@ -78,7 +80,7 @@ class RegisterScreen extends ConsumerWidget {
                     ),
                     SizedBox(height: 6.h),
                     const AppText(
-                      'Join Equaly and split smarter.',
+                      'Join Equally and split smarter.',
                       fontSize: 15,
                       color: AppColors.textGrey,
                     ),
@@ -431,6 +433,15 @@ class _TermsRow extends StatelessWidget {
 
   const _TermsRow({required this.accepted, required this.onChanged});
 
+  Future<void> _launchUrl(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    try {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Could not launch $urlString: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -468,6 +479,8 @@ class _TermsRow extends StatelessWidget {
                     color: AppColors.onboardingViolet,
                     fontWeight: FontWeight.w600,
                   ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () => _launchUrl('https://devorastudios.dev/#/equaly/terms'),
                 ),
                 const TextSpan(text: ' and '),
                 TextSpan(
@@ -476,6 +489,8 @@ class _TermsRow extends StatelessWidget {
                     color: AppColors.onboardingViolet,
                     fontWeight: FontWeight.w600,
                   ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () => _launchUrl('https://devorastudios.dev/#/equaly/privacy'),
                 ),
               ],
             ),

@@ -90,28 +90,18 @@ class OnboardingScreen extends StatelessWidget {
     return Column(
       children: [
         // Logo with background container
-        Container(
-          width: 80.w,
-          height: 80.w,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.primaryPurple, AppColors.primaryPurpleLight],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20.r),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(16.w),
-            child: Image.asset(
-              'assets/zap.png',
-              fit: BoxFit.contain,
-            ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20.r),
+          child: Image.asset(
+            'assets/appstore.png',
+            width: 80.w,
+            height: 80.w,
+            fit: BoxFit.contain,
           ),
         ),
         SizedBox(height: 14.h),
         const AppText(
-          'Equaly',
+          'Equally',
           fontSize: 32,
           fontWeight: FontWeight.w700,
           color: AppColors.white,
@@ -323,6 +313,7 @@ class OnboardingScreen extends StatelessWidget {
             child: Image.asset(
               asset,
               fit: BoxFit.contain,
+              color: AppColors.white,
             ),
           ),
         ),

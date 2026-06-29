@@ -33,7 +33,7 @@ class HelpSupportScreen extends ConsumerWidget {
     {
       'question': 'Can I add expenses in other currencies?',
       'answer':
-          'Yes, Equaly supports multiple currencies. When creating a group, you can specify its primary currency. All transactions inside that group will use that currency.',
+          'Yes, Equally supports multiple currencies. When creating a group, you can specify its primary currency. All transactions inside that group will use that currency.',
       'topic': 'Splitting & Expenses',
     },
     {
@@ -197,7 +197,7 @@ class HelpSupportScreen extends ConsumerWidget {
                           title: 'Email Us',
                           subtitle: 'Reply in 24h',
                           onTap: () => _launchUrl(
-                              'mailto:devcodeinnovations@gmail.com?subject=Equaly%20Support%20Request'),
+                              'mailto:devcodeinnovations@gmail.com?subject=Equally%20Support%20Request'),
                         ),
                         SizedBox(width: 10.w),
                         _buildContactCard(
@@ -216,7 +216,7 @@ class HelpSupportScreen extends ConsumerWidget {
                                     fontWeight: FontWeight.w800,
                                     color: Colors.white),
                                 content: const AppText(
-                                  'Phone support is exclusive to Equaly Pro subscribers. Standard users can contact us 24/7 via Email.',
+                                  'Phone support is exclusive to Equally Pro subscribers. Standard users can contact us 24/7 via Email.',
                                   fontSize: 13,
                                   color: AppColors.textGrey,
                                 ),
@@ -437,7 +437,7 @@ class HelpSupportScreen extends ConsumerWidget {
                       child: Column(
                         children: [
                           AppText(
-                            'Equaly v1.0.0 · Production Ready',
+                            'Equally v1.0.0 · Production Ready',
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: AppColors.white.withValues(alpha: 0.25),
@@ -453,7 +453,7 @@ class HelpSupportScreen extends ConsumerWidget {
                                     color: Colors.amber, size: 14.sp),
                                 SizedBox(width: 4.w),
                                 const AppText(
-                                  'Rate Equaly on the Play Store',
+                                  'Rate Equally on the Play Store',
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.onboardingViolet,
