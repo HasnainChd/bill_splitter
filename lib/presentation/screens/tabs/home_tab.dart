@@ -173,7 +173,7 @@ class HomeTab extends ConsumerWidget {
                     padding: EdgeInsets.symmetric(horizontal: 20.w),
                     child: Container(
                       width: double.infinity,
-                      height: 170.h,
+                      height: 185.h,
                       padding: EdgeInsets.symmetric(
                           horizontal: 16.w, vertical: 12.h),
                       decoration: BoxDecoration(
@@ -277,7 +277,7 @@ class HomeTab extends ConsumerWidget {
               return Column(
                 children: [
                   SizedBox(
-                    height: 170.h,
+                    height: 185.h,
                     child: PageView(
                       onPageChanged: (idx) {
                         ref.read(homeBalancePageIndexProvider.notifier).state =
@@ -337,7 +337,7 @@ class HomeTab extends ConsumerWidget {
                     }
                   }),
                   _buildQuickAction(
-                      'Request\nMoney', Icons.send_rounded, AppColors.orange,
+                      'Remind to\nSettle', Icons.send_rounded, AppColors.orange,
                       () {
                     _showSelectGroupSheet(context, ref, groups);
                   }),
@@ -438,7 +438,9 @@ class HomeTab extends ConsumerWidget {
                               '-${group.currency} ${myBalance.abs().toStringAsFixed(0)}';
                           balanceColor = AppColors.balanceOwed;
                         } else {
-                          balanceText = 'Settled';
+                          balanceText = groupExpenses.isEmpty
+                              ? 'No expenses yet'
+                              : 'Settled';
                           balanceColor = AppColors.white.withValues(alpha: 0.5);
                         }
 
@@ -1050,7 +1052,7 @@ class HomeTab extends ConsumerWidget {
       context.push(AppRouter.addExpense, extra: {
         'group': defaultGroup,
         'scannedAmount': '',
-        'scannedTitle': 'Receipt Upload',
+        'scannedTitle': '',
         'scannedImagePath': file.path,
       });
     } catch (e) {
@@ -1074,14 +1076,14 @@ class HomeTab extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const AppText(
-                'Request Money',
+                'Remind to Settle',
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: AppColors.white,
               ),
               SizedBox(height: 4.h),
               AppText(
-                'Select a group to request settlements',
+                'Select a group to remind members to settle',
                 fontSize: 12,
                 color: AppColors.white.withValues(alpha: 0.5),
               ),
@@ -1152,7 +1154,7 @@ class HomeTab extends ConsumerWidget {
                               }
                               if (context.mounted) {
                                 AppSnackBar.showError(context,
-                                    'A request is already pending for this group!');
+                                    'A reminder is already pending for this group!');
                               }
                               return;
                             }
@@ -1169,7 +1171,7 @@ class HomeTab extends ConsumerWidget {
                             }
                             if (context.mounted) {
                               AppSnackBar.showSuccess(
-                                  context, 'Payment request sent to group!');
+                                  context, 'Settle up reminder sent to group!');
                             }
 
                             // Wait a moment so the user can read the snackbar
@@ -1236,9 +1238,9 @@ class _ReceiptProcessingDialogState extends State<_ReceiptProcessingDialog> {
   int _currentStep = 0;
   final List<String> _steps = [
     'Uploading receipt...',
-    'Analyzing items...',
-    'Extracting total & taxes...',
-    'Receipt scanned successfully!'
+    'Preparing attachment...',
+    'Linking to new expense...',
+    'Receipt uploaded successfully!'
   ];
 
   @override
@@ -1290,7 +1292,7 @@ class _ReceiptProcessingDialogState extends State<_ReceiptProcessingDialog> {
             ),
             SizedBox(height: 24.h),
             const AppText(
-              'Scanning Receipt',
+              'Uploading Receipt',
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: AppColors.white,

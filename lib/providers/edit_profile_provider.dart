@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'profile_provider.dart';
 import 'settings_provider.dart';
+import 'group_provider.dart';
 
 class EditProfileFormState {
   final TextEditingController nameCtrl;
@@ -116,6 +117,7 @@ class EditProfileFormNotifier extends StateNotifier<EditProfileFormState> {
           );
       if (success) {
         ref.read(defaultCurrencyProvider.notifier).state = state.selectedCurrency;
+        ref.invalidate(groupMembersProvider);
       }
       return success;
     } finally {

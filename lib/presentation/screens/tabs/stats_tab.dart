@@ -842,7 +842,7 @@ class _StatsTabState extends ConsumerState<StatsTab> {
 
                     // Spending Summary Cards PageView
                     SizedBox(
-                      height: 95.h,
+                      height: 110.h,
                       child: PageView.builder(
                         controller: _pageController,
                         onPageChanged: (idx) {
@@ -998,7 +998,7 @@ class _StatsTabState extends ConsumerState<StatsTab> {
     required Color valueColor,
   }) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 14.h),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
       decoration: BoxDecoration(
         color: AppColors.cardDark,
         borderRadius: BorderRadius.circular(16.r),
@@ -1010,27 +1010,39 @@ class _StatsTabState extends ConsumerState<StatsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppText(
-            title,
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: AppColors.white.withValues(alpha: 0.45),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: AppText(
+              title,
+              fontSize: 10.sp,
+              fontWeight: FontWeight.w700,
+              color: AppColors.white.withValues(alpha: 0.45),
+            ),
           ),
-          SizedBox(height: 6.h),
-          AppText(
-            value,
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: valueColor,
+          SizedBox(height: 4.h),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: AppText(
+              value,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w800,
+              color: valueColor,
+            ),
           ),
-          SizedBox(height: 6.h),
-          AppText(
-            subtitle,
-            fontSize: 9,
-            fontWeight: FontWeight.w500,
-            color: AppColors.white.withValues(alpha: 0.3),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          SizedBox(height: 4.h),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: AppText(
+              subtitle,
+              fontSize: 9.sp,
+              fontWeight: FontWeight.w500,
+              color: AppColors.white.withValues(alpha: 0.3),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),

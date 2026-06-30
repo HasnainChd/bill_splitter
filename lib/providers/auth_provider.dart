@@ -11,7 +11,6 @@ import '../../core/models/group.dart';
 import '../../core/models/expense.dart';
 import '../supabase_options.dart';
 
-
 // Auth State
 class AuthState {
   final bool isLoading;
@@ -90,7 +89,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     } catch (e) {
       final errStr = e.toString();
-      final msg = errStr.contains('SocketException') || errStr.contains('ClientException')
+      final msg = errStr.contains('SocketException') ||
+              errStr.contains('ClientException')
           ? 'No internet connection. Please check your network and try again.'
           : 'An error occurred: $e';
       state = state.copyWith(error: msg);
@@ -136,7 +136,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     } catch (e) {
       final errStr = e.toString();
-      final msg = errStr.contains('SocketException') || errStr.contains('ClientException')
+      final msg = errStr.contains('SocketException') ||
+              errStr.contains('ClientException')
           ? 'No internet connection. Please check your network and try again.'
           : 'An error occurred: $e';
       state = state.copyWith(error: msg);
@@ -154,7 +155,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final googleSignIn = GoogleSignIn(
         serverClientId: SupabaseOptions.googleWebClientId,
       );
-      
+
       try {
         await googleSignIn.signOut();
       } catch (_) {}
@@ -229,7 +230,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
 }
 
 // Auth Provider
-final authProvider = StateNotifierProvider.autoDispose<AuthNotifier, AuthState>((ref) {
+final authProvider =
+    StateNotifierProvider.autoDispose<AuthNotifier, AuthState>((ref) {
   return AuthNotifier();
 });
 
@@ -270,7 +272,8 @@ class ForgotPasswordControllers {
   }
 }
 
-final forgotPasswordControllersProvider = Provider.autoDispose<ForgotPasswordControllers>((ref) {
+final forgotPasswordControllersProvider =
+    Provider.autoDispose<ForgotPasswordControllers>((ref) {
   final controllers = ForgotPasswordControllers(
     email: TextEditingController(),
   );
@@ -291,10 +294,12 @@ final authStateListenerProvider = Provider<void>((ref) {
   final subscription = client.auth.onAuthStateChange.listen((data) async {
     final event = data.event;
     final currentUser = client.auth.currentUser;
-    debugPrint('👤 Supabase Auth event: $event. Current user: ${currentUser?.email}');
+    debugPrint(
+        '👤 Supabase Auth event: $event. Current user: ${currentUser?.email}');
 
-    if (event == AuthChangeEvent.signedOut || currentUser == null) {
-      debugPrint('👤 User is signed out or session is null. Clearing Hive boxes...');
+    if (event == AuthChangeEvent.signedOut ||
+        event == AuthChangeEvent.userDeleted) {
+      debugPrint('👤 User is signed out. Clearing Hive boxes...');
       try {
         final groupsBox = await Hive.openBox<Group>('groups');
         await groupsBox.clear();
@@ -302,13 +307,16 @@ final authStateListenerProvider = Provider<void>((ref) {
         await expensesBox.clear();
         final settingsBox = await Hive.openBox('settings');
         await settingsBox.clear();
+        final readNotificationsBox = await Hive.openBox('read_notifications');
+        await readNotificationsBox.clear();
         debugPrint('🧹 Cache cleared successfully on signout!');
       } catch (e) {
         debugPrint('Error clearing Hive boxes on sign out: $e');
       }
       ref.read(supabaseUserProvider.notifier).state = null;
     } else {
-      debugPrint('👤 User is logged in. Updating user provider to ${currentUser.email}...');
+      debugPrint(
+          '👤 User is logged in. Updating user provider to ${currentUser?.email}...');
       ref.read(supabaseUserProvider.notifier).state = currentUser;
     }
   });
@@ -317,4 +325,3 @@ final authStateListenerProvider = Provider<void>((ref) {
     subscription.cancel();
   });
 });
-

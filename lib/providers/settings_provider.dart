@@ -175,3 +175,68 @@ final privacyReadReceiptsProvider =
   final key = user != null ? 'privacy_read_receipts_${user.id}' : 'privacy_read_receipts';
   return PrivacyBoolNotifier(key, 'read_receipts', true);
 });
+
+// Security settings providers
+class FaceIdNotifier extends StateNotifier<bool> {
+  final String? _userId;
+
+  FaceIdNotifier(this._userId) : super(true) {
+    final box = Hive.box('settings');
+    final key = _userId != null ? 'face_id_enabled_$_userId' : 'face_id_enabled';
+    state = box.get(key, defaultValue: true) as bool;
+  }
+
+  Future<void> setFaceId(bool value) async {
+    state = value;
+    final box = Hive.box('settings');
+    final key = _userId != null ? 'face_id_enabled_$_userId' : 'face_id_enabled';
+    await box.put(key, value);
+  }
+}
+
+final faceIdEnabledProvider =
+    StateNotifierProvider<FaceIdNotifier, bool>((ref) {
+  final user = ref.watch(supabaseUserProvider);
+  return FaceIdNotifier(user?.id);
+});
+
+class RequireOnLaunchNotifier extends StateNotifier<bool> {
+  final String? _userId;
+
+  RequireOnLaunchNotifier(this._userId) : super(true) {
+    final box = Hive.box('settings');
+    final key = _userId != null ? 'require_on_launch_$_userId' : 'require_on_launch';
+    state = box.get(key, defaultValue: true) as bool;
+  }
+
+  Future<void> setRequireOnLaunch(bool value) async {
+    state = value;
+    final box = Hive.box('settings');
+    final key = _userId != null ? 'require_on_launch_$_userId' : 'require_on_launch';
+    await box.put(key, value);
+  }
+}
+
+final requireOnLaunchProvider =
+    StateNotifierProvider<RequireOnLaunchNotifier, bool>((ref) {
+  final user = ref.watch(supabaseUserProvider);
+  return RequireOnLaunchNotifier(user?.id);
+});
+
+class AutoLockNotifier extends StateNotifier<String> {
+  AutoLockNotifier() : super('After 5 minutes') {
+    final box = Hive.box('settings');
+    state = box.get('auto_lock', defaultValue: 'After 5 minutes') as String;
+  }
+
+  Future<void> setAutoLock(String value) async {
+    state = value;
+    final box = Hive.box('settings');
+    await box.put('auto_lock', value);
+  }
+}
+
+final autoLockProvider =
+    StateNotifierProvider<AutoLockNotifier, String>((ref) {
+  return AutoLockNotifier();
+});
