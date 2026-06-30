@@ -83,7 +83,13 @@ class AppRouter {
           state.matchedLocation == walkthrough;
 
       // Always allow splash, onboarding, auth, change password, and lock screens
-      if (isSplash || isOnboarding || isLoggingIn || isRegistering || isForgotPassword || isChangePassword || isLockScreen) {
+      if (isSplash ||
+          isOnboarding ||
+          isLoggingIn ||
+          isRegistering ||
+          isForgotPassword ||
+          isChangePassword ||
+          isLockScreen) {
         return null;
       }
 

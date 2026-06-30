@@ -196,6 +196,23 @@ class GroupNotifier extends StateNotifier<GroupState> {
       ];
       await _supabase.from('group_members').insert(memberRows);
 
+      // Insert join events for other added members into group_notifications
+      final List<Map<String, dynamic>> groupNotifRows = members
+          .where((mId) => mId != user.id)
+          .map((mId) => {
+                'group_id': groupId,
+                'user_id': mId,
+                'event_type': 'joined',
+              })
+          .toList();
+      if (groupNotifRows.isNotEmpty) {
+        try {
+          await _supabase.from('group_notifications').insert(groupNotifRows);
+        } catch (ne) {
+          debugPrint('Warning: Failed to log group join notifications: $ne');
+        }
+      }
+
       // 3. Reload from remote to update local state and Hive cache
       await loadGroups();
     } catch (e) {
@@ -213,11 +230,52 @@ class GroupNotifier extends StateNotifier<GroupState> {
         'user_id': userId,
       });
 
+      // Insert join event into group_notifications table
+      try {
+        await _supabase.from('group_notifications').insert({
+          'group_id': groupId,
+          'user_id': userId,
+          'event_type': 'joined',
+        });
+      } catch (ne) {
+        debugPrint('Warning: Failed to log member join notification: $ne');
+      }
+
       // Reload groups to update local state and Hive cache
       await loadGroups();
     } catch (e) {
       if (!mounted) return;
       state = state.copyWith(error: 'Failed to add member: $e');
+      rethrow;
+    }
+  }
+
+  // Remove a member from a group (can be used for leaving as well)
+  Future<void> removeMemberFromGroup(String groupId, String userId) async {
+    try {
+      // 1. Insert leave event into group_notifications table first (before deleting, so RLS checks pass if leaving)
+      try {
+        await _supabase.from('group_notifications').insert({
+          'group_id': groupId,
+          'user_id': userId,
+          'event_type': 'left',
+        });
+      } catch (ne) {
+        debugPrint('Warning: Failed to log member leave notification: $ne');
+      }
+
+      // 2. Delete from group_members table
+      await _supabase
+          .from('group_members')
+          .delete()
+          .eq('group_id', groupId)
+          .eq('user_id', userId);
+
+      // 3. Reload groups to update local state and Hive cache
+      await loadGroups();
+    } catch (e) {
+      if (!mounted) return;
+      state = state.copyWith(error: 'Failed to remove member: $e');
       rethrow;
     }
   }
@@ -290,6 +348,20 @@ final groupBalanceProvider = Provider.family<double, String>((ref, groupId) {
 
 final groupMembersProvider =
     FutureProvider.family<List<UserProfile>, String>((ref, groupId) async {
+  ref.watch(supabaseUserProvider);
+  final groups = ref.watch(groupProvider).groups;
+  final group = groups.firstWhere(
+    (g) => g.groupId == groupId,
+    orElse: () => Group(
+      groupId: groupId,
+      name: '',
+      members: const [],
+      currency: 'PKR',
+      createdAt: DateTime.now(),
+    ),
+  );
+  final _ = group.members;
+
   final supabase = Supabase.instance.client;
 
   try {

@@ -121,7 +121,7 @@ class NotificationSettingsScreen extends ConsumerWidget {
                         ),
                         SizedBox(height: 2.h),
                         AppText(
-                          'Control what Equaly tells you',
+                          'Control what Equally tells you',
                           fontSize: 12,
                           color: AppColors.white.withValues(alpha: 0.4),
                         ),
@@ -333,7 +333,7 @@ class NotificationSettingsScreen extends ConsumerWidget {
                           ),
                           _buildDivider(),
                           _buildSwitchRow(
-                            label: 'Equaly Tips & Tricks',
+                            label: 'Equally Tips & Tricks',
                             sublabel: 'How to get more from the app',
                             value: isMuted ? false : settings['tipsTricks']!,
                             onChanged: isMuted ? null : () => toggleSetting('tipsTricks'),

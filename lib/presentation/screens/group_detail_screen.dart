@@ -150,14 +150,59 @@ class GroupDetailScreen extends ConsumerWidget {
 
                               return Column(
                                 children: [
-                                  _buildMemberRow(
-                                    isMe: isMe,
-                                    name: isMe ? 'You' : m.fullName,
-                                    initials: initials,
-                                    avatarColor: avatarColor,
-                                    balance: balance,
-                                    currency: currencyCode,
-                                    avatarUrl: m.avatarUrl,
+                                  GestureDetector(
+                                    onTap: () async {
+                                      if (group.createdBy == currentUserId && !isMe) {
+                                        final bool isSettled = balance.abs() < 0.01;
+                                        if (!isSettled) {
+                                          await AppDialog.showInfo(
+                                            context,
+                                            title: 'Cannot Remove Member',
+                                            message: 'Cannot leave/remove — ${m.fullName} still has an outstanding balance of $currencyCode ${balance.abs().toStringAsFixed(2)} in this group. This must be settled first.',
+                                          );
+                                        } else {
+                                          final confirm = await AppDialog.showConfirm(
+                                            context,
+                                            title: 'Remove Member',
+                                            message: 'Are you sure you want to remove ${m.fullName} from this group?',
+                                            confirmText: 'Remove',
+                                            cancelText: 'Cancel',
+                                            isDanger: true,
+                                          );
+                                          if (confirm == true) {
+                                            try {
+                                              await ref.read(groupProvider.notifier).removeMemberFromGroup(groupId, m.id);
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('${m.fullName} removed successfully'),
+                                                    backgroundColor: AppColors.success,
+                                                  ),
+                                                );
+                                              }
+                                            } catch (e) {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('Failed to remove member: $e'),
+                                                    backgroundColor: AppColors.coralRed,
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    child: _buildMemberRow(
+                                      isMe: isMe,
+                                      name: isMe ? 'You' : m.fullName,
+                                      initials: initials,
+                                      avatarColor: avatarColor,
+                                      balance: balance,
+                                      currency: currencyCode,
+                                      avatarUrl: m.avatarUrl,
+                                    ),
                                   ),
                                   if (!isLast)
                                     Divider(
@@ -288,6 +333,8 @@ class GroupDetailScreen extends ConsumerWidget {
 
   Widget _buildGradientHeader(BuildContext context, WidgetRef ref, Group group,
       double myBalance, String currencyCode) {
+    final currentUserId = ref.watch(supabaseUserProvider)?.id;
+    final balances = ref.watch(balancesForGroupProvider(group.groupId));
     final String balanceStr = myBalance == 0
         ? '$currencyCode 0.00'
         : myBalance > 0
@@ -346,6 +393,55 @@ class GroupDetailScreen extends ConsumerWidget {
                       onSelected: (value) async {
                         if (value == 'add_member') {
                           _showAddMemberBottomSheet(context, ref, group);
+                        } else if (value == 'leave_group') {
+                          if (currentUserId == null) return;
+                          final balance = balances[currentUserId] ?? 0.0;
+                          final bool isSettled = balance.abs() < 0.01;
+                          if (!isSettled) {
+                            await AppDialog.showInfo(
+                              context,
+                              title: 'Cannot Leave Group',
+                              message:
+                                  'Cannot leave/remove — You still have an outstanding balance of $currencyCode ${balance.abs().toStringAsFixed(2)} in this group. This must be settled first.',
+                            );
+                          } else {
+                            final confirm = await AppDialog.showConfirm(
+                              context,
+                              title: 'Leave Group',
+                              message:
+                                  'Are you sure you want to leave this group?',
+                              confirmText: 'Leave',
+                              cancelText: 'Cancel',
+                              isDanger: true,
+                            );
+                            if (confirm == true) {
+                              try {
+                                await ref
+                                    .read(groupProvider.notifier)
+                                    .removeMemberFromGroup(
+                                        groupId, currentUserId);
+                                if (context.mounted) {
+                                  context.go('/');
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content:
+                                          Text('You left the group successfully'),
+                                      backgroundColor: AppColors.success,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Failed to leave group: $e'),
+                                      backgroundColor: AppColors.coralRed,
+                                    ),
+                                  );
+                                }
+                              }
+                            }
+                          }
                         } else if (value == 'delete') {
                           final confirm = await AppDialog.showConfirm(
                             context,
@@ -358,7 +454,7 @@ class GroupDetailScreen extends ConsumerWidget {
                           );
                           if (confirm == true) {
                             try {
-                              await ref
+                               await ref
                                   .read(groupProvider.notifier)
                                   .deleteGroup(groupId);
                               if (context.mounted) {
@@ -389,12 +485,25 @@ class GroupDetailScreen extends ConsumerWidget {
                       itemBuilder: (context) => [
                         const PopupMenuItem(
                           value: 'add_member',
-                          child: Row(
+                           child: Row(
                             children: [
                               Icon(Icons.person_add_outlined,
                                   color: AppColors.white, size: 20),
                               SizedBox(width: 8),
                               AppText('Add Member',
+                                  color: AppColors.white, fontSize: 14),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(),
+                        const PopupMenuItem(
+                          value: 'leave_group',
+                          child: Row(
+                            children: [
+                              Icon(Icons.logout_rounded,
+                                  color: AppColors.white, size: 20),
+                              SizedBox(width: 8),
+                              AppText('Leave Group',
                                   color: AppColors.white, fontSize: 14),
                             ],
                           ),
@@ -531,8 +640,9 @@ class GroupDetailScreen extends ConsumerWidget {
     required String currency,
     String? avatarUrl,
   }) {
+    final bool isSettled = balance.abs() < 0.01;
     final bool isPositive = balance > 0;
-    final String subText = balance == 0
+    final String subText = isSettled
         ? 'settled up'
         : isMe
             ? (isPositive ? 'others owe you' : 'you owe others')
@@ -573,11 +683,11 @@ class GroupDetailScreen extends ConsumerWidget {
                     fontWeight: FontWeight.w600,
                     color: AppColors.white),
                 AppText(
-                  balance == 0
+                  isSettled
                       ? subText
                       : '$subText $currency ${balance.abs().toStringAsFixed(0)}',
                   fontSize: 12,
-                  color: balance == 0
+                  color: isSettled
                       ? AppColors.white.withValues(alpha: 0.4)
                       : isPositive
                           ? const Color(0xFF10B981)
@@ -589,7 +699,7 @@ class GroupDetailScreen extends ConsumerWidget {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
             decoration: BoxDecoration(
-              color: balance == 0
+              color: isSettled
                   ? AppColors.white.withValues(alpha: 0.05)
                   : isPositive
                       ? const Color(0xFF10B981).withValues(alpha: 0.12)
@@ -597,14 +707,14 @@ class GroupDetailScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(8.r),
             ),
             child: AppText(
-              balance == 0
-                  ? '0'
+              isSettled
+                  ? 'settled up'
                   : isPositive
                       ? '+$currency${balance.abs().toStringAsFixed(0)}'
                       : '-$currency${balance.abs().toStringAsFixed(0)}',
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: balance == 0
+              color: isSettled
                   ? Colors.white54
                   : isPositive
                       ? const Color(0xFF10B981)
@@ -692,7 +802,11 @@ class GroupDetailScreen extends ConsumerWidget {
             ),
             if (!isSettlement)
               AppText(
-                '$currencyCode ${perPerson.toStringAsFixed(0)}/person',
+                expense.splitType == 'Equal'
+                    ? '$currencyCode ${perPerson.toStringAsFixed(0)}/person'
+                    : expense.splitType == '%'
+                        ? 'Percentage split'
+                        : 'Custom split',
                 fontSize: 11,
                 color: AppColors.white.withValues(alpha: 0.4),
               ),

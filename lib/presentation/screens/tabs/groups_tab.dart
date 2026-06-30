@@ -13,6 +13,9 @@ import '../../../providers/settings_provider.dart';
 import '../../providers/tab_providers.dart';
 import '../../../core/utils/group_icon_helper.dart';
 import '../../../core/widgets/app_empty_state.dart';
+import '../../../core/utils/app_dialog.dart';
+import '../../../core/utils/app_snackbar.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class GroupsTab extends ConsumerWidget {
   const GroupsTab({super.key});
@@ -30,9 +33,10 @@ class GroupsTab extends ConsumerWidget {
     final groupState = ref.watch(groupProvider);
     final currentUserId = ref.watch(supabaseUserProvider)?.id;
     final defaultCurrency = ref.watch(defaultCurrencyProvider);
-    final currencyCode = defaultCurrency.length >= 3
-        ? defaultCurrency.substring(0, 3)
-        : 'PKR';
+    final currencyCode =
+        defaultCurrency.length >= 3 ? defaultCurrency.substring(0, 3) : 'PKR';
+
+    final expenseState = ref.watch(expenseProvider);
 
     double totalOwed = 0.0;
     double totalOwe = 0.0;
@@ -40,7 +44,10 @@ class GroupsTab extends ConsumerWidget {
 
     for (final group in groupState.groups) {
       final balances = ref.watch(balancesForGroupProvider(group.groupId));
-      final myBalance = currentUserId != null ? (balances[currentUserId] ?? 0.0) : 0.0;
+      final myBalance =
+          currentUserId != null ? (balances[currentUserId] ?? 0.0) : 0.0;
+      final hasExpenses =
+          expenseState.expenses.any((e) => e.groupId == group.groupId);
 
       if (myBalance > 0) {
         totalOwed += myBalance;
@@ -50,14 +57,15 @@ class GroupsTab extends ConsumerWidget {
 
       mappedGroups.add({
         'id': group.groupId,
-        'name': GroupIconHelper.getCleanGroupName(group.name).replaceFirst(' ', '\n'),
+        'name': GroupIconHelper.getCleanGroupName(group.name)
+            .replaceFirst(' ', '\n'),
         'rawName': GroupIconHelper.getCleanGroupName(group.name),
         'members': group.members,
         'memberCount': group.members.length,
         'amount': myBalance.abs(),
         'myBalance': myBalance,
         'statusText': myBalance == 0
-            ? 'Settled up'
+            ? (hasExpenses ? 'Settled up' : 'No expenses yet')
             : myBalance > 0
                 ? 'Others owe you'
                 : 'You owe others',
@@ -158,7 +166,8 @@ class GroupsTab extends ConsumerWidget {
                 SizedBox(width: 8.w),
                 _buildStatChip(
                   ref: ref,
-                  label: 'Others Owe You · $currencyCode ${totalOwed.toStringAsFixed(0)}',
+                  label:
+                      'Others Owe You · $currencyCode ${totalOwed.toStringAsFixed(0)}',
                   filterKey: 'Owed',
                   activeFilter: activeFilter,
                   selectedColor: const Color(0xFF10B981),
@@ -168,7 +177,8 @@ class GroupsTab extends ConsumerWidget {
                 SizedBox(width: 8.w),
                 _buildStatChip(
                   ref: ref,
-                  label: 'You Owe Others · $currencyCode ${totalOwe.toStringAsFixed(0)}',
+                  label:
+                      'You Owe Others · $currencyCode ${totalOwe.toStringAsFixed(0)}',
                   filterKey: 'Owe',
                   activeFilter: activeFilter,
                   selectedColor: AppColors.balanceOwed,
@@ -201,8 +211,8 @@ class GroupsTab extends ConsumerWidget {
                     ),
                     padding: EdgeInsets.symmetric(horizontal: 20.w),
                     itemCount: filteredGroups.length,
-                    itemBuilder: (context, index) =>
-                        _buildGroupCard(context, filteredGroups[index]),
+                    itemBuilder: (context, index) => _buildGroupCard(
+                        context, ref, currentUserId, filteredGroups[index]),
                   ),
           ),
         ),
@@ -244,7 +254,8 @@ class GroupsTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildGroupCard(BuildContext context, Map<String, dynamic> group) {
+  Widget _buildGroupCard(BuildContext context, WidgetRef ref,
+      String? currentUserId, Map<String, dynamic> group) {
     final bool isOwed = group['isOwed'] == true;
     final List<Color> gradients = _gradientForId(group['id'] as String);
 
@@ -365,11 +376,76 @@ class GroupsTab extends ConsumerWidget {
                     Expanded(
                       child: _buildFooterButton(
                         label: 'Remind',
-                        onTap: () {},
+                        onTap: () async {
+                          final balances =
+                              ref.read(balancesForGroupProvider(group['id']));
+                          final targetIds = (group['members'] as List<dynamic>)
+                              .map((id) => id.toString())
+                              .where((id) =>
+                                  id != currentUserId &&
+                                  (balances[id] ?? 0.0) < -0.01)
+                              .toList();
+
+                          if (targetIds.isEmpty) {
+                            AppSnackBar.showError(context,
+                                'All members in this group are already settled!');
+                            return;
+                          }
+
+                          final confirm = await AppDialog.showConfirm(
+                            context,
+                            title: 'Send Reminder',
+                            message:
+                                'Are you sure you want to send a payment reminder to all members who owe money in this group?',
+                            confirmText: 'Send',
+                            cancelText: 'Cancel',
+                          );
+
+                          if (confirm == true) {
+                            try {
+                              final response = await Supabase
+                                  .instance.client.functions
+                                  .invoke(
+                                'send-notification',
+                                body: {
+                                  'table': 'payment_reminders',
+                                  'new_record': {
+                                    'group_id': group['id'],
+                                    'sender_id': currentUserId,
+                                    'target_user_ids': targetIds,
+                                    'amount': group['amount'],
+                                    'currency': group['currency'],
+                                  },
+                                },
+                              );
+
+                              if (response.status != 200 &&
+                                  response.status != 204) {
+                                throw Exception(
+                                    'Server returned status code ${response.status}');
+                              }
+
+                              if (context.mounted) {
+                                AppSnackBar.showSuccess(
+                                  context,
+                                  'Reminder sent to members!',
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                AppSnackBar.showError(
+                                  context,
+                                  'Failed to send reminder: $e',
+                                );
+                              }
+                            }
+                          }
+                        },
                         textColor: const Color(0xFF10B981),
                         borderColor:
                             const Color(0xFF10B981).withValues(alpha: 0.25),
-                        bgColor: const Color(0xFF10B981).withValues(alpha: 0.08),
+                        bgColor:
+                            const Color(0xFF10B981).withValues(alpha: 0.08),
                       ),
                     ),
                   ],
@@ -407,7 +483,6 @@ class GroupsTab extends ConsumerWidget {
       ),
     );
   }
-
 }
 
 class GroupAvatarsWidget extends ConsumerWidget {
@@ -435,7 +510,8 @@ class GroupAvatarsWidget extends ConsumerWidget {
           child: SizedBox(
             width: 12,
             height: 12,
-            child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white24),
+            child: CircularProgressIndicator(
+                strokeWidth: 1.5, color: Colors.white24),
           ),
         ),
       ),
@@ -459,7 +535,8 @@ class GroupAvatarsWidget extends ConsumerWidget {
                       ? nameParts[0][0]
                       : 'U';
 
-              final avatarColor = _avatarColors[member.id.hashCode.abs() % _avatarColors.length];
+              final avatarColor = _avatarColors[
+                  member.id.hashCode.abs() % _avatarColors.length];
 
               return Positioned(
                 left: i * 14.w,
@@ -469,7 +546,8 @@ class GroupAvatarsWidget extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: avatarColor,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.backgroundDark, width: 2.w),
+                    border:
+                        Border.all(color: AppColors.backgroundDark, width: 2.w),
                     image: member.avatarUrl.isNotEmpty
                         ? DecorationImage(
                             image: NetworkImage(member.avatarUrl),

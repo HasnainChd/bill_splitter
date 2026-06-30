@@ -9,8 +9,6 @@ import '../../providers/notifications_provider.dart';
 
 final notificationsFilterProvider =
     StateProvider.autoDispose<String>((ref) => 'All');
-final notificationsHasUnreadProvider =
-    StateProvider.autoDispose<bool>((ref) => true);
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
@@ -37,7 +35,6 @@ class NotificationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeFilter = ref.watch(notificationsFilterProvider);
-    final hasUnread = ref.watch(notificationsHasUnreadProvider);
     final notifications = ref.watch(dynamicNotificationsProvider);
 
     // Filter list
@@ -45,6 +42,8 @@ class NotificationsScreen extends ConsumerWidget {
       if (activeFilter == 'All') return true;
       return n.category == activeFilter;
     }).toList();
+
+    final unreadCount = filteredList.where((n) => n.isUnread).length;
 
     // Group items
     final Map<String, List<NotificationItem>> grouped = {};
@@ -93,10 +92,10 @@ class NotificationsScreen extends ConsumerWidget {
                           fontWeight: FontWeight.w800,
                           color: AppColors.white,
                         ),
-                        if (hasUnread) ...[
+                        if (unreadCount > 0) ...[
                           SizedBox(height: 2.h),
                           AppText(
-                            '2 unread',
+                            '$unreadCount unread',
                             fontSize: 12,
                             color: AppColors.white.withValues(alpha: 0.4),
                           ),
@@ -104,12 +103,14 @@ class NotificationsScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  if (hasUnread)
+                  if (unreadCount > 0)
                     GestureDetector(
                       onTap: () {
+                        final visibleIds =
+                            filteredList.map((n) => n.id).toList();
                         ref
-                            .read(notificationsHasUnreadProvider.notifier)
-                            .state = false;
+                            .read(readNotificationsProvider.notifier)
+                            .markAllAsRead(visibleIds);
                       },
                       child: const AppText(
                         'Mark all read',
@@ -210,12 +211,19 @@ class NotificationsScreen extends ConsumerWidget {
                               child: Column(
                                 children: List.generate(items.length, (idx) {
                                   final item = items[idx];
-                                  final isItemUnread =
-                                      hasUnread && item.isUnread;
+                                  final isItemUnread = item.isUnread;
 
                                   return Column(
                                     children: [
                                       ListTile(
+                                        onTap: () {
+                                          if (isItemUnread) {
+                                            ref
+                                                .read(readNotificationsProvider
+                                                    .notifier)
+                                                .markAsRead(item.id);
+                                          }
+                                        },
                                         contentPadding: EdgeInsets.symmetric(
                                             horizontal: 14.w, vertical: 4.h),
                                         leading: Stack(
@@ -295,7 +303,8 @@ class NotificationsScreen extends ConsumerWidget {
                                                 item.amount!,
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w800,
-                                                color: item.amountColor ?? Colors.white,
+                                                color: item.amountColor ??
+                                                    Colors.white,
                                               )
                                             : null,
                                       ),

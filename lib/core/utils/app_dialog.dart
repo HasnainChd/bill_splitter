@@ -156,4 +156,72 @@ class AppDialog {
       ),
     );
   }
+
+  static Future<void> showInfo(
+    BuildContext context, {
+    required String title,
+    required String message,
+    String buttonText = 'OK',
+  }) async {
+    return showDialog<void>(
+      context: context,
+      barrierColor: AppColors.black.withValues(alpha: 0.6),
+      builder: (context) => Dialog(
+        backgroundColor: AppColors.cardDark,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+          side: BorderSide(
+            color: AppColors.white.withValues(alpha: 0.08),
+            width: 1,
+          ),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(24.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56.w,
+                height: 56.w,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  size: 28.sp,
+                  color: AppColors.error,
+                ),
+              ),
+              SizedBox(height: 20.h),
+              AppText(
+                title,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.white,
+                align: TextAlign.center,
+              ),
+              SizedBox(height: 10.h),
+              AppText(
+                message,
+                fontSize: 14,
+                color: AppColors.white.withValues(alpha: 0.6),
+                align: TextAlign.center,
+                height: 1.4,
+              ),
+              SizedBox(height: 24.h),
+              AppButton(
+                label: buttonText,
+                onTap: () => Navigator.of(context).pop(),
+                color: AppColors.onboardingViolet,
+                textColor: AppColors.white,
+                width: double.infinity,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

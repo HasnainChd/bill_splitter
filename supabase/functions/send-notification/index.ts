@@ -97,6 +97,12 @@ serve(async (req) => {
       initiatorId = record.user_id;
       title = `Payment Request in ${group.name}`;
       body = `{initiator} has requested to settle up in ${group.name}.`;
+    } else if (table === "payment_reminders") {
+      initiatorId = record.sender_id;
+      const amount = Number(record.amount || 0).toFixed(0);
+      const currency = record.currency || group.currency || "PKR";
+      title = `Payment Reminder in ${group.name}`;
+      body = `{initiator} sent you a payment reminder for ${currency} ${amount} in ${group.name}.`;
     }
 
     // 3. Resolve Initiator Full Name
@@ -125,12 +131,19 @@ serve(async (req) => {
       return new Response("Error fetching members", { status: 500 });
     }
 
-    const memberIds = members
-      .map((m) => m.user_id)
-      .filter((id) => id !== initiatorId);
+    let memberIds = [];
+    if (record.target_user_ids && Array.isArray(record.target_user_ids)) {
+      memberIds = record.target_user_ids;
+    } else if (record.target_user_id) {
+      memberIds = [record.target_user_id];
+    } else {
+      memberIds = members
+        .map((m) => m.user_id)
+        .filter((id) => id !== initiatorId);
+    }
 
     if (memberIds.length === 0) {
-      return new Response("No other members to notify", { status: 200 });
+      return new Response("No target members to notify", { status: 200 });
     }
 
     // Fetch tokens for these user IDs
