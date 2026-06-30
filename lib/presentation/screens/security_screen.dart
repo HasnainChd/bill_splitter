@@ -5,13 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
-
-final securityFaceIdTouchIdProvider =
-    StateProvider.autoDispose<bool>((ref) => true);
-final securityRequireOnLaunchProvider =
-    StateProvider.autoDispose<bool>((ref) => true);
-final securityAutoLockProvider =
-    StateProvider.autoDispose<String>((ref) => 'After 5 minutes');
+import '../../providers/settings_provider.dart';
 
 class SessionDevice {
   final String id;
@@ -48,9 +42,9 @@ class SecurityScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final faceIdEnabled = ref.watch(securityFaceIdTouchIdProvider);
-    final requireOnLaunch = ref.watch(securityRequireOnLaunchProvider);
-    final autoLock = ref.watch(securityAutoLockProvider);
+    final faceIdEnabled = ref.watch(faceIdEnabledProvider);
+    final requireOnLaunch = ref.watch(requireOnLaunchProvider);
+    final autoLock = ref.watch(autoLockProvider);
     final activeSessions = ref.watch(securityActiveSessionsProvider);
 
     // Calculate dynamic security score
@@ -240,8 +234,8 @@ class SecurityScreen extends ConsumerWidget {
                             value: faceIdEnabled,
                             onChanged: (val) {
                               ref
-                                  .read(securityFaceIdTouchIdProvider.notifier)
-                                  .state = val;
+                                  .read(faceIdEnabledProvider.notifier)
+                                  .setFaceId(val);
                             },
                           ),
                           _buildDivider(),
@@ -253,9 +247,8 @@ class SecurityScreen extends ConsumerWidget {
                             value: requireOnLaunch,
                             onChanged: (val) {
                               ref
-                                  .read(
-                                      securityRequireOnLaunchProvider.notifier)
-                                  .state = val;
+                                  .read(requireOnLaunchProvider.notifier)
+                                  .setRequireOnLaunch(val);
                             },
                           ),
                           _buildDivider(),
@@ -685,7 +678,7 @@ class SecurityScreen extends ConsumerWidget {
                           color: AppColors.onboardingViolet, size: 20.sp)
                       : null,
                   onTap: () {
-                    ref.read(securityAutoLockProvider.notifier).state = option;
+                    ref.read(autoLockProvider.notifier).setAutoLock(option);
                     Navigator.pop(context);
                   },
                 );

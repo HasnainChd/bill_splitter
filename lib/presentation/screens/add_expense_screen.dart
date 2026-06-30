@@ -481,7 +481,7 @@ class AddExpenseScreen extends ConsumerWidget {
                     _sectionLabel('PAID BY'),
                     SizedBox(height: 12.h),
                     SizedBox(
-                      height: 80.h,
+                      height: 95.h,
                       child: membersAsync.when(
                         loading: () => ListView.builder(
                           scrollDirection: Axis.horizontal,

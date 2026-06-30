@@ -13,7 +13,8 @@ import '../../providers/settings_provider.dart';
 final tfaSetupStartedProvider = StateProvider.autoDispose<bool>((ref) => false);
 final tfaCodeSentProvider = StateProvider.autoDispose<bool>((ref) => false);
 
-final tfaCodeControllerProvider = Provider.autoDispose<TextEditingController>((ref) {
+final tfaCodeControllerProvider =
+    Provider.autoDispose<TextEditingController>((ref) {
   final controller = TextEditingController();
   ref.onDispose(() => controller.dispose());
   return controller;
@@ -87,13 +88,16 @@ class TwoFactorAuthScreen extends ConsumerWidget {
                             height: 44.w,
                             decoration: BoxDecoration(
                               color: tfaEnabled
-                                  ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                                  ? const Color(0xFF10B981)
+                                      .withValues(alpha: 0.15)
                                   : AppColors.white.withValues(alpha: 0.05),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
                               Icons.security_rounded,
-                              color: tfaEnabled ? const Color(0xFF10B981) : AppColors.textGrey,
+                              color: tfaEnabled
+                                  ? const Color(0xFF10B981)
+                                  : AppColors.textGrey,
                               size: 22.sp,
                             ),
                           ),
@@ -103,7 +107,9 @@ class TwoFactorAuthScreen extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 AppText(
-                                  tfaEnabled ? 'Two-Factor Auth Enabled' : 'Two-Factor Auth Disabled',
+                                  tfaEnabled
+                                      ? 'Two-Factor Auth Enabled'
+                                      : 'Two-Factor Auth Disabled',
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.white,
@@ -134,7 +140,8 @@ class TwoFactorAuthScreen extends ConsumerWidget {
                             _buildMethodTile(
                               ref: ref,
                               title: 'SMS Text Message',
-                              desc: 'Verify using code sent to your phone number',
+                              desc:
+                                  'Verify using code sent to your phone number',
                               icon: Icons.sms_outlined,
                               value: 'SMS',
                               currentValue: tfaMethod,
@@ -143,7 +150,8 @@ class TwoFactorAuthScreen extends ConsumerWidget {
                             _buildMethodTile(
                               ref: ref,
                               title: 'Authenticator App',
-                              desc: 'Use apps like Google Authenticator or Authy',
+                              desc:
+                                  'Use apps like Google Authenticator or Authy',
                               icon: Icons.phonelink_setup_rounded,
                               value: 'Authenticator App',
                               currentValue: tfaMethod,
@@ -156,7 +164,8 @@ class TwoFactorAuthScreen extends ConsumerWidget {
                         label: 'Setup Two-Factor Auth',
                         color: AppColors.onboardingViolet,
                         onTap: () {
-                          ref.read(tfaSetupStartedProvider.notifier).state = true;
+                          ref.read(tfaSetupStartedProvider.notifier).state =
+                              true;
                           ref.read(tfaCodeSentProvider.notifier).state = true;
                         },
                       ),
@@ -198,7 +207,7 @@ class TwoFactorAuthScreen extends ConsumerWidget {
                                     borderRadius: BorderRadius.circular(16.r),
                                     image: const DecorationImage(
                                       image: NetworkImage(
-                                        'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=otpauth://totp/Equaly:alex@email.com?secret=JBSWY3DPEHPK3PXP&issuer=Equaly',
+                                        'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=otpauth://totp/Equally:alex@email.com?secret=JBSWY3DPEHPK3PXP&issuer=Equally',
                                       ),
                                     ),
                                   ),
@@ -207,7 +216,8 @@ class TwoFactorAuthScreen extends ConsumerWidget {
                               SizedBox(height: 12.h),
                               Center(
                                 child: Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 14.w, vertical: 8.h),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF1E1C38),
                                     borderRadius: BorderRadius.circular(10.r),
@@ -253,8 +263,11 @@ class TwoFactorAuthScreen extends ConsumerWidget {
                               isOutlined: true,
                               color: AppColors.white.withValues(alpha: 0.35),
                               onTap: () {
-                                ref.read(tfaSetupStartedProvider.notifier).state = false;
-                                ref.read(tfaCodeSentProvider.notifier).state = false;
+                                ref
+                                    .read(tfaSetupStartedProvider.notifier)
+                                    .state = false;
+                                ref.read(tfaCodeSentProvider.notifier).state =
+                                    false;
                                 codeController.clear();
                               },
                             ),
@@ -266,9 +279,15 @@ class TwoFactorAuthScreen extends ConsumerWidget {
                               color: AppColors.onboardingViolet,
                               onTap: () {
                                 if (codeController.text.length == 6) {
-                                  ref.read(twoFactorAuthEnabledProvider.notifier).state = true;
-                                  ref.read(tfaSetupStartedProvider.notifier).state = false;
-                                  ref.read(tfaCodeSentProvider.notifier).state = false;
+                                  ref
+                                      .read(
+                                          twoFactorAuthEnabledProvider.notifier)
+                                      .state = true;
+                                  ref
+                                      .read(tfaSetupStartedProvider.notifier)
+                                      .state = false;
+                                  ref.read(tfaCodeSentProvider.notifier).state =
+                                      false;
                                   codeController.clear();
                                   AppSnackBar.showSuccess(
                                     context,
@@ -323,7 +342,8 @@ class TwoFactorAuthScreen extends ConsumerWidget {
                                     code,
                                     fontSize: 12,
                                     fontWeight: FontWeight.w800,
-                                    color: AppColors.white.withValues(alpha: 0.7),
+                                    color:
+                                        AppColors.white.withValues(alpha: 0.7),
                                   ),
                                 );
                               }).toList(),
@@ -336,7 +356,9 @@ class TwoFactorAuthScreen extends ConsumerWidget {
                         label: 'Disable Two-Factor Auth',
                         color: const Color(0xFFEF4444),
                         onTap: () {
-                          ref.read(twoFactorAuthEnabledProvider.notifier).state = false;
+                          ref
+                              .read(twoFactorAuthEnabledProvider.notifier)
+                              .state = false;
                           AppSnackBar.showSuccess(
                             context,
                             'Two-factor authentication disabled.',
@@ -388,8 +410,10 @@ class TwoFactorAuthScreen extends ConsumerWidget {
         color: AppColors.white.withValues(alpha: 0.35),
       ),
       trailing: isSelected
-          ? Icon(Icons.check_circle_rounded, color: AppColors.onboardingViolet, size: 20.sp)
-          : Icon(Icons.circle_outlined, color: AppColors.white.withValues(alpha: 0.15), size: 20.sp),
+          ? Icon(Icons.check_circle_rounded,
+              color: AppColors.onboardingViolet, size: 20.sp)
+          : Icon(Icons.circle_outlined,
+              color: AppColors.white.withValues(alpha: 0.15), size: 20.sp),
       onTap: () {
         ref.read(twoFactorMethodProvider.notifier).state = value;
       },

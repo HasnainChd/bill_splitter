@@ -15,7 +15,6 @@ import 'core/models/expense.dart';
 import 'providers/auth_provider.dart';
 import 'core/services/push_notification_service.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -65,6 +64,7 @@ void main() async {
   final groupsBox = await Hive.openBox<Group>('groups');
   await Hive.openBox<Expense>('expenses');
   await Hive.openBox('settings');
+  await Hive.openBox('read_notifications');
 
   // Add sample groups if none exist
   if (groupsBox.isEmpty) {

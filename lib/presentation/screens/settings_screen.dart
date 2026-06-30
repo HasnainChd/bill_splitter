@@ -17,25 +17,6 @@ import '../providers/tab_providers.dart';
 
 final ratingStarsProvider = StateProvider.autoDispose<int>((ref) => 0);
 
-class FaceIdNotifier extends StateNotifier<bool> {
-  FaceIdNotifier() : super(true) {
-    final box = Hive.box('settings');
-    state = box.get('face_id_enabled', defaultValue: true) as bool;
-  }
-
-  @override
-  set state(bool value) {
-    super.state = value;
-    final box = Hive.box('settings');
-    box.put('face_id_enabled', value);
-  }
-}
-
-final settingsFaceIdProvider =
-    StateNotifierProvider.autoDispose<FaceIdNotifier, bool>((ref) {
-  return FaceIdNotifier();
-});
-
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -48,7 +29,7 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final faceIdEnabled = ref.watch(settingsFaceIdProvider);
+    final faceIdEnabled = ref.watch(faceIdEnabledProvider);
     final activeCurrency = ref.watch(defaultCurrencyProvider);
     final activeDateFormat = ref.watch(dateFormatProvider);
 
@@ -212,7 +193,8 @@ class SettingsScreen extends ConsumerWidget {
                             icon: Icons.person_outline_rounded,
                             iconColor: AppColors.onboardingViolet,
                             title: 'Edit Profile',
-                            subtitle: '${ref.watch(profileProvider).profile?.fullName ?? "User"} · @${(ref.watch(profileProvider).profile?.username ?? "username").replaceAll(" ", "")}',
+                            subtitle:
+                                '${ref.watch(profileProvider).profile?.fullName ?? "User"} · @${(ref.watch(profileProvider).profile?.username ?? "username").replaceAll(" ", "")}',
                             onTap: () => context.push(AppRouter.editProfile),
                           ),
                           /*
@@ -300,8 +282,8 @@ class SettingsScreen extends ConsumerWidget {
                               value: faceIdEnabled,
                               onChanged: (val) {
                                 ref
-                                    .read(settingsFaceIdProvider.notifier)
-                                    .state = val;
+                                    .read(faceIdEnabledProvider.notifier)
+                                    .setFaceId(val);
                               },
                               activeColor: AppColors.onboardingViolet,
                               activeTrackColor: AppColors.onboardingViolet
@@ -312,8 +294,8 @@ class SettingsScreen extends ConsumerWidget {
                             ),
                             onTap: () {
                               ref
-                                  .read(settingsFaceIdProvider.notifier)
-                                  .state = !faceIdEnabled;
+                                  .read(faceIdEnabledProvider.notifier)
+                                  .setFaceId(!faceIdEnabled);
                             },
                           ),
                           /*
@@ -342,7 +324,8 @@ class SettingsScreen extends ConsumerWidget {
                             iconColor: const Color(0xFF10B981),
                             title: 'Terms & Privacy',
                             subtitle: 'Visibility, data sharing',
-                            onTap: () => _launchUrl('https://devorastudios.dev/#/privacy'),
+                            onTap: () => _launchUrl(
+                                'https://devorastudios.dev/#/equaly/privacy'),
                           ),
                         ],
                       ),
@@ -360,7 +343,7 @@ class SettingsScreen extends ConsumerWidget {
                           _buildSettingsRowItem(
                             icon: Icons.bolt_rounded,
                             iconColor: AppColors.orange,
-                            title: 'Equaly Pro',
+                            title: 'Equally Pro',
                             subtitle: 'Active · \$4.99/mo',
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -422,13 +405,14 @@ class SettingsScreen extends ConsumerWidget {
                             icon: Icons.bug_report_outlined,
                             iconColor: const Color(0xFF10B981),
                             title: 'Report a Bug',
-                            onTap: () => _launchUrl('mailto:devcodeinnovations@gmail.com?subject=Equaly%20Bug%20Report'),
+                            onTap: () => _launchUrl(
+                                'mailto:devcodeinnovations@gmail.com?subject=Equally%20Bug%20Report'),
                           ),
                           _buildDivider(),
                           _buildSettingsRowItem(
                             icon: Icons.star_outline_rounded,
                             iconColor: AppColors.orange,
-                            title: 'Rate Equaly',
+                            title: 'Rate Equally',
                             onTap: () => _showRatingDialog(context),
                           ),
                           /*
@@ -603,14 +587,14 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     SizedBox(height: 20.h),
                     const AppText(
-                      'Rate Equaly',
+                      'Rate Equally',
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: AppColors.white,
                     ),
                     SizedBox(height: 12.h),
                     const AppText(
-                      'How is your experience splitting bills with Equaly so far?',
+                      'How is your experience splitting bills with Equally so far?',
                       fontSize: 14,
                       color: AppColors.textGrey,
                       align: TextAlign.center,

@@ -25,9 +25,10 @@ class SplashScreen extends ConsumerWidget {
               final auth = Supabase.instance.client.auth.currentUser;
               if (auth != null) {
                 final box = Hive.box('settings');
-                final faceIdEnabled = box.get('face_id_enabled', defaultValue: true) as bool;
+                final faceIdEnabled = box.get('face_id_enabled_${auth.id}', defaultValue: true) as bool;
+                final requireOnLaunch = box.get('require_on_launch_${auth.id}', defaultValue: true) as bool;
                 
-                if (faceIdEnabled) {
+                if (faceIdEnabled && requireOnLaunch) {
                   context.go('${AppRouter.lockScreen}?next=${AppRouter.home}');
                 } else {
                   context.go(AppRouter.home);
@@ -43,26 +44,13 @@ class SplashScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Animated logo
-                Container(
-                  width: 90.w,
-                  height: 90.w,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [
-                        AppColors.primaryPurple,
-                        AppColors.primaryPurpleLight
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(22.r),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(18.w),
-                    child: Image.asset(
-                      'assets/zap.png',
-                      fit: BoxFit.contain,
-                    ),
+                 ClipRRect(
+                  borderRadius: BorderRadius.circular(22.r),
+                  child: Image.asset(
+                    'assets/appstore.png',
+                    width: 90.w,
+                    height: 90.w,
+                    fit: BoxFit.contain,
                   ),
                 )
                     .animate()
@@ -74,7 +62,7 @@ class SplashScreen extends ConsumerWidget {
                     .shimmer(delay: 950.ms, duration: 1200.ms),
                 SizedBox(height: 24.h),
                 const AppText(
-                  'Equaly',
+                  'Equally',
                   fontSize: 38,
                   fontWeight: FontWeight.w800,
                   color: AppColors.white,

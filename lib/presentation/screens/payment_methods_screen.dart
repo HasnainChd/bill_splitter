@@ -264,7 +264,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
                             color: Colors.amber, size: 14.sp),
                         SizedBox(width: 6.w),
                         AppText(
-                          'Your payment info is encrypted and never stored on Equaly\'s servers.',
+                          'Your payment info is encrypted and never stored on Equally\'s servers.',
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: AppColors.white.withValues(alpha: 0.25),

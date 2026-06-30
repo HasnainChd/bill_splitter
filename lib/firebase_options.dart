@@ -51,18 +51,18 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyB8mnlFx9ZrtxMuA8z57-HIZ0ihQ-Stj8o',
-    appId: '1:134538340417:android:1853f34e24270ae939fec0',
+    appId: '1:134538340417:android:7c935c085ec6475039fec0',
     messagingSenderId: '134538340417',
     projectId: 'fir-1-ad876',
     storageBucket: 'fir-1-ad876.appspot.com',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCjvYbqJ_wSQjv4o3WwPyMeHixyC4rweQE',
-    appId: '1:134538340417:ios:ca3325e5e10ccc2b39fec0',
+    appId: '1:134538340417:ios:0b623a4dd7dfa88339fec0',
     messagingSenderId: '134538340417',
     projectId: 'fir-1-ad876',
     storageBucket: 'fir-1-ad876.appspot.com',
-    iosBundleId: 'com.example.billSplitter',
+    androidClientId: '134538340417-sdimh8ksst3uidutijfudmd6015s0lb7.apps.googleusercontent.com',
+    iosBundleId: 'com.devorastudios.equally',
   );
 }

@@ -27,6 +27,9 @@ final aeAmountControllerProvider =
   return c;
 });
 
+/// Amount numeric value (for reactive UI updates on keystrokes)
+final aeAmountValueProvider = StateProvider.autoDispose<double>((ref) => 0.0);
+
 /// Description text controller
 final aeTitleControllerProvider =
     Provider.autoDispose<TextEditingController>((ref) {
@@ -61,6 +64,10 @@ final aeReceiptUrlProvider = StateProvider.autoDispose<String?>((ref) => null);
 
 /// Track loaded group IDs to prevent infinite fetch loop in GroupDetailScreen
 final loadedGroupExpensesProvider =
+    StateProvider.autoDispose<Set<String>>((ref) => {});
+
+/// Track loaded expense IDs to prevent infinite fetch loop in ExpenseDetailScreen
+final loadedSingleExpensesProvider =
     StateProvider.autoDispose<Set<String>>((ref) => {});
 
 // ─── Create Group providers ────────────────────────────────────────────────
