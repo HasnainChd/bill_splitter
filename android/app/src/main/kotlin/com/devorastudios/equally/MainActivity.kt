@@ -1,4 +1,4 @@
-package com.example.bill_splitter
+package com.devorastudios.equally
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 
