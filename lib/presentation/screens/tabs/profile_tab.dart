@@ -52,7 +52,17 @@ class ProfileTab extends ConsumerWidget {
 
     int totalGroups = groupState.groups.length;
     int totalExpenses = expenseState.expenses.length;
-    double totalSettled = FinancialCalculator.calculateTotalSettled(expenseState.expenses);
+
+    // Calculate settled totals per currency dynamically
+    final Map<String, double> settledPerCurrency = {};
+    for (final exp in expenseState.expenses) {
+      if (exp.title == 'Settle Payment' || 
+          exp.categoryIconCodePoint == Icons.handshake_rounded.codePoint) {
+        settledPerCurrency[exp.currency] = (settledPerCurrency[exp.currency] ?? 0.0) + exp.amount;
+      }
+    }
+
+    final double overallSettledSum = settledPerCurrency.values.fold(0.0, (sum, val) => sum + val);
 
     final currencySymbol = (() {
       if (defaultCurrency.contains('(') && defaultCurrency.contains(')')) {
@@ -61,6 +71,35 @@ class ProfileTab extends ConsumerWidget {
         if (close > open) return defaultCurrency.substring(open + 1, close);
       }
       return defaultCurrency.length >= 3 ? defaultCurrency.substring(0, 3) : 'PKR';
+    })();
+
+    final String settledDisplay = (() {
+      if (settledPerCurrency.isEmpty) {
+        return '$currencySymbol 0';
+      }
+      if (settledPerCurrency.length == 1) {
+        final entry = settledPerCurrency.entries.first;
+        final cur = entry.key;
+        final val = entry.value;
+        final curSymbol = _getSymbolForCurrency(cur);
+        final formattedVal = val >= 1000 ? '${(val / 1000).toStringAsFixed(1)}k' : val.toStringAsFixed(0);
+        final spacing = (curSymbol == '\$' || curSymbol == '€' || curSymbol == '£' || curSymbol == '¥' || curSymbol == '₹') ? '' : ' ';
+        return '$curSymbol$spacing$formattedVal';
+      }
+      final defaultCode = defaultCurrency.length >= 3 ? defaultCurrency.substring(0, 3) : 'USD';
+      final defaultVal = settledPerCurrency[defaultCode] ?? 0.0;
+      if (defaultVal > 0.01) {
+        final formattedVal = defaultVal >= 1000 ? '${(defaultVal / 1000).toStringAsFixed(1)}k' : defaultVal.toStringAsFixed(0);
+        return '$currencySymbol$formattedVal+';
+      } else {
+        final largestEntry = settledPerCurrency.entries.reduce((a, b) => a.value > b.value ? a : b);
+        final cur = largestEntry.key;
+        final val = largestEntry.value;
+        final curSymbol = _getSymbolForCurrency(cur);
+        final formattedVal = val >= 1000 ? '${(val / 1000).toStringAsFixed(1)}k' : val.toStringAsFixed(0);
+        final spacing = (curSymbol == '\$' || curSymbol == '€' || curSymbol == '£' || curSymbol == '¥' || curSymbol == '₹') ? '' : ' ';
+        return '$curSymbol$spacing$formattedVal+';
+      }
     })();
 
     final currencyBalances = profile != null
@@ -284,7 +323,7 @@ class ProfileTab extends ConsumerWidget {
                     _buildStatCard(
                       icon: Icons.check_box_outlined,
                       iconColor: const Color(0xFF10B981),
-                      value: '$currencySymbol${totalSettled >= 1000 ? '${(totalSettled / 1000).toStringAsFixed(1)}k' : totalSettled.toStringAsFixed(0)}',
+                      value: settledDisplay,
                       label: 'Settled',
                     ),
                   ],
@@ -304,7 +343,7 @@ class ProfileTab extends ConsumerWidget {
                         label: 'Early Adopter',
                         color: AppColors.onboardingViolet,
                       ),
-                      if (totalSettled >= 100) ...[
+                      if (overallSettledSum >= 100) ...[
                         SizedBox(width: 8.w),
                         _buildAchievementBadge(
                           icon: Icons.emoji_events_rounded,
@@ -482,7 +521,7 @@ class ProfileTab extends ConsumerWidget {
                         title: 'Invite Friends',
                         onTap: () async {
                           // ignore: deprecated_member_use
-                          await Share.share('Join me on Equally to easily split bills! Download here: https://equally.app');
+                          await Share.share('Join me on Equally to easily split bills! Download here: https://play.google.com/store/apps/details?id=com.devorastudios.equally');
                         },
                       ),
                       _buildDivider(),

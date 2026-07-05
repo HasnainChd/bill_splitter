@@ -135,7 +135,7 @@ class AboutLegalScreen extends StatelessWidget {
                           _buildLinkRow(
                             icon: Icons.language_rounded,
                             label: 'Official Website',
-                            url: 'https://equally.app',
+                            url: 'https://devorastudios.dev',
                           ),
                           _buildDivider(),
                           _buildLinkRow(

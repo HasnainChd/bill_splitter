@@ -27,7 +27,7 @@ class ExpenseAdapter extends TypeAdapter<Expense> {
       notes: fields[7] as String?,
       groupId: fields[8] as String,
       categoryIconCodePoint: fields[9] as int,
-      splitType: fields[10] as String? ?? 'Equal',
+      splitType: fields[10] as String,
       receiptUrl: fields[11] as String?,
       createdAt: fields[12] as DateTime?,
       updatedAt: fields[13] as DateTime?,

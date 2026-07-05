@@ -5,6 +5,7 @@ import 'dart:io';
 import '../../providers/auth_provider.dart';
 import '../../providers/profile_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/group_provider.dart';
 
 /// Selected category chip
 final aeCategoryProvider = StateProvider.autoDispose<String>((ref) => 'Food');
@@ -107,35 +108,30 @@ final cgSearchControllerProvider =
   return c;
 });
 
-/// Retrieve all registered user profiles from Supabase
+/// Retrieve related user profiles (members of user's groups) from Supabase
 final allUsersProvider = FutureProvider<List<UserProfile>>((ref) async {
   final supabase = Supabase.instance.client;
   final currentUser = ref.watch(supabaseUserProvider);
   if (currentUser == null) return [];
 
-  // Setup Realtime listener on 'users' table to react when users change their privacy settings
-  final channel = supabase
-      .channel('public:users')
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'users',
-        callback: (payload) {
-          debugPrint('👥 Realtime User update received, invalidating allUsersProvider');
-          ref.invalidateSelf();
-        },
-      );
-  channel.subscribe();
-
-  ref.onDispose(() {
-    channel.unsubscribe();
-  });
-
   try {
+    // Get all groups the current user is in
+    final groups = ref.watch(groupProvider).groups;
+    
+    // Collect all unique user IDs across these groups (excluding current user)
+    final Set<String> memberIds = {};
+    for (final group in groups) {
+      memberIds.addAll(group.members);
+    }
+    memberIds.remove(currentUser.id);
+
+    if (memberIds.isEmpty) return [];
+
+    // Query profiles for only these users
     final data = await supabase
         .from('users')
         .select()
-        .neq('id', currentUser.id);
+        .inFilter('id', memberIds.toList());
 
     final rawList = (data as List).map((row) => UserProfile.fromMap(row, '')).toList();
     final List<UserProfile> filtered = [];
@@ -148,7 +144,35 @@ final allUsersProvider = FutureProvider<List<UserProfile>>((ref) async {
     }
     return filtered;
   } catch (e) {
-    debugPrint('Error fetching registered users: $e');
+    debugPrint('Error fetching related users: $e');
+    return [];
+  }
+});
+
+/// Search users from Supabase by query
+final searchedUsersProvider = FutureProvider.autoDispose.family<List<UserProfile>, String>((ref, query) async {
+  final cleanQ = query.trim().startsWith('@')
+      ? query.trim().substring(1)
+      : query.trim();
+      
+  if (cleanQ.length < 2) return [];
+
+  final supabase = Supabase.instance.client;
+  final currentUser = ref.watch(supabaseUserProvider);
+  if (currentUser == null) return [];
+
+  try {
+    final data = await supabase
+        .from('users')
+        .select()
+        .or('username.ilike.%$cleanQ%,email.ilike.%$cleanQ%,full_name.ilike.%$cleanQ%')
+        .eq('is_public', true)
+        .neq('id', currentUser.id)
+        .limit(15);
+
+    return (data as List).map((row) => UserProfile.fromMap(row, '')).toList();
+  } catch (e) {
+    debugPrint('Error searching users on server: $e');
     return [];
   }
 });

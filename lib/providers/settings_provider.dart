@@ -180,10 +180,10 @@ final privacyReadReceiptsProvider =
 class FaceIdNotifier extends StateNotifier<bool> {
   final String? _userId;
 
-  FaceIdNotifier(this._userId) : super(true) {
+  FaceIdNotifier(this._userId) : super(false) {
     final box = Hive.box('settings');
     final key = _userId != null ? 'face_id_enabled_$_userId' : 'face_id_enabled';
-    state = box.get(key, defaultValue: true) as bool;
+    state = box.get(key, defaultValue: false) as bool;
   }
 
   Future<void> setFaceId(bool value) async {
@@ -203,10 +203,10 @@ final faceIdEnabledProvider =
 class RequireOnLaunchNotifier extends StateNotifier<bool> {
   final String? _userId;
 
-  RequireOnLaunchNotifier(this._userId) : super(true) {
+  RequireOnLaunchNotifier(this._userId) : super(false) {
     final box = Hive.box('settings');
     final key = _userId != null ? 'require_on_launch_$_userId' : 'require_on_launch';
-    state = box.get(key, defaultValue: true) as bool;
+    state = box.get(key, defaultValue: false) as bool;
   }
 
   Future<void> setRequireOnLaunch(bool value) async {
