@@ -28,6 +28,9 @@ class Group {
   @HiveField(7)
   final String? createdBy;
 
+  @HiveField(8)
+  final String? inviteCode;
+
   const Group({
     required this.groupId,
     required this.name,
@@ -37,5 +40,6 @@ class Group {
     this.iconCodePoint,
     this.iconFontFamily,
     this.createdBy,
+    this.inviteCode,
   });
 }

@@ -1,8 +1,12 @@
 import 'package:bill_splitter/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
+// import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+// import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/expense.dart';
 import '../../core/models/group.dart';
@@ -13,6 +17,7 @@ import '../../providers/group_provider.dart';
 import '../../providers/expense_provider.dart';
 import '../providers/screen_providers.dart';
 import '../../core/utils/app_dialog.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/utils/group_icon_helper.dart';
 import '../../providers/settings_provider.dart';
@@ -49,6 +54,14 @@ class GroupDetailScreen extends ConsumerWidget {
         createdAt: DateTime.now(),
       ),
     );
+
+    if (group.inviteCode == null || group.inviteCode!.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          ref.read(groupProvider.notifier).generateInviteCode(groupId);
+        }
+      });
+    }
 
     final currencyCode = group.currency;
 
@@ -217,6 +230,8 @@ class GroupDetailScreen extends ConsumerWidget {
                         },
                       ),
                     ),
+                    SizedBox(height: 16.h),
+                    _buildInviteSection(context, ref, group),
                     SizedBox(height: 24.h),
                   ],
                 ),
@@ -854,6 +869,302 @@ class GroupDetailScreen extends ConsumerWidget {
       },
     );
   }
+
+  Widget _buildInviteSection(BuildContext context, WidgetRef ref, Group group) {
+    final inviteCode = group.inviteCode;
+    if (inviteCode == null || inviteCode.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 12.0),
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.onboardingViolet,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // final inviteUrl = 'https://devorastudios.dev/join/$inviteCode';
+    const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.devorastudios.equally';
+    final shareMessage = 'Join my group "${group.name}" on Equally!\n'
+        'Invite code: $inviteCode\n\n'
+        'Don\'t have the app? Install it here:\n'
+        '$playStoreUrl';
+
+    return Container(
+      padding: EdgeInsets.all(16.r),
+      decoration: BoxDecoration(
+        color: AppColors.cardDark,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const AppText(
+                'Invite Code',
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white70,
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  color: AppColors.onboardingViolet.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: AppText(
+                  inviteCode,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.onboardingViolet,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16.h),
+          Row(
+            children: [
+              // Share Link button
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    Share.share(shareMessage);
+                  },
+                  borderRadius: BorderRadius.circular(10.r),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    decoration: BoxDecoration(
+                      color: AppColors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(10.r),
+                      border: Border.all(color: AppColors.white.withValues(alpha: 0.05)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.share, color: AppColors.white, size: 16.sp),
+                        SizedBox(width: 8.w),
+                        const AppText(
+                          'Share Link',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.white,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 8.w),
+              // WhatsApp button
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final waText = Uri.encodeComponent(shareMessage);
+                    final url = Uri.parse('whatsapp://send?text=$waText');
+                    bool launched = false;
+                    try {
+                      launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+                    } catch (e) {
+                      launched = false;
+                    }
+
+                    if (!launched) {
+                      final fallbackUrl = Uri.parse('https://wa.me/?text=$waText');
+                      try {
+                        launched = await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
+                      } catch (e) {
+                        launched = false;
+                      }
+                    }
+
+                    if (!launched && context.mounted) {
+                      AppSnackBar.showError(context, 'Could not launch WhatsApp');
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(10.r),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF25D366).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10.r),
+                      border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.message_rounded, color: const Color(0xFF25D366), size: 16.sp),
+                        SizedBox(width: 8.w),
+                        const AppText(
+                          'WhatsApp',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF25D366),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          /*
+          SizedBox(height: 8.h),
+          // QR Code button
+          SizedBox(
+            width: double.infinity,
+            child: InkWell(
+              onTap: () {
+                _showQRCodeBottomSheet(context, group, inviteUrl, inviteCode);
+              },
+              borderRadius: BorderRadius.circular(10.r),
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 12.h),
+                decoration: BoxDecoration(
+                  color: AppColors.onboardingViolet.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.qr_code_2, color: AppColors.onboardingViolet, size: 18.sp),
+                    SizedBox(width: 8.w),
+                    const AppText(
+                      'Show QR Code',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onboardingViolet,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          */
+        ],
+      ),
+    );
+  }
+
+  /*
+  void _showQRCodeBottomSheet(BuildContext context, Group group, String inviteUrl, String inviteCode) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.backgroundDark,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.all(24.r),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const AppText(
+                              'Group Invite QR',
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.white,
+                            ),
+                            SizedBox(height: 4.h),
+                            AppText(
+                              group.name,
+                              fontSize: 14,
+                              color: Colors.white54,
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white54),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20.h),
+                  Container(
+                    padding: EdgeInsets.all(16.r),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16.r),
+                    ),
+                    child: QrImageView(
+                      data: inviteUrl,
+                      version: QrVersions.auto,
+                      size: 180.0,
+                      gapless: false,
+                    ),
+                  ),
+                  SizedBox(height: 20.h),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardDark,
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: AppColors.white.withValues(alpha: 0.05)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const AppText(
+                                'INVITE CODE',
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white38,
+                                letterSpacing: 1.0,
+                              ),
+                              SizedBox(height: 4.h),
+                              AppText(
+                                inviteCode,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.white,
+                                letterSpacing: 1.5,
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.copy, color: AppColors.onboardingViolet),
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: inviteCode));
+                            AppSnackBar.showSuccess(context, 'Invite code copied to clipboard');
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+  */
 }
 
 class _AddMemberBottomSheetContent extends ConsumerStatefulWidget {
@@ -882,7 +1193,11 @@ class _AddMemberBottomSheetContentState
 
   @override
   Widget build(BuildContext context) {
-    final usersAsync = ref.watch(allUsersProvider);
+    final isQueryLongEnough = _searchQuery.trim().replaceAll('@', '').length >= 2;
+
+    final usersAsync = isQueryLongEnough
+        ? ref.watch(searchedUsersProvider(_searchQuery))
+        : ref.watch(allUsersProvider);
     final usersList = usersAsync.value ?? [];
 
     final groupMembersAsync = ref.watch(groupMembersProvider(widget.groupId));
@@ -899,15 +1214,17 @@ class _AddMemberBottomSheetContentState
         usersList.where((u) => !existingMemberIds.contains(u.id)).toList();
 
     // Filter by search query (email or username or full name)
-    final filteredUsers = nonMembers.where((u) {
-      final cleanQ = _searchQuery.trim().startsWith('@')
-          ? _searchQuery.trim().substring(1)
-          : _searchQuery.trim();
-      final q = cleanQ.toLowerCase();
-      return u.fullName.toLowerCase().contains(q) ||
-          u.username.toLowerCase().contains(q) ||
-          u.email.toLowerCase().contains(q);
-    }).toList();
+    final filteredUsers = isQueryLongEnough
+        ? nonMembers
+        : nonMembers.where((u) {
+            final cleanQ = _searchQuery.trim().startsWith('@')
+                ? _searchQuery.trim().substring(1)
+                : _searchQuery.trim();
+            final q = cleanQ.toLowerCase();
+            return u.fullName.toLowerCase().contains(q) ||
+                u.username.toLowerCase().contains(q) ||
+                u.email.toLowerCase().contains(q);
+          }).toList();
 
     return Padding(
       padding: EdgeInsets.only(

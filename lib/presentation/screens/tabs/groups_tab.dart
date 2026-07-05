@@ -1,5 +1,6 @@
 import 'package:bill_splitter/core/widgets/app_text_field.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -144,7 +145,45 @@ class GroupsTab extends ConsumerWidget {
           ),
         ),
 
-        SizedBox(height: 16.h),
+        SizedBox(height: 12.h),
+
+        // ── Enter Invite Code Button ──
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: InkWell(
+            onTap: () => _showJoinGroupBottomSheet(context, ref),
+            borderRadius: BorderRadius.circular(12.r),
+            child: Container(
+              padding: EdgeInsets.symmetric(vertical: 12.h),
+              decoration: BoxDecoration(
+                color: AppColors.onboardingViolet.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(
+                  color: AppColors.onboardingViolet.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.vpn_key_rounded,
+                    color: AppColors.onboardingViolet,
+                    size: 18.sp,
+                  ),
+                  SizedBox(width: 8.w),
+                  const AppText(
+                    'Enter Invite Code to Join',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onboardingViolet,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        SizedBox(height: 12.h),
 
         // ── Stats / Filter Chips ──
         Padding(
@@ -483,6 +522,20 @@ class GroupsTab extends ConsumerWidget {
       ),
     );
   }
+
+  void _showJoinGroupBottomSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.backgroundDark,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+      ),
+      builder: (context) {
+        return const _JoinGroupBottomSheet();
+      },
+    );
+  }
 }
 
 class GroupAvatarsWidget extends ConsumerWidget {
@@ -571,5 +624,232 @@ class GroupAvatarsWidget extends ConsumerWidget {
         );
       },
     );
+  }
+}
+
+final joinGroupLoadingProvider =
+    StateProvider.autoDispose<bool>((ref) => false);
+final joinGroupErrorProvider =
+    StateProvider.autoDispose<String?>((ref) => null);
+final joinGroupCodeControllerProvider =
+    Provider.autoDispose<TextEditingController>((ref) {
+  final controller = TextEditingController();
+  ref.onDispose(() => controller.dispose());
+  return controller;
+});
+
+class _JoinGroupBottomSheet extends ConsumerWidget {
+  const _JoinGroupBottomSheet();
+
+  Future<void> _joinGroup(BuildContext context, WidgetRef ref, TextEditingController controller) async {
+    final code = controller.text.trim().toUpperCase();
+    if (code.length != 8) {
+      ref.read(joinGroupErrorProvider.notifier).state =
+          'Invite code must be exactly 8 characters';
+      return;
+    }
+
+    ref.read(joinGroupLoadingProvider.notifier).state = true;
+    ref.read(joinGroupErrorProvider.notifier).state = null;
+
+    try {
+      final group =
+          await ref.read(groupProvider.notifier).joinGroupByInviteCode(code);
+      if (context.mounted) {
+        Navigator.pop(context);
+        AppSnackBar.showSuccess(
+            context, 'Successfully joined "${group.name}"!');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ref.read(joinGroupLoadingProvider.notifier).state = false;
+        final errorMsg = (() {
+          if (e.toString() == 'already_member') {
+            return "You're already in this group";
+          } else if (e.toString() == 'invalid_code') {
+            return "Invalid invite code. Please check and try again.";
+          } else {
+            return "Failed to join group: $e";
+          }
+        })();
+        ref.read(joinGroupErrorProvider.notifier).state = errorMsg;
+      }
+    }
+  }
+
+  Future<void> _pasteFromClipboard(WidgetRef ref, TextEditingController controller) async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (data != null && data.text != null) {
+      final pastedText = data.text!.trim().toUpperCase();
+      if (pastedText.length <= 8) {
+        controller.text = pastedText;
+        controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: pastedText.length),
+        );
+      } else {
+        final truncated = pastedText.substring(0, 8);
+        controller.text = truncated;
+        controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: 8),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoading = ref.watch(joinGroupLoadingProvider);
+    final errorMessage = ref.watch(joinGroupErrorProvider);
+    final controller = ref.watch(joinGroupCodeControllerProvider);
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 24.w,
+          right: 24.w,
+          top: 24.h,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16.h,
+        ),
+        child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const AppText(
+                'Join Group via Code',
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.white,
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white54),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          SizedBox(height: 16.h),
+          const AppText(
+            'Enter the 8-character invite code shared with you to join the group.',
+            fontSize: 13,
+            color: Colors.white54,
+          ),
+          SizedBox(height: 20.h),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  autofocus: true,
+                  maxLength: 8,
+                  style: TextStyle(
+                    color: AppColors.white,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2.0,
+                  ),
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(
+                    hintText: 'ENTER CODE',
+                    hintStyle: TextStyle(
+                      color: Colors.white24,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2.0,
+                    ),
+                    counterText: '',
+                    filled: true,
+                    fillColor: AppColors.cardDark,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16.w,
+                      vertical: 14.h,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(
+                        color: AppColors.white.withValues(alpha: 0.05),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(
+                        color: AppColors.white.withValues(alpha: 0.05),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: const BorderSide(
+                        color: AppColors.onboardingViolet,
+                      ),
+                    ),
+                  ),
+                  onChanged: (val) {
+                    if (val.length == 8) {
+                      FocusScope.of(context).unfocus();
+                    }
+                  },
+                ),
+              ),
+              SizedBox(width: 8.w),
+              IconButton(
+                icon: const Icon(Icons.content_paste,
+                    color: AppColors.onboardingViolet),
+                style: IconButton.styleFrom(
+                  backgroundColor:
+                      AppColors.onboardingViolet.withValues(alpha: 0.12),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                ),
+                onPressed: () => _pasteFromClipboard(ref, controller),
+              ),
+            ],
+          ),
+          if (errorMessage != null) ...[
+            SizedBox(height: 8.h),
+            AppText(
+              errorMessage,
+              color: AppColors.coralRed,
+              fontSize: 12,
+            ),
+          ],
+          SizedBox(height: 24.h),
+          SizedBox(
+            width: double.infinity,
+            height: 48.h,
+            child: ElevatedButton(
+              onPressed: isLoading ? null : () => _joinGroup(context, ref, controller),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.onboardingViolet,
+                disabledBackgroundColor:
+                    AppColors.onboardingViolet.withValues(alpha: 0.3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+              ),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.white,
+                      ),
+                    )
+                  : const AppText(
+                      'Join Group',
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.white,
+                    ),
+            ),
+          ),
+        ],
+      ),
+    ));
   }
 }

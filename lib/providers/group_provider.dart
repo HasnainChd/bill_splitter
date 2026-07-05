@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../core/models/group.dart';
 import '../core/utils/date_helper.dart';
 import 'auth_provider.dart';
@@ -134,6 +135,7 @@ class GroupNotifier extends StateNotifier<GroupState> {
           iconCodePoint: groupRow['icon_code_point'] as int?,
           iconFontFamily: groupRow['icon_font_family'] as String?,
           createdBy: groupRow['created_by']?.toString(),
+          inviteCode: groupRow['invite_code'] as String?,
         );
 
         groupsList.add(group);
@@ -176,6 +178,8 @@ class GroupNotifier extends StateNotifier<GroupState> {
         throw Exception('No user logged in');
       }
 
+      final String inviteCode = const Uuid().v4().replaceAll('-', '').substring(0, 8).toUpperCase();
+
       // 1. Insert into groups table
       final groupData = await _supabase.from('groups').insert({
         'name': name,
@@ -183,6 +187,7 @@ class GroupNotifier extends StateNotifier<GroupState> {
         'created_by': user.id,
         'icon_code_point': iconCodePoint,
         'icon_font_family': iconFontFamily,
+        'invite_code': inviteCode,
       }).select().single();
 
       final String groupId = groupData['id'] as String;
@@ -328,6 +333,114 @@ class GroupNotifier extends StateNotifier<GroupState> {
     } catch (e) {
       if (!mounted) return;
       state = state.copyWith(error: 'Failed to delete group: $e');
+      rethrow;
+    }
+  }
+
+  // Generate an invite code for an existing group that doesn't have one
+  Future<String> generateInviteCode(String groupId) async {
+    try {
+      final String inviteCode = const Uuid().v4().replaceAll('-', '').substring(0, 8).toUpperCase();
+      await _supabase
+          .from('groups')
+          .update({'invite_code': inviteCode})
+          .eq('id', groupId);
+      await loadGroups();
+      return inviteCode;
+    } catch (e) {
+      debugPrint('Error generating invite code: $e');
+      rethrow;
+    }
+  }
+
+  // Join a group using an invite code
+  Future<Group> joinGroupByInviteCode(String code) async {
+    final cleanCode = code.trim().toUpperCase();
+    if (cleanCode.length != 8) {
+      throw 'invalid_code';
+    }
+
+    try {
+      final currentUser = _supabase.auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('No user logged in');
+      }
+
+      // 1. Query groups table by invite_code
+      final groupData = await _supabase
+          .from('groups')
+          .select()
+          .eq('invite_code', cleanCode)
+          .maybeSingle();
+
+      if (groupData == null) {
+        throw 'invalid_code';
+      }
+
+      final String groupId = groupData['id'] as String;
+
+      // 2. Check if current user is already a member
+      final existingMember = await _supabase
+          .from('group_members')
+          .select()
+          .eq('group_id', groupId)
+          .eq('user_id', currentUser.id)
+          .maybeSingle();
+
+      if (existingMember != null) {
+        throw 'already_member';
+      }
+
+      // 3. Insert into group_members
+      await _supabase.from('group_members').insert({
+        'group_id': groupId,
+        'user_id': currentUser.id,
+      });
+
+      // Insert join event into group_notifications
+      try {
+        await _supabase.from('group_notifications').insert({
+          'group_id': groupId,
+          'user_id': currentUser.id,
+          'event_type': 'joined',
+        });
+      } catch (ne) {
+        debugPrint('Warning: Failed to log group join notification: $ne');
+      }
+
+      // Reload groups to update local state and Hive cache
+      await loadGroups();
+
+      // Return the group object
+      // We need to fetch the full members list for mapping
+      final membersData = await _supabase
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', groupId);
+
+      final memberList = (membersData as List)
+          .map((m) => m['user_id']?.toString() ?? '')
+          .where((m) => m.isNotEmpty)
+          .toList();
+
+      return Group(
+        groupId: groupId,
+        name: groupData['name'] as String,
+        members: memberList,
+        currency: groupData['currency'] as String? ?? 'PKR',
+        createdAt: groupData['created_at'] != null
+            ? parseUtcDateTime(groupData['created_at'] as String)
+            : DateTime.now(),
+        iconCodePoint: groupData['icon_code_point'] as int?,
+        iconFontFamily: groupData['icon_font_family'] as String?,
+        createdBy: groupData['created_by']?.toString(),
+        inviteCode: cleanCode,
+      );
+    } catch (e) {
+      if (e == 'invalid_code' || e == 'already_member') {
+        rethrow;
+      }
+      debugPrint('Error joining group: $e');
       rethrow;
     }
   }

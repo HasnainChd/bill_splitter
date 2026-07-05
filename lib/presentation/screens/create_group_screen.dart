@@ -42,16 +42,24 @@ class CreateGroupScreen extends ConsumerWidget {
     final groupName = nameCtrl.text.isEmpty ? 'New Group' : nameCtrl.text;
     final selectedColor = AppColors.groupThemeColors[colorIndex];
 
-    final usersAsync = ref.watch(allUsersProvider);
+    final isQueryLongEnough =
+        searchQuery.trim().replaceAll('@', '').length >= 2;
+
+    final usersAsync = isQueryLongEnough
+        ? ref.watch(searchedUsersProvider(searchQuery))
+        : ref.watch(allUsersProvider);
+
     final usersList = usersAsync.value ?? [];
     final cleanQuery = searchQuery.trim().startsWith('@')
         ? searchQuery.trim().substring(1)
         : searchQuery.trim();
-    final filteredUsers = usersList
-        .where((u) =>
-            u.fullName.toLowerCase().contains(cleanQuery.toLowerCase()) ||
-            u.username.toLowerCase().contains(cleanQuery.toLowerCase()))
-        .toList();
+    final filteredUsers = isQueryLongEnough
+        ? usersList
+        : usersList
+            .where((u) =>
+                u.fullName.toLowerCase().contains(cleanQuery.toLowerCase()) ||
+                u.username.toLowerCase().contains(cleanQuery.toLowerCase()))
+            .toList();
 
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
@@ -212,9 +220,8 @@ class CreateGroupScreen extends ConsumerWidget {
                           List.generate(AppColors.groupThemeColors.length, (i) {
                         final isSelected = i == colorIndex;
                         return GestureDetector(
-                          onTap: () => ref
-                              .read(cgColorIndexProvider.notifier)
-                              .state = i,
+                          onTap: () =>
+                              ref.read(cgColorIndexProvider.notifier).state = i,
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 150),
                             width: 30.w,
@@ -400,27 +407,6 @@ class CreateGroupScreen extends ConsumerWidget {
                       ),
                     ),
                     SizedBox(height: 16.h),
-
-                    // Invite link
-                    Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AppText(
-                            'Or share invite link → ',
-                            fontSize: 13,
-                            color: AppColors.white.withValues(alpha: 0.4),
-                          ),
-                          const AppText(
-                            'Copy link',
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.onboardingViolet,
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 24.h),
 
                     // ── Create Group Button (scrollable) ──
                     GestureDetector(
@@ -666,16 +652,23 @@ class CreateGroupScreen extends ConsumerWidget {
                     itemCount: _currencies.length,
                     itemBuilder: (context, index) {
                       final cur = _currencies[index];
-                      final isSelected = ref.read(cgSelectedCurrencyProvider) == cur['code'];
+                      final isSelected =
+                          ref.read(cgSelectedCurrencyProvider) == cur['code'];
                       return ListTile(
-                        leading: Text(cur['flag']!, style: TextStyle(fontSize: 20.sp)),
-                        title: AppText(cur['code']!, color: AppColors.white, fontWeight: FontWeight.bold),
-                        subtitle: AppText(cur['name']!, color: Colors.white54, fontSize: 12),
+                        leading: Text(cur['flag']!,
+                            style: TextStyle(fontSize: 20.sp)),
+                        title: AppText(cur['code']!,
+                            color: AppColors.white,
+                            fontWeight: FontWeight.bold),
+                        subtitle: AppText(cur['name']!,
+                            color: Colors.white54, fontSize: 12),
                         trailing: isSelected
-                            ? const Icon(Icons.check_circle_rounded, color: AppColors.onboardingViolet)
+                            ? const Icon(Icons.check_circle_rounded,
+                                color: AppColors.onboardingViolet)
                             : null,
                         onTap: () {
-                          ref.read(cgSelectedCurrencyProvider.notifier).state = cur['code']!;
+                          ref.read(cgSelectedCurrencyProvider.notifier).state =
+                              cur['code']!;
                           Navigator.pop(context);
                         },
                       );
