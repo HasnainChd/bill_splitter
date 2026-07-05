@@ -69,7 +69,10 @@ class AppRouter {
   static const String aboutLegal = '/aboutLegal';
   static const String lockScreen = '/lockScreen';
 
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   static final GoRouter router = GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: splash,
     redirect: (context, state) {
       final auth = Supabase.instance.client.auth.currentUser;

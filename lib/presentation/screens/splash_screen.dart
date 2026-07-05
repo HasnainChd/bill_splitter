@@ -25,8 +25,8 @@ class SplashScreen extends ConsumerWidget {
               final auth = Supabase.instance.client.auth.currentUser;
               if (auth != null) {
                 final box = Hive.box('settings');
-                final faceIdEnabled = box.get('face_id_enabled_${auth.id}', defaultValue: true) as bool;
-                final requireOnLaunch = box.get('require_on_launch_${auth.id}', defaultValue: true) as bool;
+                final faceIdEnabled = box.get('face_id_enabled_${auth.id}', defaultValue: false) as bool;
+                final requireOnLaunch = box.get('require_on_launch_${auth.id}', defaultValue: false) as bool;
                 
                 if (faceIdEnabled && requireOnLaunch) {
                   context.go('${AppRouter.lockScreen}?next=${AppRouter.home}');
