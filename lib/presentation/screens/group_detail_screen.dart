@@ -40,7 +40,7 @@ class GroupDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activeDateFormat = ref.watch(dateFormatProvider);
     final groupState = ref.watch(groupProvider);
-    final expenses = ref.watch(expensesForGroupProvider(groupId));
+    final actualExpenses = ref.watch(actualExpensesForGroupProvider(groupId));
     final balances = ref.watch(balancesForGroupProvider(groupId));
     final membersAsync = ref.watch(groupMembersProvider(groupId));
     final currentUserId = ref.watch(supabaseUserProvider)?.id;
@@ -76,11 +76,7 @@ class GroupDetailScreen extends ConsumerWidget {
       });
     }
 
-    final totalExpenses = expenses
-        .where((e) =>
-            e.categoryIconCodePoint != Icons.handshake_rounded.codePoint &&
-            e.title != 'Settle Payment')
-        .fold<double>(0, (sum, e) => sum + e.amount);
+    final totalExpenses = actualExpenses.fold<double>(0, (sum, e) => sum + e.amount);
     final myBalance =
         currentUserId != null ? (balances[currentUserId] ?? 0.0) : 0.0;
 
@@ -277,7 +273,7 @@ class GroupDetailScreen extends ConsumerWidget {
             ),
 
             // ── Expense Items ──
-            expenses.isEmpty
+            actualExpenses.isEmpty
                 ? SliverToBoxAdapter(child: _buildEmptyExpenses())
                 : SliverList(
                     delegate: SliverChildBuilderDelegate(
@@ -286,7 +282,7 @@ class GroupDetailScreen extends ConsumerWidget {
                             horizontal: 16.w, vertical: 4.h),
                         child: _buildExpenseRow(
                           context,
-                          expenses[i],
+                          actualExpenses[i],
                           {
                             for (final m
                                 in membersAsync.value ?? <UserProfile>[])
@@ -297,7 +293,7 @@ class GroupDetailScreen extends ConsumerWidget {
                           activeDateFormat,
                         ),
                       ),
-                      childCount: expenses.length,
+                      childCount: actualExpenses.length,
                     ),
                   ),
 

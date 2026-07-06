@@ -15,6 +15,7 @@ class SettlementCard extends StatelessWidget {
 
   final String? fromAvatarUrl;
   final String? toAvatarUrl;
+  final bool isInvolved;
 
   const SettlementCard({
     super.key,
@@ -25,6 +26,7 @@ class SettlementCard extends StatelessWidget {
     this.currency = 'USD',
     this.isLoading = false,
     this.onMarkAsPaid,
+    this.isInvolved = true,
     this.fromAvatarUrl,
     this.toAvatarUrl,
   });
@@ -93,7 +95,7 @@ class SettlementCard extends StatelessWidget {
                       align: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                    ),
+                     ),
                   ],
                 ),
               ),
@@ -156,7 +158,8 @@ class SettlementCard extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 16.h),
+          if (isPaid || isInvolved)
+            SizedBox(height: 16.h),
           // Button or Paid state
           if (isPaid)
             Row(
@@ -176,7 +179,7 @@ class SettlementCard extends StatelessWidget {
                 ),
               ],
             )
-          else
+          else if (isInvolved)
             SizedBox(
               width: double.infinity,
               height: 38.h,

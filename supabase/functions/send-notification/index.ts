@@ -103,6 +103,12 @@ serve(async (req) => {
       const currency = record.currency || group.currency || "PKR";
       title = `Payment Reminder in ${group.name}`;
       body = `{initiator} sent you a payment reminder for ${currency} ${amount} in ${group.name}.`;
+    } else if (table === "settlements") {
+      initiatorId = record.sender_id;
+      const amount = Number(record.amount || 0).toFixed(0);
+      const currency = record.currency || group.currency || "PKR";
+      title = `{initiator} settled up`;
+      body = `{initiator} marked ${currency} ${amount} as paid`;
     }
 
     // 3. Resolve Initiator Full Name
@@ -118,6 +124,7 @@ serve(async (req) => {
         initiatorName = profile.fullName || profile.full_name || "Someone";
       }
     }
+    title = title.replace("{initiator}", initiatorName);
     body = body.replace("{initiator}", initiatorName);
 
     // 4. Find FCM Tokens for all other members of the group

@@ -1136,6 +1136,25 @@ class HomeTab extends ConsumerWidget {
                         onTap: () async {
                           // Insert into requests table, preventing duplicate pending requests
                           try {
+                            // Check if group has any outstanding balances
+                            final balances = ref
+                                .read(balancesForGroupProvider(group.groupId));
+                            final hasOutstandingBalances = balances.values
+                                .any((balance) => balance.abs() > 0.01);
+
+                            if (!hasOutstandingBalances) {
+                              if (sheetContext.mounted) {
+                                Navigator.pop(sheetContext);
+                              }
+                              if (context.mounted) {
+                                AppSnackBar.showInfo(
+                                  context,
+                                  'Everyone in this group is already settled up!',
+                                );
+                              }
+                              return;
+                            }
+
                             final currentUserId =
                                 Supabase.instance.client.auth.currentUser?.id;
 

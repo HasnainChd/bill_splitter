@@ -603,6 +603,17 @@ final expensesForGroupProvider =
       .toList();
 });
 
+// Family provider for actual expenses by group (excluding settlements)
+final actualExpensesForGroupProvider =
+    Provider.family<List<Expense>, String>((ref, groupId) {
+  final expenses = ref.watch(expensesForGroupProvider(groupId));
+  return expenses.where((e) {
+    final isSettlement = e.title == 'Settle Payment' ||
+        e.categoryIconCodePoint == Icons.handshake_rounded.codePoint;
+    return !isSettlement;
+  }).toList();
+});
+
 // Family provider for balances by group - REACTIVE
 final balancesForGroupProvider =
     Provider.family<Map<String, double>, String>((ref, groupId) {

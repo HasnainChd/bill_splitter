@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/debt_calculator.dart';
 import '../../core/widgets/app_text.dart';
@@ -201,6 +202,10 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                         final fromName = fromProfile.fullName;
                         final toName = toProfile.fullName;
 
+                        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+                        final isInvolved = currentUserId == settlement.fromMember || 
+                                           currentUserId == settlement.toMember;
+
                         final key =
                             '${settlement.fromMember}_${settlement.toMember}_${settlement.amount}';
                         final isLoading = _loadingSettlements.contains(key);
@@ -216,7 +221,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                             isPaid: settlement.isPaid,
                             currency: currencyCode,
                             isLoading: isLoading,
-                            onMarkAsPaid: () async {
+                            isInvolved: isInvolved,
+                            onMarkAsPaid: !isInvolved ? null : () async {
                               setState(() {
                                 _loadingSettlements.add(key);
                               });
@@ -236,10 +242,31 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                                           Icons.handshake_rounded.codePoint,
                                       splitType: 'Equal',
                                     );
-                                if (context.mounted) {
-                                  AppSnackBar.showSuccess(
-                                      context, 'Payment recorded!');
-                                }
+                                 if (context.mounted) {
+                                   AppSnackBar.showSuccess(
+                                       context, 'Payment recorded!');
+                                 }
+                                 // Send FCM Push Notification
+                                 try {
+                                   final targetUserId = currentUserId == settlement.fromMember
+                                       ? settlement.toMember
+                                       : settlement.fromMember;
+                                   await Supabase.instance.client.functions.invoke(
+                                     'send-notification',
+                                     body: {
+                                       'table': 'settlements',
+                                       'new_record': {
+                                         'group_id': widget.groupId,
+                                         'sender_id': currentUserId,
+                                         'target_user_id': targetUserId,
+                                         'amount': settlement.amount,
+                                         'currency': group.currency,
+                                       },
+                                     },
+                                   );
+                                 } catch (notificationError) {
+                                   debugPrint('Push notification failed: $notificationError');
+                                 }
                               } catch (e) {
                                 if (context.mounted) {
                                   AppDialog.showError(
