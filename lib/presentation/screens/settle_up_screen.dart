@@ -7,6 +7,7 @@ import '../../core/utils/debt_calculator.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/settlement_card.dart';
+import '../../core/utils/app_dialog.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../providers/group_provider.dart';
 import '../../providers/expense_provider.dart';
@@ -241,8 +242,11 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                                 }
                               } catch (e) {
                                 if (context.mounted) {
-                                  AppSnackBar.showError(
-                                      context, 'Failed to record payment: $e');
+                                  AppDialog.showError(
+                                    context,
+                                    title: 'Settle Up Failed',
+                                    message: 'Could not record the payment. Details: $e',
+                                  );
                                 }
                               } finally {
                                 if (mounted) {

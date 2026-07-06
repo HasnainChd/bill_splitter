@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'profile_provider.dart';
 import 'settings_provider.dart';
 import 'group_provider.dart';
+import '../core/utils/app_snackbar.dart';
+import '../presentation/providers/screen_providers.dart';
 
 class EditProfileFormState {
   final TextEditingController nameCtrl;
@@ -104,13 +106,72 @@ class EditProfileFormNotifier extends StateNotifier<EditProfileFormState> {
   }
 
   Future<bool> save(BuildContext context) async {
+    final name = state.nameCtrl.text.trim();
+    final username = state.usernameCtrl.text.trim();
+    final phone = state.phoneCtrl.text.trim();
+    final bio = state.bioCtrl.text.trim();
+
+    // Reset error states
+    ref.read(epNameErrorProvider.notifier).state = null;
+    ref.read(epUsernameErrorProvider.notifier).state = null;
+    ref.read(epPhoneErrorProvider.notifier).state = null;
+    ref.read(epBioErrorProvider.notifier).state = null;
+
+    bool hasError = false;
+
+    // 1. Full Name Validation
+    if (name.isEmpty) {
+      ref.read(epNameErrorProvider.notifier).state = 'Please enter your full name';
+      hasError = true;
+    } else if (name.length > 50) {
+      ref.read(epNameErrorProvider.notifier).state = 'Name is too long (max 50 chars)';
+      hasError = true;
+    }
+
+    // 2. Username Validation
+    if (username.isEmpty) {
+      ref.read(epUsernameErrorProvider.notifier).state = 'Please enter a username';
+      hasError = true;
+    } else if (username.length < 3) {
+      ref.read(epUsernameErrorProvider.notifier).state = 'Username must be at least 3 characters';
+      hasError = true;
+    } else if (username.length > 20) {
+      ref.read(epUsernameErrorProvider.notifier).state = 'Username must be at most 20 characters';
+      hasError = true;
+    } else if (!RegExp(r'^[a-zA-Z0-9_\.]+$').hasMatch(username)) {
+      ref.read(epUsernameErrorProvider.notifier).state = 'Username can only contain letters, numbers, underscores, and periods';
+      hasError = true;
+    }
+
+    // 3. Phone Validation
+    if (phone.isNotEmpty) {
+      if (phone.length > 15) {
+        ref.read(epPhoneErrorProvider.notifier).state = 'Phone number is too long (max 15 digits)';
+        hasError = true;
+      } else if (!RegExp(r'^\+?[0-9\-\s\(\)]+$').hasMatch(phone)) {
+        ref.read(epPhoneErrorProvider.notifier).state = 'Please enter a valid phone number';
+        hasError = true;
+      }
+    }
+
+    // 4. Bio Validation
+    if (bio.length > 150) {
+      ref.read(epBioErrorProvider.notifier).state = 'Bio is too long (max 150 chars)';
+      hasError = true;
+    }
+
+    if (hasError) {
+      AppSnackBar.showError(context, 'Please fix the errors above before continuing');
+      return false;
+    }
+
     state = state.copyWith(isSaving: true);
     try {
       final success = await ref.read(profileProvider.notifier).updateProfile(
-            fullName: state.nameCtrl.text.trim(),
-            username: state.usernameCtrl.text.trim(),
-            phone: state.phoneCtrl.text.trim(),
-            bio: state.bioCtrl.text.trim(),
+            fullName: name,
+            username: username,
+            phone: phone,
+            bio: bio,
             currency: state.selectedCurrency,
             avatarFilePath: state.isRemovingAvatar ? '' : state.selectedImagePath,
             context: context,

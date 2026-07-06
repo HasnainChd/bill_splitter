@@ -1,3 +1,4 @@
+import 'package:bill_splitter/core/utils/app_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -125,6 +126,13 @@ class CreateGroupScreen extends ConsumerWidget {
                       label: 'Group Name',
                       hint: 'e.g. NYC Getaway',
                       controller: nameCtrl,
+                      maxLength: 50,
+                      errorText: ref.watch(cgNameErrorProvider),
+                      onChanged: (val) {
+                        if (ref.read(cgNameErrorProvider) != null) {
+                          ref.read(cgNameErrorProvider.notifier).state = null;
+                        }
+                      },
                     ),
                     SizedBox(height: 24.h),
 
@@ -406,6 +414,15 @@ class CreateGroupScreen extends ConsumerWidget {
                         },
                       ),
                     ),
+                    if (ref.watch(cgMembersErrorProvider) != null) ...[
+                      SizedBox(height: 8.h),
+                      AppText(
+                        ref.watch(cgMembersErrorProvider)!,
+                        color: AppColors.coralRed,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ],
                     SizedBox(height: 16.h),
 
                     // ── Create Group Button (scrollable) ──
@@ -519,6 +536,9 @@ class CreateGroupScreen extends ConsumerWidget {
           current.add(contactId);
         }
         ref.read(cgSelectedMembersProvider.notifier).state = current;
+        if (ref.read(cgMembersErrorProvider) != null) {
+          ref.read(cgMembersErrorProvider.notifier).state = null;
+        }
       },
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
@@ -602,10 +622,36 @@ class CreateGroupScreen extends ConsumerWidget {
     Set<String> selectedMembers,
     int selectedIconCodePoint,
   ) {
+    final name = nameCtrl.text.trim();
+
+    // Reset errors
+    ref.read(cgNameErrorProvider.notifier).state = null;
+    ref.read(cgMembersErrorProvider.notifier).state = null;
+
+    bool hasError = false;
+
+    if (name.isEmpty) {
+      ref.read(cgNameErrorProvider.notifier).state =
+          'Please enter a group name';
+      hasError = true;
+    }
+
+    if (selectedMembers.isEmpty) {
+      ref.read(cgMembersErrorProvider.notifier).state =
+          'Please select at least one member to add to the group';
+      hasError = true;
+    }
+
+    if (hasError) {
+      AppSnackBar.showError(
+          context, 'Please fix the errors above before continuing');
+      return;
+    }
+
     final selectedCurrency = ref.read(cgSelectedCurrencyProvider);
     final notifier = ref.read(createGroupProvider.notifier);
     notifier.createGroup(
-      name: nameCtrl.text.trim(),
+      name: name,
       members: selectedMembers.toList(),
       iconCodePoint: selectedIconCodePoint,
       iconFontFamily: 'MaterialIcons',

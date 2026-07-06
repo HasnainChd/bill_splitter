@@ -13,6 +13,7 @@ import '../../core/widgets/app_text_field.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../providers/profile_provider.dart';
 import '../../providers/edit_profile_provider.dart';
+import '../providers/screen_providers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EditProfileScreen extends ConsumerWidget {
@@ -424,6 +425,13 @@ class EditProfileScreen extends ConsumerWidget {
                           controller: formState.nameCtrl,
                           label: 'Full Name',
                           prefixIcon: Icons.person_outline_rounded,
+                          maxLength: 50,
+                          errorText: ref.watch(epNameErrorProvider),
+                          onChanged: (val) {
+                            if (ref.read(epNameErrorProvider) != null) {
+                              ref.read(epNameErrorProvider.notifier).state = null;
+                            }
+                          },
                         ),
                         SizedBox(height: 20.h),
 
@@ -432,6 +440,13 @@ class EditProfileScreen extends ConsumerWidget {
                           hint: 'Enter username',
                           controller: formState.usernameCtrl,
                           label: 'Username',
+                          maxLength: 20,
+                          errorText: ref.watch(epUsernameErrorProvider),
+                          onChanged: (val) {
+                            if (ref.read(epUsernameErrorProvider) != null) {
+                              ref.read(epUsernameErrorProvider.notifier).state = null;
+                            }
+                          },
                           inputFormatters: [
                             FilteringTextInputFormatter.deny(RegExp(r'\s')),
                           ],
@@ -476,6 +491,13 @@ class EditProfileScreen extends ConsumerWidget {
                           label: 'Phone',
                           prefixIcon: Icons.smartphone_rounded,
                           keyboardType: TextInputType.phone,
+                          maxLength: 15,
+                          errorText: ref.watch(epPhoneErrorProvider),
+                          onChanged: (val) {
+                            if (ref.read(epPhoneErrorProvider) != null) {
+                              ref.read(epPhoneErrorProvider.notifier).state = null;
+                            }
+                          },
                         ),
                         SizedBox(height: 20.h),
 
@@ -486,6 +508,13 @@ class EditProfileScreen extends ConsumerWidget {
                           label: 'Bio',
                           prefixIcon: Icons.chat_bubble_outline_rounded,
                           maxLines: 2,
+                          maxLength: 150,
+                          errorText: ref.watch(epBioErrorProvider),
+                          onChanged: (val) {
+                            if (ref.read(epBioErrorProvider) != null) {
+                              ref.read(epBioErrorProvider.notifier).state = null;
+                            }
+                          },
                         ),
                         SizedBox(height: 24.h),
 

@@ -252,6 +252,9 @@ class AddExpenseScreen extends ConsumerWidget {
                                   onChanged: (val) {
                                     ref.read(aeAmountValueProvider.notifier).state =
                                         double.tryParse(val) ?? 0.0;
+                                    if (ref.read(aeAmountErrorProvider) != null) {
+                                      ref.read(aeAmountErrorProvider.notifier).state = null;
+                                    }
                                   },
                                   keyboardType:
                                       const TextInputType.numberWithOptions(
@@ -279,6 +282,18 @@ class AddExpenseScreen extends ConsumerWidget {
                       ),
                     ),
 
+                    if (ref.watch(aeAmountErrorProvider) != null) ...[
+                      SizedBox(height: 4.h),
+                      Center(
+                        child: AppText(
+                          ref.watch(aeAmountErrorProvider)!,
+                          color: AppColors.coralRed,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+
                     Center(
                       child: AppText(
                         '${GroupIconHelper.getCleanGroupName(group.name)} · ${splitType.toLowerCase()} split',
@@ -293,6 +308,13 @@ class AddExpenseScreen extends ConsumerWidget {
                       label: 'Description',
                       hint: 'e.g. Thai restaurant',
                       controller: titleCtrl,
+                      maxLength: 100,
+                      errorText: ref.watch(aeTitleErrorProvider),
+                      onChanged: (val) {
+                        if (ref.read(aeTitleErrorProvider) != null) {
+                          ref.read(aeTitleErrorProvider.notifier).state = null;
+                        }
+                      },
                       prefix: Icon(
                         Icons.format_list_bulleted_rounded,
                         color: AppColors.onboardingViolet,
@@ -737,6 +759,15 @@ class AddExpenseScreen extends ConsumerWidget {
                         },
                       ),
                     ),
+                    if (ref.watch(aeSplitErrorProvider) != null) ...[
+                      SizedBox(height: 8.h),
+                      AppText(
+                        ref.watch(aeSplitErrorProvider)!,
+                        color: AppColors.coralRed,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ],
                     SizedBox(height: 28.h),
 
                     // ── Add/Update Expense Button (scrollable) ──
@@ -836,7 +867,12 @@ class AddExpenseScreen extends ConsumerWidget {
           final isSelected = splitType == opt;
           return Expanded(
             child: GestureDetector(
-              onTap: () => ref.read(aeSplitTypeProvider.notifier).state = opt,
+              onTap: () {
+                ref.read(aeSplitTypeProvider.notifier).state = opt;
+                if (ref.read(aeSplitErrorProvider) != null) {
+                  ref.read(aeSplitErrorProvider.notifier).state = null;
+                }
+              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 margin: EdgeInsets.all(3.w),
@@ -881,24 +917,49 @@ class AddExpenseScreen extends ConsumerWidget {
     String? currentUserId,
   ) async {
     final title = titleCtrl.text.trim();
-    final amount = double.tryParse(amountCtrl.text) ?? 0;
+    final rawAmountText = amountCtrl.text.trim();
     final splitType = ref.read(aeSplitTypeProvider);
     final groupCurrency = group.currency;
     final currencyCode =
         groupCurrency.length >= 3 ? groupCurrency.substring(0, 3) : 'PKR';
 
+    // Reset errors
+    ref.read(aeAmountErrorProvider.notifier).state = null;
+    ref.read(aeTitleErrorProvider.notifier).state = null;
+    ref.read(aeSplitErrorProvider.notifier).state = null;
+
+    bool hasError = false;
+
+    // 1. Description Validation
     if (title.isEmpty) {
-      AppSnackBar.showError(context, 'Please enter a description');
-      return;
+      ref.read(aeTitleErrorProvider.notifier).state = 'Please add a description';
+      hasError = true;
     }
-    if (amount <= 0) {
-      AppSnackBar.showError(context, 'Please enter a valid amount');
-      return;
+
+    // 2. Amount Validation
+    final double? parsedAmount = double.tryParse(rawAmountText);
+    if (rawAmountText.isEmpty || parsedAmount == null) {
+      ref.read(aeAmountErrorProvider.notifier).state = 'Please enter a valid amount';
+      hasError = true;
+    } else if (parsedAmount == 0) {
+      ref.read(aeAmountErrorProvider.notifier).state = 'Please enter an amount greater than zero';
+      hasError = true;
+    } else if (parsedAmount < 0) {
+      ref.read(aeAmountErrorProvider.notifier).state = 'Amount cannot be negative';
+      hasError = true;
+    } else if (parsedAmount > 999999.99) {
+      ref.read(aeAmountErrorProvider.notifier).state = 'Amount is too large';
+      hasError = true;
     }
+
+    final amount = parsedAmount ?? 0.0;
+
+    // 3. Member Validation
     if (selectedMembers.isEmpty) {
-      AppSnackBar.showError(context, 'Select at least one member');
-      return;
+      ref.read(aeSplitErrorProvider.notifier).state = 'Please select at least one member to split with';
+      hasError = true;
     }
+
     if (currentUserId == null) {
       AppSnackBar.showError(context, 'No user logged in');
       return;
@@ -906,56 +967,57 @@ class AddExpenseScreen extends ConsumerWidget {
 
     Map<String, double> splitAmong = {};
 
-    if (splitType == 'Equal') {
-      splitAmong = FinancialCalculator.generateEqualSplits(
-          amount, selectedMembers.toList());
-    } else if (splitType == 'Custom') {
-      final customMap = ref.read(aeCustomSplitsProvider);
-      final totalCustom =
-          selectedMembers.fold(0.0, (sum, m) => sum + (customMap[m] ?? 0.0));
-      if ((totalCustom - amount).abs() > 0.05) {
-        final totalCustomStr = totalCustom % 1 == 0
-            ? totalCustom.toStringAsFixed(0)
-            : totalCustom.toStringAsFixed(2);
-        final amountStr = amount % 1 == 0
-            ? amount.toStringAsFixed(0)
-            : amount.toStringAsFixed(2);
-        AppSnackBar.showError(context,
-            'The sum of custom splits ($currencyCode $totalCustomStr) must equal the total amount ($currencyCode $amountStr)');
-        return;
-      }
-      splitAmong = {
-        for (final m in selectedMembers) m: customMap[m] ?? 0.0,
-      };
-    } else if (splitType == '%') {
-      final percentMap = ref.read(aePercentSplitsProvider);
-      final totalPercent =
-          selectedMembers.fold(0.0, (sum, m) => sum + (percentMap[m] ?? 0.0));
-      if ((totalPercent - 100.0).abs() > 0.05) {
-        final totalPercentStr = totalPercent % 1 == 0
-            ? totalPercent.toStringAsFixed(0)
-            : totalPercent.toStringAsFixed(2);
-        AppSnackBar.showError(context,
-            'The sum of percentages ($totalPercentStr%) must equal 100%');
-        return;
-      }
-      final Map<String, double> pctSplits = {};
-      final memberList = selectedMembers.toList();
-      for (final m in memberList) {
-        final pct = percentMap[m] ?? 0.0;
-        pctSplits[m] = double.parse(((pct / 100.0) * amount).toStringAsFixed(2));
-      }
-      if (memberList.isNotEmpty) {
-        final firstMember = memberList.first;
-        double sum = 0.0;
-        pctSplits.forEach((key, val) {
-          if (key != firstMember) {
-            sum += val;
+    if (!hasError) {
+      if (splitType == 'Equal') {
+        splitAmong = FinancialCalculator.generateEqualSplits(
+            amount, selectedMembers.toList());
+      } else if (splitType == 'Custom') {
+        final customMap = ref.read(aeCustomSplitsProvider);
+        final totalCustom =
+            selectedMembers.fold(0.0, (sum, m) => sum + (customMap[m] ?? 0.0));
+        if ((totalCustom - amount).abs() > 0.05) {
+          final amountStr = amount.toStringAsFixed(2);
+          ref.read(aeSplitErrorProvider.notifier).state =
+              'Split amounts must add up to $amountStr (currently: ${totalCustom.toStringAsFixed(2)})';
+          hasError = true;
+        } else {
+          splitAmong = {
+            for (final m in selectedMembers) m: customMap[m] ?? 0.0,
+          };
+        }
+      } else if (splitType == '%') {
+        final percentMap = ref.read(aePercentSplitsProvider);
+        final totalPercent =
+            selectedMembers.fold(0.0, (sum, m) => sum + (percentMap[m] ?? 0.0));
+        if ((totalPercent - 100.0).abs() > 0.05) {
+          ref.read(aeSplitErrorProvider.notifier).state =
+              'Percentages must add up to 100% (currently: ${totalPercent.toStringAsFixed(0)}%)';
+          hasError = true;
+        } else {
+          final Map<String, double> pctSplits = {};
+          final memberList = selectedMembers.toList();
+          for (final m in memberList) {
+            final pct = percentMap[m] ?? 0.0;
+            pctSplits[m] = double.parse(((pct / 100.0) * amount).toStringAsFixed(2));
           }
-        });
-        pctSplits[firstMember] = double.parse((amount - sum).toStringAsFixed(2));
+          if (memberList.isNotEmpty) {
+            final firstMember = memberList.first;
+            double sum = 0.0;
+            pctSplits.forEach((key, val) {
+              if (key != firstMember) {
+                sum += val;
+              }
+            });
+            pctSplits[firstMember] = double.parse((amount - sum).toStringAsFixed(2));
+          }
+          splitAmong = pctSplits;
+        }
       }
-      splitAmong = pctSplits;
+    }
+
+    if (hasError) {
+      AppSnackBar.showError(context, 'Please fix the errors above before continuing');
+      return;
     }
 
     final selectedCatLabel = ref.read(aeCategoryProvider);
@@ -1126,6 +1188,9 @@ class _MemberSplitRowState extends ConsumerState<MemberSplitRow> {
                 selected.add(widget.member.id);
               }
               ref.read(aeSelectedMembersProvider.notifier).state = selected;
+              if (ref.read(aeSplitErrorProvider) != null) {
+                ref.read(aeSplitErrorProvider.notifier).state = null;
+              }
             },
             child: Container(
               width: 28.w,
@@ -1226,6 +1291,9 @@ class _MemberSplitRowState extends ConsumerState<MemberSplitRow> {
                       customMap[widget.member.id] = parsed;
                       ref.read(aeCustomSplitsProvider.notifier).state =
                           customMap;
+                      if (ref.read(aeSplitErrorProvider) != null) {
+                        ref.read(aeSplitErrorProvider.notifier).state = null;
+                      }
                     },
                   ),
                 ),
@@ -1264,6 +1332,9 @@ class _MemberSplitRowState extends ConsumerState<MemberSplitRow> {
                       percentMap[widget.member.id] = parsed;
                       ref.read(aePercentSplitsProvider.notifier).state =
                           percentMap;
+                      if (ref.read(aeSplitErrorProvider) != null) {
+                        ref.read(aeSplitErrorProvider.notifier).state = null;
+                      }
                     },
                   ),
                 ),

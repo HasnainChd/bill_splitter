@@ -306,9 +306,10 @@ class SettleTab extends ConsumerWidget {
                                       }
                                     } catch (e) {
                                       if (context.mounted) {
-                                        AppSnackBar.showError(
+                                        AppDialog.showError(
                                           context,
-                                          'Failed to record payment: $e',
+                                          title: 'Payment Failed',
+                                          message: 'Failed to record payment: $e',
                                         );
                                       }
                                     } finally {
@@ -425,9 +426,10 @@ class SettleTab extends ConsumerWidget {
                                       }
                                     } catch (e) {
                                       if (context.mounted) {
-                                        AppSnackBar.showError(
+                                        AppDialog.showError(
                                           context,
-                                          'Failed to send reminder: $e',
+                                          title: 'Reminder Failed',
+                                          message: 'Failed to send reminder: $e',
                                         );
                                       }
                                     } finally {
@@ -513,9 +515,10 @@ class SettleTab extends ConsumerWidget {
                               }
                             } catch (e) {
                               if (context.mounted) {
-                                AppSnackBar.showError(
+                                AppDialog.showError(
                                   context,
-                                  'Failed to settle debts: $e',
+                                  title: 'Settlement Failed',
+                                  message: 'Failed to settle debts: $e',
                                 );
                               }
                             } finally {

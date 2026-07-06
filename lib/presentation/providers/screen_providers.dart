@@ -10,6 +10,11 @@ import '../../providers/group_provider.dart';
 /// Selected category chip
 final aeCategoryProvider = StateProvider.autoDispose<String>((ref) => 'Food');
 
+// Validation error providers
+final aeAmountErrorProvider = StateProvider.autoDispose<String?>((ref) => null);
+final aeTitleErrorProvider = StateProvider.autoDispose<String?>((ref) => null);
+final aeSplitErrorProvider = StateProvider.autoDispose<String?>((ref) => null);
+
 /// Split type: 'Equal', 'Custom', '%'
 final aeSplitTypeProvider = StateProvider.autoDispose<String>((ref) => 'Equal');
 
@@ -99,6 +104,16 @@ final cgNameControllerProvider =
   ref.onDispose(c.dispose);
   return c;
 });
+
+// Validation error providers for Create Group
+final cgNameErrorProvider = StateProvider.autoDispose<String?>((ref) => null);
+final cgMembersErrorProvider = StateProvider.autoDispose<String?>((ref) => null);
+
+// Validation error providers for Edit Profile
+final epNameErrorProvider = StateProvider.autoDispose<String?>((ref) => null);
+final epUsernameErrorProvider = StateProvider.autoDispose<String?>((ref) => null);
+final epPhoneErrorProvider = StateProvider.autoDispose<String?>((ref) => null);
+final epBioErrorProvider = StateProvider.autoDispose<String?>((ref) => null);
 
 /// Member search controller
 final cgSearchControllerProvider =
