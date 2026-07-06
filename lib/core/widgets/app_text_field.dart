@@ -21,6 +21,9 @@ class AppTextField extends StatelessWidget {
   final void Function(String)? onChanged;
   final bool readOnly;
   final List<TextInputFormatter>? inputFormatters;
+  final int? maxLength;
+  final String? errorText;
+  final VoidCallback? onEditingComplete;
 
   const AppTextField({
     super.key,
@@ -38,6 +41,9 @@ class AppTextField extends StatelessWidget {
     this.onChanged,
     this.readOnly = false,
     this.inputFormatters,
+    this.maxLength,
+    this.errorText,
+    this.onEditingComplete,
   });
 
   @override
@@ -86,9 +92,11 @@ class AppTextField extends StatelessWidget {
           keyboardType: keyboardType,
           validator: validator,
           maxLines: maxLines,
+          maxLength: maxLength,
           onChanged: onChanged,
           readOnly: readOnly,
           inputFormatters: inputFormatters,
+          onEditingComplete: onEditingComplete,
           cursorColor: Colors.white,
           style: TextStyle(
             fontSize: 15.sp,
@@ -96,6 +104,8 @@ class AppTextField extends StatelessWidget {
             color: readOnly ? Colors.white.withValues(alpha: 0.4) : Colors.white,
           ),
           decoration: InputDecoration(
+            errorText: errorText,
+            counterText: maxLength != null ? '' : null,
             hintText: hint,
             hintStyle: TextStyle(
               fontSize: 14.sp,
