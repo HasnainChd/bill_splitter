@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/utils/app_snackbar.dart';
 
 import 'package:hive_flutter/hive_flutter.dart';
+import '../core/utils/error_handler.dart';
 import 'auth_provider.dart';
 
 class UserProfile {
@@ -180,7 +181,8 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     } catch (e, stack) {
       debugPrint('Error fetching profile: $e\n$stack');
       if (mounted) {
-        state = state.copyWith(error: e.toString(), isLoading: false);
+        state = state.copyWith(
+            error: ErrorHandler.getUserFriendlyMessage(e), isLoading: false);
       }
     }
   }
@@ -278,9 +280,11 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       await fetchProfile();
       return true;
     } catch (e) {
-      state = state.copyWith(error: e.toString(), isLoading: false);
+      state = state.copyWith(
+          error: ErrorHandler.getUserFriendlyMessage(e), isLoading: false);
       if (context != null && context.mounted) {
-        AppSnackBar.showError(context, 'Failed to update profile: $e');
+        AppSnackBar.showError(
+            context, ErrorHandler.getUserFriendlyMessage(e));
       }
       return false;
     }

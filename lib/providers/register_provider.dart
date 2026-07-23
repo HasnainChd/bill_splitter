@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../core/utils/app_snackbar.dart';
+import '../core/utils/error_handler.dart';
 import '../core/router/app_router.dart';
 import 'profile_provider.dart';
 
@@ -91,15 +92,16 @@ class RegisterNotifier extends StateNotifier<RegisterState> {
       // Go to home screen
       context.go(AppRouter.home);
     } on AuthException catch (e) {
-      final errorMessage = e.message;
+      final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
       state = state.copyWith(error: errorMessage);
       if (context.mounted) {
         AppSnackBar.showError(context, errorMessage);
       }
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      final msg = ErrorHandler.getUserFriendlyMessage(e);
+      state = state.copyWith(error: msg);
       if (context.mounted) {
-        AppSnackBar.showError(context, 'An error occurred: $e');
+        AppSnackBar.showError(context, msg);
       }
     } finally {
       state = state.copyWith(isLoading: false);

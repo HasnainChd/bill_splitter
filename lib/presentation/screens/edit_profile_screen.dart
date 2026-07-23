@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
+import '../../core/utils/error_handler.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/utils/app_snackbar.dart';
@@ -51,7 +52,7 @@ class EditProfileScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        AppSnackBar.showError(context, 'Failed to pick image: $e');
+        AppSnackBar.showError(context, ErrorHandler.getUserFriendlyMessage(e));
       }
     }
   }
@@ -193,7 +194,7 @@ class EditProfileScreen extends ConsumerWidget {
       } catch (e) {
         if (context.mounted) {
           Navigator.pop(context); // pop loading dialog
-          AppSnackBar.showError(context, 'Failed to delete account: $e');
+          AppSnackBar.showError(context, ErrorHandler.getUserFriendlyMessage(e));
         }
       }
     }

@@ -19,6 +19,7 @@ import '../../../providers/profile_provider.dart';
 import '../../../providers/notifications_provider.dart';
 import '../../../core/utils/group_icon_helper.dart';
 import '../../../core/utils/app_snackbar.dart';
+import '../../../core/utils/error_handler.dart';
 import '../../../core/utils/financial_calculator.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -1201,7 +1202,7 @@ class HomeTab extends ConsumerWidget {
                                 'Failed to send request notification: $e');
                             if (context.mounted) {
                               AppSnackBar.showError(
-                                  context, 'Failed to send notification: $e');
+                                  context, ErrorHandler.getUserFriendlyMessage(e));
                             }
                           }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/utils/error_handler.dart';
 
 class RequestItem {
   final String id;
@@ -95,7 +96,8 @@ class RequestsNotifier extends StateNotifier<RequestsState> {
       onError: (e) {
         debugPrint('Error loading requests stream: $e');
         if (mounted) {
-          state = state.copyWith(error: e.toString(), isLoading: false);
+          state = state.copyWith(
+              error: ErrorHandler.getUserFriendlyMessage(e), isLoading: false);
         }
       },
     );

@@ -8,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_text.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/utils/error_handler.dart';
 import '../../../providers/profile_provider.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../providers/group_provider.dart';
@@ -129,7 +130,7 @@ class ProfileTab extends ConsumerWidget {
                 ),
                 SizedBox(height: 8.h),
                 AppText(
-                  profileState.error!,
+                  ErrorHandler.getUserFriendlyMessage(profileState.error!),
                   fontSize: 13,
                   color: AppColors.white.withValues(alpha: 0.5),
                   align: TextAlign.center,

@@ -16,6 +16,7 @@ import '../../../core/utils/group_icon_helper.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/utils/app_dialog.dart';
 import '../../../core/utils/app_snackbar.dart';
+import '../../../core/utils/error_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class GroupsTab extends ConsumerWidget {
@@ -474,7 +475,7 @@ class GroupsTab extends ConsumerWidget {
                               if (context.mounted) {
                                 AppSnackBar.showError(
                                   context,
-                                  'Failed to send reminder: $e',
+                                  ErrorHandler.getUserFriendlyMessage(e),
                                 );
                               }
                             }

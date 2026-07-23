@@ -11,6 +11,7 @@ import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../core/utils/error_handler.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../providers/expense_provider.dart';
@@ -404,7 +405,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
                               error: (err, stack) => Padding(
                                 padding: const EdgeInsets.all(16.0),
                                 child: AppText(
-                                    'Failed to load split breakdown: $err',
+                                    ErrorHandler.getUserFriendlyMessage(err),
                                     color: AppColors.white),
                               ),
                               data: (_) {

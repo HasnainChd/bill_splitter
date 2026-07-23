@@ -237,6 +237,8 @@ final dynamicNotificationsProvider = Provider<List<NotificationItem>>((ref) {
 
   // 1b. Group membership notifications (joins/leaves) from group_notifications table
   for (final record in groupNotifs) {
+    if (record.userId == currentUser.id) continue;
+
     // Find the corresponding group
     final group = groupState.groups.firstWhere(
       (g) => g.groupId == record.groupId,

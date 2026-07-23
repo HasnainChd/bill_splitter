@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../core/utils/error_handler.dart';
 import '../../core/router/app_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/models/group.dart';
@@ -82,17 +83,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       context.go('/');
     } on AuthException catch (e) {
-      final errorMessage = e.message;
+      final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
       state = state.copyWith(error: errorMessage);
       if (context.mounted) {
         AppSnackBar.showError(context, errorMessage);
       }
     } catch (e) {
-      final errStr = e.toString();
-      final msg = errStr.contains('SocketException') ||
-              errStr.contains('ClientException')
-          ? 'No internet connection. Please check your network and try again.'
-          : 'An error occurred: $e';
+      final msg = ErrorHandler.getUserFriendlyMessage(e);
       state = state.copyWith(error: msg);
       if (context.mounted) {
         AppSnackBar.showError(context, msg);
@@ -129,17 +126,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
         context.go(AppRouter.login);
       }
     } on AuthException catch (e) {
-      final errorMessage = e.message;
+      final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
       state = state.copyWith(error: errorMessage);
       if (context.mounted) {
         AppSnackBar.showError(context, errorMessage);
       }
     } catch (e) {
-      final errStr = e.toString();
-      final msg = errStr.contains('SocketException') ||
-              errStr.contains('ClientException')
-          ? 'No internet connection. Please check your network and try again.'
-          : 'An error occurred: $e';
+      final msg = ErrorHandler.getUserFriendlyMessage(e);
       state = state.copyWith(error: msg);
       if (context.mounted) {
         AppSnackBar.showError(context, msg);
@@ -180,14 +173,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
         accessToken: accessToken,
       );
     } on AuthException catch (e) {
-      state = state.copyWith(error: e.message);
+      final msg = ErrorHandler.getUserFriendlyMessage(e);
+      state = state.copyWith(error: msg);
       if (context.mounted) {
-        AppSnackBar.showError(context, e.message);
+        AppSnackBar.showError(context, msg);
       }
     } catch (e) {
-      state = state.copyWith(error: 'Google sign-in failed: $e');
+      final msg = ErrorHandler.getUserFriendlyMessage(e);
+      state = state.copyWith(error: msg);
       if (context.mounted) {
-        AppSnackBar.showError(context, 'Google Sign-In failed: $e');
+        AppSnackBar.showError(context, msg);
       }
     } finally {
       state = state.copyWith(isLoading: false);
@@ -214,14 +209,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
         idToken: idToken,
       );
     } on AuthException catch (e) {
-      state = state.copyWith(error: e.message);
+      final msg = ErrorHandler.getUserFriendlyMessage(e);
+      state = state.copyWith(error: msg);
       if (context.mounted) {
-        AppSnackBar.showError(context, e.message);
+        AppSnackBar.showError(context, msg);
       }
     } catch (e) {
-      state = state.copyWith(error: 'Apple sign-in failed: $e');
+      final msg = ErrorHandler.getUserFriendlyMessage(e);
+      state = state.copyWith(error: msg);
       if (context.mounted) {
-        AppSnackBar.showError(context, 'Apple Sign-In failed: $e');
+        AppSnackBar.showError(context, msg);
       }
     } finally {
       state = state.copyWith(isLoading: false);

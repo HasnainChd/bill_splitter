@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../core/utils/error_handler.dart';
 import 'group_provider.dart';
 import 'settings_provider.dart';
 
@@ -86,9 +87,10 @@ class CreateGroupNotifier extends StateNotifier<CreateGroupState> {
         context.pop();
       }
     } catch (e) {
-      state = state.copyWith(error: 'Failed to create group: $e');
+      final msg = ErrorHandler.getUserFriendlyMessage(e);
+      state = state.copyWith(error: msg);
       if (context.mounted) {
-        AppSnackBar.showError(context, 'Failed to create group: $e');
+        AppSnackBar.showError(context, msg);
       }
     } finally {
       state = state.copyWith(isLoading: false);

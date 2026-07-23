@@ -11,6 +11,7 @@ import '../../core/models/group.dart';
 import '../../core/models/expense.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../core/utils/app_dialog.dart';
+import '../../core/utils/error_handler.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/group_provider.dart';
@@ -536,7 +537,7 @@ class AddExpenseScreen extends ConsumerWidget {
                         ),
                         error: (err, __) => Center(
                           child: AppText(
-                            'Error loading payers: $err',
+                            ErrorHandler.getUserFriendlyMessage(err),
                             fontSize: 12,
                             color: AppColors.coralRed,
                           ),
@@ -711,7 +712,7 @@ class AddExpenseScreen extends ConsumerWidget {
                         ),
                         error: (err, stack) => Padding(
                           padding: const EdgeInsets.all(16.0),
-                          child: AppText('Failed to load group members: $err',
+                          child: AppText(ErrorHandler.getUserFriendlyMessage(err),
                               color: AppColors.white),
                         ),
                         data: (_) {
@@ -1088,11 +1089,11 @@ class AddExpenseScreen extends ConsumerWidget {
             context,
             title: 'Update Failed',
             message:
-                'Failed to save expense changes. The local cache has been reverted to prevent mismatch.\n\nError: $e',
+                'Failed to save expense changes. The local cache has been reverted to prevent mismatch.\n\n${ErrorHandler.getUserFriendlyMessage(e)}',
             buttonText: 'OK',
           );
         } else {
-          AppSnackBar.showError(context, 'Failed to save expense: $e');
+          AppSnackBar.showError(context, ErrorHandler.getUserFriendlyMessage(e));
         }
       }
     }

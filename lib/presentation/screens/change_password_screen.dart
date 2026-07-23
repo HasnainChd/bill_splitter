@@ -10,6 +10,7 @@ import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../core/utils/error_handler.dart';
 import '../../providers/register_provider.dart';
 
 final changePasswordCurrentObscureProvider =
@@ -411,7 +412,7 @@ class ChangePasswordScreen extends ConsumerWidget {
                                     if (context.mounted) {
                                       AppSnackBar.showError(
                                         context,
-                                        'Failed to update password: $e',
+                                        ErrorHandler.getUserFriendlyMessage(e),
                                       );
                                     }
                                   } finally {

@@ -6,6 +6,7 @@ import 'dart:io';
 import 'dart:async';
 import '../core/models/expense.dart';
 import '../core/utils/date_helper.dart';
+import '../core/utils/error_handler.dart';
 import 'auth_provider.dart';
 import 'group_provider.dart';
 import '../core/utils/financial_calculator.dart';
@@ -563,14 +564,7 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
 
   // Helper for friendly error messages
   String _getFriendlyErrorMsg(dynamic e) {
-    if (e is SocketException) {
-      return 'Network unavailable. Please check your connection.';
-    } else if (e is TimeoutException) {
-      return 'Request timed out. The server might be slow or unreachable.';
-    } else if (e is PostgrestException) {
-      return 'Database error: \${e.message}';
-    }
-    return e.toString();
+    return ErrorHandler.getUserFriendlyMessage(e);
   }
 }
 

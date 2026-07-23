@@ -18,6 +18,7 @@ import '../../providers/expense_provider.dart';
 import '../providers/screen_providers.dart';
 import '../../core/utils/app_dialog.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../core/utils/error_handler.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/utils/group_icon_helper.dart';
 import '../../providers/settings_provider.dart';
@@ -122,7 +123,7 @@ class GroupDetailScreen extends ConsumerWidget {
                         error: (err, stack) => Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: AppText(
-                            'Failed to load members: $err',
+                            ErrorHandler.getUserFriendlyMessage(err),
                             color: AppColors.white,
                           ),
                         ),
@@ -465,25 +466,21 @@ class GroupDetailScreen extends ConsumerWidget {
                           );
                           if (confirm == true) {
                             try {
-                               await ref
+                              await ref
                                   .read(groupProvider.notifier)
                                   .deleteGroup(groupId);
                               if (context.mounted) {
                                 context.go('/');
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Group deleted successfully'),
-                                    backgroundColor: AppColors.success,
-                                  ),
+                                AppSnackBar.showSuccess(
+                                  context,
+                                  'Group deleted successfully',
                                 );
                               }
                             } catch (e) {
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Failed to delete group: $e'),
-                                    backgroundColor: AppColors.coralRed,
-                                  ),
+                                AppSnackBar.showError(
+                                  context,
+                                  'Failed to delete group. Only the group creator can delete a group.',
                                 );
                               }
                             }
@@ -1280,7 +1277,7 @@ class _AddMemberBottomSheetContentState
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: AppText(
-                    'Failed to load users: $err',
+                    ErrorHandler.getUserFriendlyMessage(err),
                     color: AppColors.white,
                   ),
                 ),
