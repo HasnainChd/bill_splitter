@@ -190,6 +190,9 @@ class PushNotificationService {
         }
       }
 
+      await FirebaseMessaging.instance
+          .subscribeToTopic('equally_all_users');
+
       // 7. Handle Background/Terminated Taps
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
         debugPrint('🔔 PushNotificationService: Notification tapped in background.');

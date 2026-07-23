@@ -40,6 +40,31 @@ serve(async (req) => {
       return new Response("No record found in payload", { status: 400 });
     }
 
+    if (table === "broadcast") {
+      if (messaging) {
+        await messaging.send({
+          topic: 'equally_all_users',
+          notification: {
+            title: record.title,
+            body: record.body,
+          },
+          android: {
+            notification: {
+              channelId: 'equally_notifications',
+              priority: 'high',
+            }
+          }
+        });
+        return new Response(JSON.stringify({ success: true, message: "Broadcast sent" }), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        });
+      } else {
+        console.log("Firebase Messaging not initialized (credentials missing). Broadcast payload:", record);
+        return new Response("Firebase Messaging not initialized", { status: 500 });
+      }
+    }
+
     const groupId = record.group_id;
     if (!groupId) {
       return new Response("No group_id found in record", { status: 400 });
@@ -59,56 +84,75 @@ serve(async (req) => {
 
     // 2. Determine initiator and title/body of notification
     let initiatorId = "";
-    let title = "Group Update";
-    let body = "A change has occurred in your group.";
+    let title = record.title || `Group Update`;
+    let body = record.body || `A change has occurred in ${group.name}.`;
 
     if (table === "expenses") {
       initiatorId = record.paid_by;
-      const expenseTitle = record.description || "Expense";
+      const expenseTitle = record.title || record.description || "Expense";
       const expenseAmount = Number(record.amount || 0).toFixed(0);
       const currency = group.currency || "PKR";
 
       if (operation === "INSERT") {
         const isSettlement = expenseTitle === 'Settle Payment' || expenseTitle === 'Payment';
         if (isSettlement) {
-          title = `Payment in ${group.name}`;
-          body = `{initiator} paid ${currency} ${expenseAmount} to settle up.`;
+          title = "✅ Payment Received";
+          body = `{initiator} marked ${currency} ${expenseAmount} as paid in ${group.name}`;
         } else {
           title = `New Expense in ${group.name}`;
-          body = `{initiator} added '${expenseTitle}' of ${currency} ${expenseAmount}.`;
+          body = `{initiator} added ${expenseTitle} · ${currency} ${expenseAmount} total`;
         }
       } else if (operation === "UPDATE") {
         title = `Expense Updated in ${group.name}`;
-        body = `{initiator} updated '${expenseTitle}'.`;
+        body = `{initiator} updated ${expenseTitle} in ${group.name}`;
       } else if (operation === "DELETE") {
         title = `Expense Deleted in ${group.name}`;
-        body = `{initiator} deleted expense '${expenseTitle}'.`;
+        body = `{initiator} deleted ${expenseTitle} in ${group.name}`;
       }
     } else if (table === "group_members") {
-      initiatorId = record.user_id;
+      // added_by = person who did the adding (actor)
+      // user_id = person being added (recipient)
+      // If added_by exists use it, otherwise fall back 
+      // to user_id (when someone joins via invite themselves)
+      initiatorId = record.added_by || record.user_id;
+
       if (operation === "INSERT") {
+        // Skip notification if this is the creator's own row
+        if (record.is_creator === true) {
+          return new Response(
+            JSON.stringify({ skipped: true, reason: 'creator_insert' }), 
+            { status: 200 }
+          );
+        }
+
+        // If person added themselves (via invite code):
+        // added_by === user_id, so notification body differs
+        const addedThemselves = record.added_by === record.user_id;
         title = `New Member in ${group.name}`;
-        body = `{initiator} joined the group!`;
+        body = addedThemselves
+          ? `{initiator} joined ${group.name}`
+          : `{initiator} added you to ${group.name}`;
       } else if (operation === "DELETE") {
-        title = `Member Left ${group.name}`;
-        body = `{initiator} left the group.`;
+        initiatorId = record.user_id; // person who left
+        title = `${group.name}`;
+        body = `{initiator} has left the group`;
       }
     } else if (table === "requests") {
       initiatorId = record.user_id;
       title = `Payment Request in ${group.name}`;
-      body = `{initiator} has requested to settle up in ${group.name}.`;
+      body = `{initiator} requested to settle up in ${group.name}`;
     } else if (table === "payment_reminders") {
       initiatorId = record.sender_id;
       const amount = Number(record.amount || 0).toFixed(0);
       const currency = record.currency || group.currency || "PKR";
-      title = `Payment Reminder in ${group.name}`;
-      body = `{initiator} sent you a payment reminder for ${currency} ${amount} in ${group.name}.`;
+      title = `💰 Reminder from {initiator}`;
+      body = `You owe ${currency} ${amount} in ${group.name}. Tap to settle up.`;
     } else if (table === "settlements") {
       initiatorId = record.sender_id;
       const amount = Number(record.amount || 0).toFixed(0);
       const currency = record.currency || group.currency || "PKR";
-      title = `{initiator} settled up`;
-      body = `{initiator} marked ${currency} ${amount} as paid`;
+      title = "✅ Payment Received";
+      body = `{initiator} marked ${currency} ${amount} as paid in ${group.name}`;
     }
 
     // 3. Resolve Initiator Full Name
@@ -144,9 +188,11 @@ serve(async (req) => {
     } else if (record.target_user_id) {
       memberIds = [record.target_user_id];
     } else {
-      memberIds = members
-        .map((m) => m.user_id)
-        .filter((id) => id !== initiatorId);
+      memberIds = members.map((m) => m.user_id);
+    }
+
+    if (initiatorId) {
+      memberIds = memberIds.filter((id) => id !== initiatorId);
     }
 
     if (memberIds.length === 0) {

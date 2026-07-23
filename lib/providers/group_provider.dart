@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../core/models/group.dart';
 import '../core/utils/date_helper.dart';
+import '../core/utils/error_handler.dart';
 import 'auth_provider.dart';
 import 'expense_provider.dart';
 import 'profile_provider.dart';
@@ -194,10 +195,10 @@ class GroupNotifier extends StateNotifier<GroupState> {
 
       // 2. Insert members into group_members (creator + other members)
       final List<Map<String, dynamic>> memberRows = [
-        {'group_id': groupId, 'user_id': user.id},
+        {'group_id': groupId, 'user_id': user.id, 'added_by': user.id, 'is_creator': true},
         ...members
             .where((mId) => mId != user.id)
-            .map((mId) => {'group_id': groupId, 'user_id': mId}),
+            .map((mId) => {'group_id': groupId, 'user_id': mId, 'added_by': user.id, 'is_creator': false}),
       ];
       await _supabase.from('group_members').insert(memberRows);
 
@@ -230,9 +231,11 @@ class GroupNotifier extends StateNotifier<GroupState> {
   // Add a member to an existing group
   Future<void> addMemberToGroup(String groupId, String userId) async {
     try {
+      final actorId = _supabase.auth.currentUser?.id;
       await _supabase.from('group_members').insert({
         'group_id': groupId,
         'user_id': userId,
+        'added_by': actorId,
       });
 
       // Insert join event into group_notifications table
@@ -250,7 +253,8 @@ class GroupNotifier extends StateNotifier<GroupState> {
       await loadGroups();
     } catch (e) {
       if (!mounted) return;
-      state = state.copyWith(error: 'Failed to add member: $e');
+      state = state.copyWith(
+          error: ErrorHandler.getUserFriendlyMessage(e));
       rethrow;
     }
   }
@@ -280,7 +284,8 @@ class GroupNotifier extends StateNotifier<GroupState> {
       await loadGroups();
     } catch (e) {
       if (!mounted) return;
-      state = state.copyWith(error: 'Failed to remove member: $e');
+      state = state.copyWith(
+          error: ErrorHandler.getUserFriendlyMessage(e));
       rethrow;
     }
   }
@@ -312,7 +317,8 @@ class GroupNotifier extends StateNotifier<GroupState> {
       await box.put(updatedGroup.groupId, updatedGroup);
     } catch (e) {
       if (!mounted) return;
-      state = state.copyWith(error: 'Failed to update group: $e');
+      state = state.copyWith(
+          error: ErrorHandler.getUserFriendlyMessage(e));
       rethrow;
     }
   }
@@ -320,7 +326,18 @@ class GroupNotifier extends StateNotifier<GroupState> {
   // Delete a group
   Future<void> deleteGroup(String groupId) async {
     try {
-      await _supabase.from('groups').delete().eq('id', groupId);
+      final response = await _supabase
+          .from('groups')
+          .delete()
+          .eq('id', groupId)
+          .select();
+
+      if (response.isEmpty) {
+        throw Exception(
+          'Failed to delete group. You may not have permission, '
+          'or the group no longer exists.'
+        );
+      }
 
       final updatedGroups =
           state.groups.where((group) => group.groupId != groupId).toList();
@@ -332,7 +349,8 @@ class GroupNotifier extends StateNotifier<GroupState> {
       await box.delete(groupId);
     } catch (e) {
       if (!mounted) return;
-      state = state.copyWith(error: 'Failed to delete group: $e');
+      state = state.copyWith(
+          error: ErrorHandler.getUserFriendlyMessage(e));
       rethrow;
     }
   }
@@ -395,6 +413,7 @@ class GroupNotifier extends StateNotifier<GroupState> {
       await _supabase.from('group_members').insert({
         'group_id': groupId,
         'user_id': currentUser.id,
+        'added_by': currentUser.id,
       });
 
       // Insert join event into group_notifications
