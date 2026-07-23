@@ -125,9 +125,8 @@ serve(async (req) => {
           );
         }
 
-        // If person added themselves (via invite code):
-        // added_by === user_id, so notification body differs
-        const addedThemselves = record.added_by === record.user_id;
+        // If person added themselves (via invite code) or added_by is missing:
+        const addedThemselves = !record.added_by || record.added_by === record.user_id;
         title = `New Member in ${group.name}`;
         body = addedThemselves
           ? `{initiator} joined ${group.name}`

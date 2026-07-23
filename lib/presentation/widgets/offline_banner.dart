@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/providers/connectivity_provider.dart';
 import '../../core/router/app_router.dart';
@@ -22,6 +23,7 @@ class _OfflineBannerState extends ConsumerState<OfflineBanner>
   Timer? _onlineTimer;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  ProviderSubscription? _subscription;
 
   @override
   void initState() {
@@ -36,10 +38,70 @@ class _OfflineBannerState extends ConsumerState<OfflineBanner>
         curve: Curves.easeInOut,
       ),
     );
+
+    _checkInitialConnectivity();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _subscription = ref.listenManual<AsyncValue<bool>>(
+        connectivityProvider,
+        (previous, next) {
+          next.whenData((isOnline) {
+            if (!isOnline) {
+              _onlineTimer?.cancel();
+              if (mounted) {
+                setState(() {
+                  _isOffline = true;
+                  _wasOffline = true;
+                  _showBackOnline = false;
+                });
+              }
+            } else if (_wasOffline) {
+              if (mounted) {
+                setState(() {
+                  _isOffline = false;
+                  _showBackOnline = true;
+                });
+              }
+              _onlineTimer?.cancel();
+              _onlineTimer = Timer(const Duration(seconds: 2), () {
+                if (mounted) {
+                  setState(() {
+                    _showBackOnline = false;
+                    _wasOffline = false;
+                  });
+                }
+              });
+            } else {
+              if (mounted) {
+                setState(() {
+                  _isOffline = false;
+                  _showBackOnline = false;
+                });
+              }
+            }
+          });
+        },
+      );
+    });
+  }
+
+  Future<void> _checkInitialConnectivity() async {
+    try {
+      final result = await Connectivity().checkConnectivity();
+      final isOnline =
+          result.isNotEmpty && !result.contains(ConnectivityResult.none);
+      if (!isOnline && mounted) {
+        setState(() {
+          _isOffline = true;
+          _wasOffline = true;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
   void dispose() {
+    _subscription?.close();
     _onlineTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
@@ -62,42 +124,6 @@ class _OfflineBannerState extends ConsumerState<OfflineBanner>
     if (isOnSplashScreen) {
       return const SizedBox.shrink();
     }
-
-    // Listen to the connectivity changes
-    ref.listen<AsyncValue<bool>>(connectivityProvider, (previous, next) {
-      next.whenData((isOnline) {
-        if (!isOnline) {
-          _onlineTimer?.cancel();
-          setState(() {
-            _isOffline = true;
-            _wasOffline = true;
-            _showBackOnline = false;
-          });
-        } else {
-          if (_wasOffline) {
-            setState(() {
-              _isOffline = false;
-              _showBackOnline = true;
-            });
-            // Show "Back online" banner briefly for 2 seconds, then hide
-            _onlineTimer?.cancel();
-            _onlineTimer = Timer(const Duration(seconds: 2), () {
-              if (mounted) {
-                setState(() {
-                  _showBackOnline = false;
-                  _wasOffline = false;
-                });
-              }
-            });
-          } else {
-            setState(() {
-              _isOffline = false;
-              _showBackOnline = false;
-            });
-          }
-        }
-      });
-    });
 
     final statusBarHeight = MediaQuery.of(context).padding.top;
     final isVisible = _isOffline || _showBackOnline;
