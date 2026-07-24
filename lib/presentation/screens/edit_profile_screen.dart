@@ -181,20 +181,47 @@ class EditProfileScreen extends ConsumerWidget {
       try {
         final supabase = Supabase.instance.client;
         final user = supabase.auth.currentUser;
-        if (user != null) {
-          // Delete from public.users (relies on RLS allowing delete for own user)
-          await supabase.from('users').delete().eq('id', user.id);
-          await supabase.auth.signOut();
-          
-          if (context.mounted) {
-            Navigator.pop(context); // pop loading dialog
-            context.go('/login');
+        if (user == null) throw Exception('No user found');
+
+        final token = supabase.auth.currentSession?.accessToken;
+
+        // Call delete-user Edge Function
+        final response = await supabase.functions.invoke(
+          'delete-user',
+          headers: {
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+        );
+
+        if (response.status != 200) {
+          final errorData = response.data;
+          String errorMsg = 'Failed to delete account';
+          if (errorData is Map && errorData.containsKey('error')) {
+            errorMsg = errorData['error'].toString();
+          } else if (errorData != null) {
+            errorMsg = errorData.toString();
           }
+          throw Exception(errorMsg);
+        }
+
+        // Clear local cache and sign out
+        await supabase.auth.signOut();
+
+        if (context.mounted) {
+          Navigator.pop(context); // pop loading dialog
+          context.go('/login');
+          AppSnackBar.showSuccess(
+            context,
+            'Your account has been permanently deleted.',
+          );
         }
       } catch (e) {
         if (context.mounted) {
           Navigator.pop(context); // pop loading dialog
-          AppSnackBar.showError(context, ErrorHandler.getUserFriendlyMessage(e));
+          AppSnackBar.showError(
+            context,
+            ErrorHandler.getUserFriendlyMessage(e),
+          );
         }
       }
     }
