@@ -14,3 +14,7 @@
 -keep class com.google.android.play.core.splitinstall.** { *; }
 -keep class com.google.android.play.core.tasks.** { *; }
 -dontwarn com.google.android.play.core.**
+
+# ML Kit Text Recognition rules
+-keep class com.google.mlkit.vision.text.** { *; }
+-dontwarn com.google.mlkit.vision.text.**
