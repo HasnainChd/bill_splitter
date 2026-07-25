@@ -1,9 +1,14 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:media_store_plus/media_store_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:printing/printing.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/expense.dart';
 import '../../core/models/group.dart';
@@ -21,6 +26,7 @@ import '../../core/router/app_router.dart';
 import '../../providers/settings_provider.dart';
 import '../../core/utils/group_icon_helper.dart';
 import '../../core/utils/app_date_formatter.dart';
+import '../../core/services/expense_pdf_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/screen_providers.dart';
 
@@ -642,14 +648,11 @@ class ExpenseDetailScreen extends ConsumerWidget {
                             AppCard(
                               padding: EdgeInsets.all(16.w),
                               onTap: () {
-                                _showDigitalReceipt(
-                                  context,
-                                  expense,
-                                  memberMap,
-                                  currentUserId ?? '',
-                                  payerName,
-                                  currencyCode,
-                                  activeDateFormat,
+                                _previewPdf(
+                                  context: context,
+                                  expense: expense,
+                                  memberMap: memberMap,
+                                  payerName: payerName,
                                 );
                               },
                               child: Row(
@@ -690,11 +693,24 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                       ],
                                     ),
                                   ),
-                                  Icon(
-                                    Icons.download_rounded,
-                                    color:
-                                        AppColors.white.withValues(alpha: 0.4),
-                                    size: 20.sp,
+                                  GestureDetector(
+                                    onTap: () {
+                                      _downloadPdfDirect(
+                                        context: context,
+                                        expense: expense,
+                                        memberMap: memberMap,
+                                        payerName: payerName,
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: EdgeInsets.all(4.w),
+                                      child: Icon(
+                                        Icons.download_rounded,
+                                        color: AppColors.white
+                                            .withValues(alpha: 0.6),
+                                        size: 22.sp,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -928,6 +944,180 @@ class ExpenseDetailScreen extends ConsumerWidget {
     );
   }
 
+  static Future<Uint8List> _generatePdfBytes({
+    required Expense expense,
+    required Map<String, String> memberMap,
+    required Map<String, double> displayedSplitAmounts,
+    required String payerName,
+  }) async {
+    final List<Map<String, dynamic>> splitsList =
+        expense.splitAmong.entries.map((e) {
+      final name = memberMap[e.key] ?? 'Unknown';
+      final amt = displayedSplitAmounts[e.key] ?? e.value;
+      return {
+        'name': name,
+        'amount': amt,
+      };
+    }).toList();
+
+    return await ExpensePdfService.generateExpensePdf(
+      expense: expense,
+      paidByName: payerName,
+      splits: splitsList,
+      categoryName: ExpenseNotifier.getCategoryName(
+          expense.categoryIconCodePoint),
+    );
+  }
+
+  static Map<String, double> _calculateDisplayedSplits(Expense expense) {
+    final Map<String, double> displayedSplitAmounts = {};
+    final keys = expense.splitAmong.keys.toList();
+    String? lastParticipatingMemberId;
+    for (int i = keys.length - 1; i >= 0; i--) {
+      final key = keys[i];
+      final owed = expense.splitAmong[key] ?? 0.0;
+      if (owed.abs() > 0.0001) {
+        lastParticipatingMemberId = key;
+        break;
+      }
+    }
+
+    double sumOfOthers = 0.0;
+    for (final key in keys) {
+      final rawAmt = expense.splitAmong[key] ?? 0.0;
+      if (key == lastParticipatingMemberId) {
+        continue;
+      }
+      final rounded = double.parse(rawAmt.toStringAsFixed(2));
+      displayedSplitAmounts[key] = rounded;
+      if (rawAmt.abs() > 0.0001) {
+        sumOfOthers += rounded;
+      }
+    }
+
+    if (lastParticipatingMemberId != null) {
+      displayedSplitAmounts[lastParticipatingMemberId] = double.parse(
+          (expense.amount - sumOfOthers).toStringAsFixed(2));
+    }
+    return displayedSplitAmounts;
+  }
+
+  static Future<void> _previewPdf({
+    required BuildContext context,
+    required Expense expense,
+    required Map<String, String> memberMap,
+    required String payerName,
+  }) async {
+    try {
+      final splits = _calculateDisplayedSplits(expense);
+      final pdfBytes = await _generatePdfBytes(
+        expense: expense,
+        memberMap: memberMap,
+        displayedSplitAmounts: splits,
+        payerName: payerName,
+      );
+      final cleanTitle = expense.title
+          .replaceAll(RegExp(r'[^\w\s\-]'), '')
+          .replaceAll(' ', '_');
+      final fileName =
+          'equally_${cleanTitle}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+
+      await Printing.layoutPdf(
+        onLayout: (_) async => pdfBytes,
+        name: fileName,
+      );
+    } catch (e) {
+      if (context.mounted) {
+        AppSnackBar.showError(
+          context,
+          ErrorHandler.getUserFriendlyMessage(e),
+        );
+      }
+    }
+  }
+
+  static Future<String?> _savePdfToPublicStorage({
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    final tempDir = await getTemporaryDirectory();
+    final tempFile = File('${tempDir.path}/$fileName.pdf');
+    await tempFile.writeAsBytes(bytes);
+
+    if (Platform.isAndroid) {
+      final MediaStore mediaStore = MediaStore();
+      final SaveInfo? saveInfo = await mediaStore.saveFile(
+        tempFilePath: tempFile.path,
+        dirType: DirType.download,
+        dirName: DirName.download,
+      );
+      debugPrint(
+          '[MediaStore Debug] saveInfo: isSuccessful=${saveInfo?.isSuccessful}, uri=${saveInfo?.uri}');
+      if (saveInfo != null && saveInfo.isSuccessful) {
+        return saveInfo.uri.toString();
+      }
+      return null;
+    } else {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final targetFile = File('${docsDir.path}/$fileName.pdf');
+      await targetFile.writeAsBytes(bytes);
+      return targetFile.path;
+    }
+  }
+
+  static Future<void> _downloadPdfDirect({
+    required BuildContext context,
+    required Expense expense,
+    required Map<String, String> memberMap,
+    required String payerName,
+  }) async {
+    try {
+      final splits = _calculateDisplayedSplits(expense);
+      final pdfBytes = await _generatePdfBytes(
+        expense: expense,
+        memberMap: memberMap,
+        displayedSplitAmounts: splits,
+        payerName: payerName,
+      );
+      final cleanTitle = expense.title
+          .replaceAll(RegExp(r'[^\w\s\-]'), '')
+          .replaceAll(' ', '_');
+      final fileName =
+          'equally_${cleanTitle}_${DateTime.now().millisecondsSinceEpoch}';
+
+      final String? savedPath = await _savePdfToPublicStorage(
+        fileName: fileName,
+        bytes: pdfBytes,
+      );
+
+      debugPrint('PDF Save Result Path: $savedPath');
+
+      if (context.mounted) {
+        if (savedPath != null && savedPath.isNotEmpty) {
+          AppSnackBar.showSuccess(
+            context,
+            'PDF saved to Downloads',
+          );
+        } else {
+          AppSnackBar.showError(
+            context,
+            'Failed to save PDF file',
+          );
+        }
+      }
+    } catch (e, stackTrace) {
+      debugPrint('[PDF DOWNLOAD ERROR] Exception: $e');
+      debugPrint('[PDF DOWNLOAD ERROR] StackTrace:\n$stackTrace');
+      if (context.mounted) {
+        AppSnackBar.showError(
+          context,
+          'PDF Error: ${e.toString()}',
+        );
+      }
+    }
+  }
+
+  // ignore: unused_element
   void _showDigitalReceipt(
     BuildContext context,
     Expense expense,
@@ -1168,14 +1358,60 @@ class ExpenseDetailScreen extends ConsumerWidget {
                                     setState(() {
                                       isDownloading = true;
                                     });
-                                    await Future.delayed(
-                                        const Duration(milliseconds: 1500));
-                                    if (context.mounted) {
-                                      Navigator.pop(context);
-                                      AppSnackBar.showSuccess(
-                                        context,
-                                        'PDF Receipt Download: Feature coming soon!',
+                                    try {
+                                      final pdfBytes = await _generatePdfBytes(
+                                        expense: expense,
+                                        memberMap: memberMap,
+                                        displayedSplitAmounts: displayedSplitAmounts,
+                                        payerName: payerName,
                                       );
+
+                                      final cleanTitle = expense.title
+                                          .replaceAll(RegExp(r'[^\w\s\-]'), '')
+                                          .replaceAll(' ', '_');
+                                      final fileName =
+                                          'equally_${cleanTitle}_${DateTime.now().millisecondsSinceEpoch}';
+
+                                      final String? savedPath =
+                                          await _savePdfToPublicStorage(
+                                        fileName: fileName,
+                                        bytes: pdfBytes,
+                                      );
+
+                                      debugPrint(
+                                          'Modal PDF Save Result Path: $savedPath');
+
+                                      if (context.mounted) {
+                                        Navigator.pop(context); // Close modal
+
+                                        if (savedPath != null &&
+                                            savedPath.isNotEmpty) {
+                                          AppSnackBar.showSuccess(
+                                            context,
+                                            'PDF saved to Downloads',
+                                          );
+                                        } else {
+                                          AppSnackBar.showError(
+                                            context,
+                                            'Failed to save PDF file',
+                                          );
+                                        }
+                                      }
+                                    } catch (e, stackTrace) {
+                                      debugPrint('[MODAL PDF DOWNLOAD ERROR] Exception: $e');
+                                      debugPrint('[MODAL PDF DOWNLOAD ERROR] StackTrace:\n$stackTrace');
+                                      if (context.mounted) {
+                                        AppSnackBar.showError(
+                                          context,
+                                          'PDF Error: ${e.toString()}',
+                                        );
+                                      }
+                                    } finally {
+                                      if (context.mounted) {
+                                        setState(() {
+                                          isDownloading = false;
+                                        });
+                                      }
                                     }
                                   },
                             child: isDownloading

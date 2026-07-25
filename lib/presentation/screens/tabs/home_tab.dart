@@ -22,6 +22,7 @@ import '../../../core/utils/app_snackbar.dart';
 import '../../../core/utils/error_handler.dart';
 import '../../../core/utils/financial_calculator.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../core/services/receipt_scanner_service.dart';
 
 class HomeTab extends ConsumerWidget {
   const HomeTab({super.key});
@@ -1045,19 +1046,40 @@ class HomeTab extends ConsumerWidget {
         builder: (context) => const _ReceiptProcessingDialog(),
       );
 
-      await Future.delayed(const Duration(milliseconds: 2500));
+      final scanner = ReceiptScannerService();
+      final result = await scanner.scanReceipt(file.path);
+      scanner.dispose();
 
       if (!context.mounted) return;
       Navigator.pop(context); // Close dialog
 
+      if (!result.hasAmount && context.mounted) {
+        AppSnackBar.showError(
+          context,
+          'Could not extract amount from receipt. Please enter manually.',
+        );
+      }
+
+      if (!context.mounted) return;
       context.push(AppRouter.addExpense, extra: {
         'group': defaultGroup,
-        'scannedAmount': '',
-        'scannedTitle': '',
+        'scannedAmount': result.hasAmount
+            ? (result.extractedAmount! % 1 == 0
+                ? result.extractedAmount!.toStringAsFixed(0)
+                : result.extractedAmount!.toStringAsFixed(2))
+            : '',
+        'scannedTitle': result.hasTitle ? result.extractedTitle : '',
         'scannedImagePath': file.path,
       });
     } catch (e) {
       debugPrint('Error scanning receipt: $e');
+      if (context.mounted) {
+        Navigator.pop(context); // Close dialog if open
+        AppSnackBar.showError(
+          context,
+          'Failed to scan receipt. Please try again or enter manually.',
+        );
+      }
     }
   }
 
@@ -1201,8 +1223,8 @@ class HomeTab extends ConsumerWidget {
                             debugPrint(
                                 'Failed to send request notification: $e');
                             if (context.mounted) {
-                              AppSnackBar.showError(
-                                  context, ErrorHandler.getUserFriendlyMessage(e));
+                              AppSnackBar.showError(context,
+                                  ErrorHandler.getUserFriendlyMessage(e));
                             }
                           }
 
@@ -1257,10 +1279,10 @@ class _ReceiptProcessingDialog extends StatefulWidget {
 class _ReceiptProcessingDialogState extends State<_ReceiptProcessingDialog> {
   int _currentStep = 0;
   final List<String> _steps = [
-    'Uploading receipt...',
-    'Preparing attachment...',
-    'Linking to new expense...',
-    'Receipt uploaded successfully!'
+    'Scanning receipt...',
+    'Reading text with ML Kit...',
+    'Extracting amount...',
+    'Receipt scanned successfully!'
   ];
 
   @override
@@ -1312,7 +1334,7 @@ class _ReceiptProcessingDialogState extends State<_ReceiptProcessingDialog> {
             ),
             SizedBox(height: 24.h),
             const AppText(
-              'Uploading Receipt',
+              'Scanning Receipt',
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: AppColors.white,

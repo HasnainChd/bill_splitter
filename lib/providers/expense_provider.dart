@@ -109,7 +109,7 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
   }
 
   // Helper mapping from icon code points to backend category names
-  static String _getCategoryName(int codePoint) {
+  static String getCategoryName(int codePoint) {
     if (codePoint == Icons.restaurant_rounded.codePoint) return 'Food';
     if (codePoint == Icons.flight_takeoff_rounded.codePoint) return 'Travel';
     if (codePoint == Icons.home_rounded.codePoint) return 'Rent';
@@ -322,7 +322,7 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
             'amount': amount,
             'currency': currency,
             'description': title,
-            'category': _getCategoryName(categoryIconCodePoint),
+            'category': getCategoryName(categoryIconCodePoint),
             'date': (date ?? DateTime.now()).toUtc().toIso8601String(),
             'split_type': splitType,
             'notes': notes,
@@ -380,7 +380,7 @@ class ExpenseNotifier extends StateNotifier<ExpenseState> {
             'amount': updatedExpense.amount,
             'currency': updatedExpense.currency,
             'description': updatedExpense.title,
-            'category': _getCategoryName(updatedExpense.categoryIconCodePoint),
+            'category': getCategoryName(updatedExpense.categoryIconCodePoint),
             'paid_by': updatedExpense.paidBy,
             'split_type': updatedExpense.splitType,
             'date': updatedExpense.date.toUtc().toIso8601String(),

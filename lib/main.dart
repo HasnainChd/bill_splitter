@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:media_store_plus/media_store_plus.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +23,11 @@ import 'presentation/widgets/offline_banner.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (Platform.isAndroid) {
+    MediaStore.appFolder = "Equally";
+    await MediaStore.ensureInitialized();
+  }
 
   FirebaseAnalytics? analytics;
   try {

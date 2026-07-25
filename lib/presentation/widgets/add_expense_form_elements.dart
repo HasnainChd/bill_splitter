@@ -96,18 +96,63 @@ class NotesField extends ConsumerWidget {
 class ReceiptAttachmentPicker extends ConsumerWidget {
   const ReceiptAttachmentPicker({super.key});
 
+  void _showImageViewer(BuildContext context, File? file, String? url) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Center(
+                  child: file != null
+                      ? Image.file(file)
+                      : (url != null
+                          ? Image.network(url)
+                          : const SizedBox.shrink()),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 40.h,
+              right: 16.w,
+              child: Material(
+                color: Colors.black54,
+                shape: const CircleBorder(),
+                child: IconButton(
+                  icon: const Icon(Icons.close_rounded,
+                      color: Colors.white, size: 26),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final file = ref.watch(aeReceiptFileProvider);
     final url = ref.watch(aeReceiptUrlProvider);
+    final hasReceipt = file != null || url != null;
 
     return GestureDetector(
       onTap: () async {
-        final ImagePicker picker = ImagePicker();
-        final XFile? image = await picker.pickImage(
-            source: ImageSource.gallery, imageQuality: 70);
-        if (image != null) {
-          ref.read(aeReceiptFileProvider.notifier).state = File(image.path);
+        if (hasReceipt) {
+          _showImageViewer(context, file, url);
+        } else {
+          final ImagePicker picker = ImagePicker();
+          final XFile? image = await picker.pickImage(
+              source: ImageSource.gallery, imageQuality: 70);
+          if (image != null) {
+            ref.read(aeReceiptFileProvider.notifier).state = File(image.path);
+          }
         }
       },
       child: Container(
@@ -122,8 +167,20 @@ class ReceiptAttachmentPicker extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.receipt_long_rounded,
-                color: AppColors.white.withValues(alpha: 0.5), size: 24.sp),
+            if (hasReceipt)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8.r),
+                child: SizedBox(
+                  width: 44.w,
+                  height: 44.w,
+                  child: file != null
+                      ? Image.file(file, fit: BoxFit.cover)
+                      : Image.network(url!, fit: BoxFit.cover),
+                ),
+              )
+            else
+              Icon(Icons.receipt_long_rounded,
+                  color: AppColors.white.withValues(alpha: 0.5), size: 24.sp),
             SizedBox(width: 12.w),
             Expanded(
               child: Column(
@@ -138,9 +195,9 @@ class ReceiptAttachmentPicker extends ConsumerWidget {
                   SizedBox(height: 4.h),
                   AppText(
                     file != null
-                        ? 'Image selected'
+                        ? 'Image selected • Tap to view'
                         : url != null
-                            ? 'Existing receipt attached'
+                            ? 'Receipt attached • Tap to view'
                             : 'Tap to upload (optional)',
                     fontSize: 13,
                     color: AppColors.white.withValues(alpha: 0.5),
@@ -148,7 +205,7 @@ class ReceiptAttachmentPicker extends ConsumerWidget {
                 ],
               ),
             ),
-            if (file != null || url != null)
+            if (hasReceipt)
               GestureDetector(
                 onTap: () {
                   ref.read(aeReceiptFileProvider.notifier).state = null;
