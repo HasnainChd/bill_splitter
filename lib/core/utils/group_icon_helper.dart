@@ -59,6 +59,16 @@ class GroupIconHelper {
     GroupIconItem(title: 'Party', icon: Icons.celebration_rounded, category: 'Life'),
   ];
 
+  static final Map<int, IconData> _codePointToIcon = Map.fromEntries(
+    allIcons.map((item) => MapEntry(item.icon.codePoint, item.icon)),
+  );
+
+  /// Safe icon lookup — returns const IconData from predefined list, never constructs dynamic IconData
+  static IconData getIconFromCodePoint(int codePoint,
+      {IconData fallback = Icons.group_rounded}) {
+    return _codePointToIcon[codePoint] ?? fallback;
+  }
+
   // Parses raw group name to get clean group name
   static String getCleanGroupName(String rawName) {
     final match = RegExp(r'^(.*?)\s*\[icon:(\d+)\]\s*$').firstMatch(rawName);
@@ -71,9 +81,9 @@ class GroupIconHelper {
   // Gets correct IconData, prioritizing database columns iconCodePoint and iconFontFamily
   static IconData getIconForGroup(Group group) {
     if (group.iconCodePoint != null) {
-      return IconData(
+      return getIconFromCodePoint(
         group.iconCodePoint!,
-        fontFamily: group.iconFontFamily ?? 'MaterialIcons',
+        fallback: Icons.group_rounded,
       );
     }
     return getGroupIcon(group.name);
@@ -91,8 +101,8 @@ class GroupIconHelper {
             return item.icon;
           }
         }
-        // Fallback to IconData constructed from codePoint if valid
-        return IconData(codePoint, fontFamily: 'MaterialIcons');
+        // Fallback to safe icon lookup
+        return getIconFromCodePoint(codePoint);
       }
     }
 

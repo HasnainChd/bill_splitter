@@ -103,8 +103,8 @@ class CreateGroupScreen extends ConsumerWidget {
                               ],
                             ),
                             child: Icon(
-                              IconData(selectedIconCodePoint,
-                                  fontFamily: 'MaterialIcons'),
+                              GroupIconHelper.getIconFromCodePoint(
+                                  selectedIconCodePoint),
                               color: AppColors.white,
                               size: 40.sp,
                             ),

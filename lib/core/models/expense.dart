@@ -65,10 +65,27 @@ class Expense {
   });
 
   // Helper getter for IconData
-  IconData get categoryIcon => IconData(
-        categoryIconCodePoint,
-        fontFamily: 'MaterialIcons',
-      );
+  IconData get categoryIcon {
+    if (categoryIconCodePoint == Icons.restaurant_rounded.codePoint) {
+      return Icons.restaurant_rounded;
+    } else if (categoryIconCodePoint ==
+        Icons.flight_takeoff_rounded.codePoint) {
+      return Icons.flight_takeoff_rounded;
+    } else if (categoryIconCodePoint == Icons.home_rounded.codePoint) {
+      return Icons.home_rounded;
+    } else if (categoryIconCodePoint ==
+        Icons.shopping_cart_rounded.codePoint) {
+      return Icons.shopping_cart_rounded;
+    } else if (categoryIconCodePoint == Icons.bolt_rounded.codePoint) {
+      return Icons.bolt_rounded;
+    } else if (categoryIconCodePoint ==
+        Icons.theater_comedy_rounded.codePoint) {
+      return Icons.theater_comedy_rounded;
+    } else if (categoryIconCodePoint == Icons.local_pizza_rounded.codePoint) {
+      return Icons.local_pizza_rounded;
+    }
+    return Icons.receipt_rounded;
+  }
 
   // Helper factory to create Expense with IconData
   factory Expense.withIcon({

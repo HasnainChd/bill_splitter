@@ -14,6 +14,7 @@ import '../../../providers/settings_provider.dart';
 import '../../../providers/group_provider.dart';
 import '../../../providers/expense_provider.dart';
 import '../../../core/utils/financial_calculator.dart';
+import '../../../core/utils/group_icon_helper.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ProfileTab extends ConsumerWidget {
@@ -656,7 +657,9 @@ class ProfileTab extends ConsumerWidget {
             ),
             alignment: Alignment.center,
             child: Icon(
-              iconCodePoint != null ? IconData(iconCodePoint, fontFamily: 'MaterialIcons') : Icons.group_rounded,
+              iconCodePoint != null
+                  ? GroupIconHelper.getIconFromCodePoint(iconCodePoint)
+                  : Icons.group_rounded,
               color: AppColors.white,
               size: 20.sp,
             ),

@@ -219,8 +219,7 @@ class _StatsTabState extends ConsumerState<StatsTab> {
                                     ),
                                     alignment: Alignment.center,
                                     child: Icon(
-                                      IconData(exp.categoryIconCodePoint,
-                                          fontFamily: 'MaterialIcons'),
+                                      exp.categoryIcon,
                                       color: AppColors.white,
                                       size: 16.sp,
                                     ),
