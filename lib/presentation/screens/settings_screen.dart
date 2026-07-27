@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/profile_provider.dart';
 import '../../core/constants/app_colors.dart';
@@ -45,7 +45,6 @@ class SettingsScreen extends ConsumerWidget {
               padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
               child: Row(
                 children: [
-                  // Back Button (No border card)
                   Container(
                     width: 42.w,
                     height: 42.w,
@@ -96,89 +95,86 @@ class SettingsScreen extends ConsumerWidget {
                           'user@email.com';
 
                       return AppCard(
-                          padding: EdgeInsets.all(16.w),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 48.w,
-                                height: 48.w,
-                                decoration: BoxDecoration(
-                                  color: AppColors.onboardingViolet,
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  image: profile?.avatarUrl != null &&
-                                          profile!.avatarUrl.isNotEmpty
-                                      ? DecorationImage(
-                                          image:
-                                              NetworkImage(profile.avatarUrl),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : null,
-                                ),
-                                alignment: Alignment.center,
-                                child: profile?.avatarUrl == null ||
-                                        profile!.avatarUrl.isEmpty
-                                    ? AppText(
-                                        initials,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.white,
+                        padding: EdgeInsets.all(16.w),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48.w,
+                              height: 48.w,
+                              decoration: BoxDecoration(
+                                color: AppColors.onboardingViolet,
+                                borderRadius: BorderRadius.circular(12.r),
+                                image: profile?.avatarUrl != null &&
+                                        profile!.avatarUrl.isNotEmpty
+                                    ? DecorationImage(
+                                        image: NetworkImage(profile.avatarUrl),
+                                        fit: BoxFit.cover,
                                       )
                                     : null,
                               ),
-                              SizedBox(width: 14.w),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    AppText(
-                                      name,
+                              alignment: Alignment.center,
+                              child: profile?.avatarUrl == null ||
+                                      profile!.avatarUrl.isEmpty
+                                  ? AppText(
+                                      initials,
                                       fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.white,
-                                    ),
-                                    SizedBox(height: 4.h),
-                                    AppText(
-                                      email,
-                                      fontSize: 12,
-                                      color: AppColors.white
-                                          .withValues(alpha: 0.4),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Gold "PRO" Badge
-                              /*
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 8.w, vertical: 4.h),
-                                decoration: BoxDecoration(
-                                  color:
-                                      AppColors.orange.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(8.r),
-                                  border: Border.all(
-                                    color:
-                                        AppColors.orange.withValues(alpha: 0.4),
-                                    width: 1.2,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.bolt_rounded,
-                                        color: AppColors.orange, size: 12.sp),
-                                    SizedBox(width: 2.w),
-                                    const AppText(
-                                      'PRO',
-                                      fontSize: 10,
                                       fontWeight: FontWeight.w800,
-                                      color: AppColors.orange,
-                                    ),
-                                  ],
+                                      color: AppColors.white,
+                                    )
+                                  : null,
+                            ),
+                            SizedBox(width: 14.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  AppText(
+                                    name,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.white,
+                                  ),
+                                  SizedBox(height: 4.h),
+                                  AppText(
+                                    email,
+                                    fontSize: 12,
+                                    color:
+                                        AppColors.white.withValues(alpha: 0.4),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            /*
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 8.w, vertical: 4.h),
+                              decoration: BoxDecoration(
+                                color: AppColors.orange.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8.r),
+                                border: Border.all(
+                                  color: AppColors.orange.withValues(alpha: 0.4),
+                                  width: 1.2,
                                 ),
                               ),
-                              */
-                            ],
-                          ));
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.bolt_rounded,
+                                      color: AppColors.orange, size: 12.sp),
+                                  SizedBox(width: 2.w),
+                                  const AppText(
+                                    'PRO',
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.orange,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            */
+                          ],
+                        ),
+                      );
                     }),
                     SizedBox(height: 24.h),
 
@@ -373,14 +369,6 @@ class SettingsScreen extends ConsumerWidget {
                             ),
                             onTap: () => context.push(AppRouter.equalyPro),
                           ),
-                          _buildDivider(),
-                          _buildSettingsRowItem(
-                            icon: Icons.inventory_2_outlined,
-                            iconColor: AppColors.onboardingViolet,
-                            title: 'Manage Subscription',
-                            subtitle: 'Billing, cancel',
-                            onTap: () => context.push(AppRouter.equalyPro),
-                          ),
                         ],
                       ),
                     ),
@@ -415,11 +403,25 @@ class SettingsScreen extends ConsumerWidget {
                             title: 'Rate Equally',
                             onTap: () => _showRatingDialog(context),
                           ),
+                          _buildDivider(),
+                          _buildSettingsRowItem(
+                            icon: Icons.share_rounded,
+                            iconColor: AppColors.onboardingCyan,
+                            title: 'Share Equally App',
+                            subtitle: 'Invite friends to split bills',
+                            onTap: () {
+                              Share.share(
+                                'Check out Equally - split bills and expenses easily with friends!\n\n'
+                                'Download it here:\n'
+                                'https://play.google.com/store/apps/details?id=com.devorastudios.equally',
+                              );
+                            },
+                          ),
                           /*
                           _buildDivider(),
                           _buildSettingsRowItem(
                             icon: Icons.info_outline_rounded,
-                            iconColor: AppColors.onboardingCyan,
+                            iconColor: AppColors.onboardingViolet,
                             title: 'About & Legal',
                             subtitle: 'v2.4.1',
                             onTap: () => context.push(AppRouter.aboutLegal),
@@ -528,8 +530,7 @@ class SettingsScreen extends ConsumerWidget {
       color: Colors.white.withValues(alpha: 0.04),
       height: 1,
       thickness: 1,
-      indent: 68
-          .w, // indent to align with the start of row text (leading card is 36w + offsets)
+      indent: 68.w,
     );
   }
 
@@ -653,12 +654,21 @@ class SettingsScreen extends ConsumerWidget {
                           child: GestureDetector(
                             onTap: rating == 0
                                 ? null
-                                : () {
+                                : () async {
                                     Navigator.of(ctx).pop();
                                     AppSnackBar.showSuccess(
                                       context,
                                       'Thank you for rating us $rating stars!',
                                     );
+                                    if (rating >= 4) {
+                                      final playStoreUrl = Uri.parse(
+                                          'https://play.google.com/store/apps/details?id=com.devorastudios.equally');
+                                      try {
+                                        await launchUrl(playStoreUrl,
+                                            mode: LaunchMode
+                                                .externalApplication);
+                                      } catch (_) {}
+                                    }
                                   },
                             child: Container(
                               height: 52.h,
