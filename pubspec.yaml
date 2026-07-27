@@ -80,6 +80,8 @@ dependencies:
   local_auth: ^2.3.0
   package_info_plus: ^8.0.0
   connectivity_plus: ^6.0.3
+  app_links: ^6.3.4
+  shared_preferences: ^2.2.0
 
 dev_dependencies:
   flutter_test:

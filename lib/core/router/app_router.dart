@@ -34,6 +34,7 @@ import '../../presentation/screens/change_password_screen.dart';
 import '../../presentation/screens/report_bug_screen.dart';
 import '../../presentation/screens/about_legal_screen.dart';
 import '../../presentation/screens/lock_screen.dart';
+import '../../presentation/screens/join_group_screen.dart';
 
 import '../../presentation/screens/splash_screen.dart';
 
@@ -68,6 +69,7 @@ class AppRouter {
   static const String reportBug = '/reportBug';
   static const String aboutLegal = '/aboutLegal';
   static const String lockScreen = '/lockScreen';
+  static const String joinGroup = '/join/:code';
 
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -82,17 +84,19 @@ class AppRouter {
       final isForgotPassword = state.matchedLocation == forgotPassword;
       final isChangePassword = state.matchedLocation == changePassword;
       final isLockScreen = state.matchedLocation == lockScreen;
+      final isJoining = state.matchedLocation.startsWith('/join');
       final isOnboarding = state.matchedLocation == onboarding ||
           state.matchedLocation == walkthrough;
 
-      // Always allow splash, onboarding, auth, change password, and lock screens
+      // Always allow splash, onboarding, auth, change password, lock, and join screens
       if (isSplash ||
           isOnboarding ||
           isLoggingIn ||
           isRegistering ||
           isForgotPassword ||
           isChangePassword ||
-          isLockScreen) {
+          isLockScreen ||
+          isJoining) {
         return null;
       }
 
@@ -104,6 +108,14 @@ class AppRouter {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/join/:code',
+        name: 'joinGroup',
+        builder: (context, state) {
+          final code = state.pathParameters['code'] ?? '';
+          return JoinGroupScreen(inviteCode: code);
+        },
+      ),
       GoRoute(
         path: splash,
         name: 'splash',

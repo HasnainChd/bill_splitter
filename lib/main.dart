@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'package:app_links/app_links.dart';
 import 'package:media_store_plus/media_store_plus.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -6,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 
@@ -52,9 +55,17 @@ void main() async {
         AppRouter.router.go('${AppRouter.changePassword}?isRecovery=true');
       });
     } else if (data.event == AuthChangeEvent.signedIn) {
-      Future.delayed(const Duration(milliseconds: 300), () {
-        AppRouter.router.refresh();
-        AppRouter.router.go(AppRouter.home);
+      Future.delayed(const Duration(milliseconds: 300), () async {
+        final prefs = await SharedPreferences.getInstance();
+        final pendingCode = prefs.getString('pending_invite_code');
+        if (pendingCode != null && pendingCode.isNotEmpty) {
+          await prefs.remove('pending_invite_code');
+          AppRouter.router.refresh();
+          AppRouter.router.go('/join/$pendingCode');
+        } else {
+          AppRouter.router.refresh();
+          AppRouter.router.go(AppRouter.home);
+        }
       });
     } else if (data.event == AuthChangeEvent.signedOut) {
       Future.delayed(const Duration(milliseconds: 300), () {
@@ -95,6 +106,13 @@ void main() async {
         createdAt: DateTime.now().subtract(const Duration(days: 5)),
       ),
       Group(
+        groupId: 'pizza-night',
+        name: 'Pizza Night',
+        members: ['AJ', 'SC'],
+        currency: 'USD',
+        createdAt: DateTime.now().subtract(const Duration(days: 10)),
+      ),
+      Group(
         groupId: 'friday-dinner',
         name: 'Friday Dinner Crew',
         members: ['AJ', 'SC', 'MT', 'PP'],
@@ -118,16 +136,83 @@ void main() async {
   );
 }
 
-class BillSplitterApp extends ConsumerWidget {
+class BillSplitterApp extends ConsumerStatefulWidget {
   const BillSplitterApp({super.key, this.analytics});
 
   final FirebaseAnalytics? analytics;
+
+  @override
+  ConsumerState<BillSplitterApp> createState() => _BillSplitterAppState();
+}
+
+class _BillSplitterAppState extends ConsumerState<BillSplitterApp> {
+  late final AppLinks _appLinks;
+  StreamSubscription<Uri>? _linkSubscription;
 
   // Session-level flag to ensure the soft update is shown once per session only
   static bool _softUpdateChecked = false;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    _initDeepLinks();
+  }
+
+  Future<void> _initDeepLinks() async {
+    _appLinks = AppLinks();
+
+    // Listen for links when app is running (foreground/background)
+    _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
+      _handleIncomingLink(uri);
+    });
+
+    // Handle link when app is launched from cold start
+    try {
+      final initialLink = await _appLinks.getInitialLink();
+      if (initialLink != null) {
+        _handleIncomingLink(initialLink);
+      }
+    } catch (e) {
+      debugPrint('Error getting initial deep link: $e');
+    }
+  }
+
+  void _handleIncomingLink(Uri uri) {
+    debugPrint('Received deep link: $uri');
+    String? code;
+
+    // Handle https://devorastudios.dev/join/CODE
+    if (uri.host == 'devorastudios.dev' &&
+        uri.pathSegments.isNotEmpty &&
+        uri.pathSegments[0] == 'join' &&
+        uri.pathSegments.length > 1) {
+      code = uri.pathSegments[1];
+    }
+    // Handle equally://join/CODE or equally://devorastudios.dev/join/CODE
+    else if (uri.scheme == 'equally') {
+      if (uri.host == 'join' && uri.pathSegments.isNotEmpty) {
+        code = uri.pathSegments[0];
+      } else if (uri.pathSegments.isNotEmpty &&
+          uri.pathSegments[0] == 'join' &&
+          uri.pathSegments.length > 1) {
+        code = uri.pathSegments[1];
+      }
+    }
+
+    if (code != null && code.isNotEmpty) {
+      debugPrint('Deep link invite code: $code');
+      AppRouter.router.push('/join/$code');
+    }
+  }
+
+  @override
+  void dispose() {
+    _linkSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     ref.watch(authStateListenerProvider);
     ref.watch(pushNotificationServiceProvider);
 

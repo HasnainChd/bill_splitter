@@ -1,12 +1,12 @@
 import 'package:bill_splitter/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
-// import 'package:flutter/services.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-// import 'package:qr_flutter/qr_flutter.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/expense.dart';
 import '../../core/models/group.dart';
@@ -881,10 +881,10 @@ class GroupDetailScreen extends ConsumerWidget {
       );
     }
 
-    // final inviteUrl = 'https://devorastudios.dev/join/$inviteCode';
+    final inviteUrl = 'https://devorastudios.dev/join/$inviteCode';
     const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.devorastudios.equally';
     final shareMessage = 'Join my group "${group.name}" on Equally!\n'
-        'Invite code: $inviteCode\n\n'
+        'Invite link: $inviteUrl\n\n'
         'Don\'t have the app? Install it here:\n'
         '$playStoreUrl';
 
@@ -1009,7 +1009,6 @@ class GroupDetailScreen extends ConsumerWidget {
               ),
             ],
           ),
-          /*
           SizedBox(height: 8.h),
           // QR Code button
           SizedBox(
@@ -1041,13 +1040,11 @@ class GroupDetailScreen extends ConsumerWidget {
               ),
             ),
           ),
-          */
         ],
       ),
     );
   }
 
-  /*
   void _showQRCodeBottomSheet(BuildContext context, Group group, String inviteUrl, String inviteCode) {
     showModalBottomSheet(
       context: context,
@@ -1157,7 +1154,6 @@ class GroupDetailScreen extends ConsumerWidget {
       },
     );
   }
-  */
 }
 
 class _AddMemberBottomSheetContent extends ConsumerStatefulWidget {
