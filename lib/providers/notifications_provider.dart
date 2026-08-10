@@ -268,9 +268,12 @@ final dynamicNotificationsProvider = Provider<List<NotificationItem>>((ref) {
         avatarColors[record.userId.hashCode.abs() % avatarColors.length];
 
     final isJoin = record.eventType == 'joined';
+    final isRemoved = record.eventType == 'removed';
     final String title = isJoin
         ? '$memberName joined the group'
-        : '$memberName left the group';
+        : isRemoved
+            ? '$memberName was removed from the group'
+            : '$memberName left the group';
 
     final notifId = 'group-notif-${record.id}';
     notifications.add(
@@ -282,7 +285,11 @@ final dynamicNotificationsProvider = Provider<List<NotificationItem>>((ref) {
         subtitle: _formatTimeAgo(record.createdAt),
         avatarText: mInitials,
         avatarColor: mAvatarColor,
-        badgeIcon: isJoin ? Icons.person_add_rounded : Icons.logout_rounded,
+        badgeIcon: isJoin
+            ? Icons.person_add_rounded
+            : isRemoved
+                ? Icons.person_remove_rounded
+                : Icons.logout_rounded,
         badgeColor: isJoin ? const Color(0xFF00C896) : AppColors.coralRed,
         isUnread: !readNotifications.contains(notifId),
         date: record.createdAt,

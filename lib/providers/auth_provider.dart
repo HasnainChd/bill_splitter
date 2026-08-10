@@ -294,8 +294,7 @@ final authStateListenerProvider = Provider<void>((ref) {
     debugPrint(
         '👤 Supabase Auth event: $event. Current user: ${currentUser?.email}');
 
-    if (event == AuthChangeEvent.signedOut ||
-        event == AuthChangeEvent.userDeleted) {
+    if (event == AuthChangeEvent.signedOut) {
       debugPrint('👤 User is signed out. Clearing Hive boxes...');
       try {
         final groupsBox = await Hive.openBox<Group>('groups');

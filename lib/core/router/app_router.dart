@@ -168,9 +168,10 @@ class AppRouter {
         path: groupDetail,
         name: 'groupDetail',
         builder: (context, state) {
-          // Support both query parameter and extra parameter
+          // Support both query parameter and extra parameter (String or Group object)
           final groupId = state.uri.queryParameters['groupId'] ??
-              (state.extra as String?) ??
+              (state.extra is Group ? (state.extra as Group).groupId : null) ??
+              (state.extra is String ? state.extra as String : null) ??
               '';
           return GroupDetailScreen(groupId: groupId);
         },

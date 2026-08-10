@@ -77,7 +77,8 @@ class GroupDetailScreen extends ConsumerWidget {
       });
     }
 
-    final totalExpenses = actualExpenses.fold<double>(0, (sum, e) => sum + e.amount);
+    final totalExpenses =
+        actualExpenses.fold<double>(0, (sum, e) => sum + e.amount);
     final myBalance =
         currentUserId != null ? (balances[currentUserId] ?? 0.0) : 0.0;
 
@@ -161,47 +162,22 @@ class GroupDetailScreen extends ConsumerWidget {
                               return Column(
                                 children: [
                                   GestureDetector(
-                                    onTap: () async {
-                                      if (group.createdBy == currentUserId && !isMe) {
-                                        final bool isSettled = balance.abs() < 0.01;
-                                        if (!isSettled) {
-                                          await AppDialog.showInfo(
-                                            context,
-                                            title: 'Cannot Remove Member',
-                                            message: 'Cannot leave/remove — ${m.fullName} still has an outstanding balance of $currencyCode ${balance.abs().toStringAsFixed(2)} in this group. This must be settled first.',
-                                          );
-                                        } else {
-                                          final confirm = await AppDialog.showConfirm(
-                                            context,
-                                            title: 'Remove Member',
-                                            message: 'Are you sure you want to remove ${m.fullName} from this group?',
-                                            confirmText: 'Remove',
-                                            cancelText: 'Cancel',
-                                            isDanger: true,
-                                          );
-                                          if (confirm == true) {
-                                            try {
-                                              await ref.read(groupProvider.notifier).removeMemberFromGroup(groupId, m.id);
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text('${m.fullName} removed successfully'),
-                                                    backgroundColor: AppColors.success,
-                                                  ),
-                                                );
-                                              }
-                                            } catch (e) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(
-                                                    content: Text('Failed to remove member: $e'),
-                                                    backgroundColor: AppColors.coralRed,
-                                                  ),
-                                                );
-                                              }
-                                            }
-                                          }
-                                        }
+                                    behavior: HitTestBehavior.opaque,
+                                    onLongPress: () {
+                                      final bool isCreator =
+                                          group.createdBy != null &&
+                                              currentUserId != null &&
+                                              group.createdBy!.toLowerCase() ==
+                                                  currentUserId.toLowerCase();
+                                      if (isCreator && !isMe) {
+                                        _showMemberOptionsBottomSheet(
+                                          context,
+                                          ref,
+                                          group,
+                                          m,
+                                          balance,
+                                          currencyCode,
+                                        );
                                       }
                                     },
                                     child: _buildMemberRow(
@@ -431,24 +407,19 @@ class GroupDetailScreen extends ConsumerWidget {
                                 await ref
                                     .read(groupProvider.notifier)
                                     .removeMemberFromGroup(
-                                        groupId, currentUserId);
+                                        group.groupId, currentUserId);
                                 if (context.mounted) {
                                   context.go('/');
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content:
-                                          Text('You left the group successfully'),
-                                      backgroundColor: AppColors.success,
-                                    ),
+                                  AppSnackBar.showSuccess(
+                                    context,
+                                    'You left the group successfully',
                                   );
                                 }
                               } catch (e) {
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Failed to leave group: $e'),
-                                      backgroundColor: AppColors.coralRed,
-                                    ),
+                                  AppSnackBar.showError(
+                                    context,
+                                    'Failed to leave group: ${ErrorHandler.getUserFriendlyMessage(e)}',
                                   );
                                 }
                               }
@@ -493,7 +464,7 @@ class GroupDetailScreen extends ConsumerWidget {
                       itemBuilder: (context) => [
                         const PopupMenuItem(
                           value: 'add_member',
-                           child: Row(
+                          child: Row(
                             children: [
                               Icon(Icons.person_add_outlined,
                                   color: AppColors.white, size: 20),
@@ -863,6 +834,127 @@ class GroupDetailScreen extends ConsumerWidget {
     );
   }
 
+  void _showMemberOptionsBottomSheet(
+    BuildContext context,
+    WidgetRef ref,
+    Group group,
+    dynamic member,
+    double balance,
+    String currencyCode,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardDark,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 16.w),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36.w,
+                  height: 4.h,
+                  margin: EdgeInsets.only(bottom: 16.h),
+                  decoration: BoxDecoration(
+                    color: AppColors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
+                ),
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor:
+                        AppColors.onboardingViolet.withValues(alpha: 0.2),
+                    child: AppText(
+                      member.fullName.isNotEmpty
+                          ? member.fullName[0].toUpperCase()
+                          : 'U',
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.onboardingViolet,
+                    ),
+                  ),
+                  title: AppText(
+                    member.fullName,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.white,
+                  ),
+                  subtitle: AppText(
+                    balance.abs() < 0.01
+                        ? 'Settled up'
+                        : 'Balance: $currencyCode ${balance.toStringAsFixed(2)}',
+                    fontSize: 13,
+                    color: AppColors.textGrey,
+                  ),
+                ),
+                Divider(color: AppColors.cardDarkSecondary),
+                ListTile(
+                  leading: const Icon(Icons.person_remove_rounded,
+                      color: AppColors.coralRed),
+                  title: const AppText(
+                    'Remove from Group',
+                    color: AppColors.coralRed,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final bool isSettled = balance.abs() < 0.01;
+                    if (!isSettled) {
+                      await AppDialog.showInfo(
+                        context,
+                        title: 'Cannot Remove Member',
+                        message:
+                            'Cannot leave/remove — ${member.fullName} still has an outstanding balance of $currencyCode ${balance.abs().toStringAsFixed(2)} in this group. This must be settled first.',
+                      );
+                    } else {
+                      final bool isSoleRemaining = group.members.length <= 2;
+                      final String confirmMessage = isSoleRemaining
+                          ? 'Are you sure you want to remove ${member.fullName} from this group?\n\nNote: This will leave "${group.name}" with only you in it.'
+                          : 'Are you sure you want to remove ${member.fullName} from this group?';
+
+                      final confirm = await AppDialog.showConfirm(
+                        context,
+                        title: 'Remove Member',
+                        message: confirmMessage,
+                        confirmText: 'Remove',
+                        cancelText: 'Cancel',
+                        isDanger: true,
+                      );
+                      if (confirm == true) {
+                        try {
+                          await ref
+                              .read(groupProvider.notifier)
+                              .removeMemberFromGroup(group.groupId, member.id,
+                                  eventType: 'removed');
+                          if (context.mounted) {
+                            AppSnackBar.showSuccess(
+                              context,
+                              '${member.fullName} removed successfully',
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            AppSnackBar.showError(
+                              context,
+                              'Failed to remove member: ${ErrorHandler.getUserFriendlyMessage(e)}',
+                            );
+                          }
+                        }
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildInviteSection(BuildContext context, WidgetRef ref, Group group) {
     final inviteCode = group.inviteCode;
     if (inviteCode == null || inviteCode.isEmpty) {
@@ -882,7 +974,8 @@ class GroupDetailScreen extends ConsumerWidget {
     }
 
     final inviteUrl = 'https://devorastudios.dev/join/$inviteCode';
-    const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.devorastudios.equally';
+    const playStoreUrl =
+        'https://play.google.com/store/apps/details?id=com.devorastudios.equally';
     final shareMessage = 'Join my group "${group.name}" on Equally!\n'
         'Invite link: $inviteUrl\n\n'
         'Don\'t have the app? Install it here:\n'
@@ -938,7 +1031,8 @@ class GroupDetailScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: AppColors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(10.r),
-                      border: Border.all(color: AppColors.white.withValues(alpha: 0.05)),
+                      border: Border.all(
+                          color: AppColors.white.withValues(alpha: 0.05)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -965,22 +1059,26 @@ class GroupDetailScreen extends ConsumerWidget {
                     final url = Uri.parse('whatsapp://send?text=$waText');
                     bool launched = false;
                     try {
-                      launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+                      launched = await launchUrl(url,
+                          mode: LaunchMode.externalApplication);
                     } catch (e) {
                       launched = false;
                     }
 
                     if (!launched) {
-                      final fallbackUrl = Uri.parse('https://wa.me/?text=$waText');
+                      final fallbackUrl =
+                          Uri.parse('https://wa.me/?text=$waText');
                       try {
-                        launched = await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
+                        launched = await launchUrl(fallbackUrl,
+                            mode: LaunchMode.externalApplication);
                       } catch (e) {
                         launched = false;
                       }
                     }
 
                     if (!launched && context.mounted) {
-                      AppSnackBar.showError(context, 'Could not launch WhatsApp');
+                      AppSnackBar.showError(
+                          context, 'Could not launch WhatsApp');
                     }
                   },
                   borderRadius: BorderRadius.circular(10.r),
@@ -989,12 +1087,15 @@ class GroupDetailScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: const Color(0xFF25D366).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10.r),
-                      border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color:
+                              const Color(0xFF25D366).withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.message_rounded, color: const Color(0xFF25D366), size: 16.sp),
+                        Icon(Icons.message_rounded,
+                            color: const Color(0xFF25D366), size: 16.sp),
                         SizedBox(width: 8.w),
                         const AppText(
                           'WhatsApp',
@@ -1027,7 +1128,8 @@ class GroupDetailScreen extends ConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.qr_code_2, color: AppColors.onboardingViolet, size: 18.sp),
+                    Icon(Icons.qr_code_2,
+                        color: AppColors.onboardingViolet, size: 18.sp),
                     SizedBox(width: 8.w),
                     const AppText(
                       'Show QR Code',
@@ -1045,7 +1147,8 @@ class GroupDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _showQRCodeBottomSheet(BuildContext context, Group group, String inviteUrl, String inviteCode) {
+  void _showQRCodeBottomSheet(
+      BuildContext context, Group group, String inviteUrl, String inviteCode) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1105,11 +1208,13 @@ class GroupDetailScreen extends ConsumerWidget {
                   ),
                   SizedBox(height: 20.h),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                     decoration: BoxDecoration(
                       color: AppColors.cardDark,
                       borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(color: AppColors.white.withValues(alpha: 0.05)),
+                      border: Border.all(
+                          color: AppColors.white.withValues(alpha: 0.05)),
                     ),
                     child: Row(
                       children: [
@@ -1136,10 +1241,12 @@ class GroupDetailScreen extends ConsumerWidget {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.copy, color: AppColors.onboardingViolet),
+                          icon: const Icon(Icons.copy,
+                              color: AppColors.onboardingViolet),
                           onPressed: () {
                             Clipboard.setData(ClipboardData(text: inviteCode));
-                            AppSnackBar.showSuccess(context, 'Invite code copied to clipboard');
+                            AppSnackBar.showSuccess(
+                                context, 'Invite code copied to clipboard');
                           },
                         ),
                       ],
@@ -1172,7 +1279,7 @@ class _AddMemberBottomSheetContentState
     extends ConsumerState<_AddMemberBottomSheetContent> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = '';
-  bool _isSaving = false;
+  String? _addingUserId;
 
   @override
   void dispose() {
@@ -1182,7 +1289,8 @@ class _AddMemberBottomSheetContentState
 
   @override
   Widget build(BuildContext context) {
-    final isQueryLongEnough = _searchQuery.trim().replaceAll('@', '').length >= 2;
+    final isQueryLongEnough =
+        _searchQuery.trim().replaceAll('@', '').length >= 2;
 
     final usersAsync = isQueryLongEnough
         ? ref.watch(searchedUsersProvider(_searchQuery))
@@ -1341,7 +1449,7 @@ class _AddMemberBottomSheetContentState
                             fontSize: 12,
                             color: AppColors.white.withValues(alpha: 0.4),
                           ),
-                          trailing: _isSaving
+                          trailing: _addingUserId == user.id
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
@@ -1364,11 +1472,11 @@ class _AddMemberBottomSheetContentState
                                     color: AppColors.white,
                                   ),
                                 ),
-                          onTap: _isSaving
+                          onTap: _addingUserId != null
                               ? null
                               : () async {
                                   setState(() {
-                                    _isSaving = true;
+                                    _addingUserId = user.id;
                                   });
                                   try {
                                     await ref
@@ -1381,35 +1489,23 @@ class _AddMemberBottomSheetContentState
                                         groupMembersProvider(widget.groupId));
 
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: AppText(
-                                            '${user.fullName} added successfully',
-                                            color: AppColors.white,
-                                          ),
-                                          backgroundColor: AppColors.success,
-                                        ),
+                                      AppSnackBar.showSuccess(
+                                        context,
+                                        '${user.fullName} added successfully',
                                       );
                                       Navigator.pop(context);
                                     }
                                   } catch (e) {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: AppText(
-                                            'Failed to add member: $e',
-                                            color: AppColors.white,
-                                          ),
-                                          backgroundColor: AppColors.coralRed,
-                                        ),
+                                      AppSnackBar.showError(
+                                        context,
+                                        'Failed to add member: ${ErrorHandler.getUserFriendlyMessage(e)}',
                                       );
                                     }
                                   } finally {
                                     if (mounted) {
                                       setState(() {
-                                        _isSaving = false;
+                                        _addingUserId = null;
                                       });
                                     }
                                   }

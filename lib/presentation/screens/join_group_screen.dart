@@ -65,7 +65,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
         context,
         'Successfully joined ${group.name}!',
       );
-      context.go(AppRouter.groupDetail, extra: group);
+      context.go(AppRouter.groupDetail, extra: group.groupId);
     } catch (e) {
       if (!mounted) return;
 

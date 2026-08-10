@@ -260,25 +260,32 @@ class GroupNotifier extends StateNotifier<GroupState> {
   }
 
   // Remove a member from a group (can be used for leaving as well)
-  Future<void> removeMemberFromGroup(String groupId, String userId) async {
+  Future<void> removeMemberFromGroup(String groupId, String userId,
+      {String eventType = 'left'}) async {
     try {
-      // 1. Insert leave event into group_notifications table first (before deleting, so RLS checks pass if leaving)
+      // 1. Insert leave/removed event into group_notifications table first (before deleting, so RLS checks pass if leaving)
       try {
         await _supabase.from('group_notifications').insert({
           'group_id': groupId,
           'user_id': userId,
-          'event_type': 'left',
+          'event_type': eventType,
         });
       } catch (ne) {
-        debugPrint('Warning: Failed to log member leave notification: $ne');
+        debugPrint('Warning: Failed to log member notification: $ne');
       }
 
-      // 2. Delete from group_members table
-      await _supabase
+      // 2. Delete from group_members table (with .select() to catch silent RLS failures)
+      final response = await _supabase
           .from('group_members')
           .delete()
           .eq('group_id', groupId)
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .select();
+
+      if (response.isEmpty) {
+        throw Exception(
+            'Failed to remove member. Permission denied by database policy or member not found.');
+      }
 
       // 3. Reload groups to update local state and Hive cache
       await loadGroups();
