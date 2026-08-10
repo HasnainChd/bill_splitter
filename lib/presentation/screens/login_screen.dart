@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_text_field.dart';
@@ -14,14 +12,6 @@ import '../../providers/auth_provider.dart';
 class LoginScreen extends ConsumerWidget {
   const LoginScreen({super.key});
 
-  Future<void> _launchUrl(String urlString) async {
-    final Uri url = Uri.parse(urlString);
-    try {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      debugPrint('Could not launch $urlString: $e');
-    }
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

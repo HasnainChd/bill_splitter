@@ -22,6 +22,15 @@ class SplashScreen extends ConsumerWidget {
           if (snapshot.connectionState == ConnectionState.done) {
             // Navigate based on auth status after the animation delay
             WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!context.mounted) return;
+
+              // Check if a deep link has already pushed/navigated away from /splash
+              final location = GoRouter.of(context).routeInformationProvider.value.uri.path;
+              if (location != AppRouter.splash) {
+                // A deep link (or another flow) took the user off the splash screen; do not override
+                return;
+              }
+
               final auth = Supabase.instance.client.auth.currentUser;
               if (auth != null) {
                 final box = Hive.box('settings');

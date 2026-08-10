@@ -29,7 +29,9 @@ if (firebaseProjectId && firebaseClientEmail && firebasePrivateKey) {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
 serve(async (req) => {
   try {
@@ -109,6 +111,16 @@ serve(async (req) => {
         title = `Expense Deleted in ${group.name}`;
         body = `{initiator} deleted ${expenseTitle} in ${group.name}`;
       }
+    } else if (table === "group_notifications") {
+      initiatorId = record.user_id;
+      title = `${group.name}`;
+      if (record.event_type === "removed") {
+        body = `{initiator} was removed from ${group.name}`;
+      } else if (record.event_type === "joined") {
+        body = `{initiator} joined ${group.name}`;
+      } else {
+        body = `{initiator} has left ${group.name}`;
+      }
     } else if (table === "group_members") {
       // added_by = person who did the adding (actor)
       // user_id = person being added (recipient)
@@ -132,9 +144,23 @@ serve(async (req) => {
           ? `{initiator} joined ${group.name}`
           : `{initiator} added you to ${group.name}`;
       } else if (operation === "DELETE") {
-        initiatorId = record.user_id; // person who left
+        initiatorId = record.user_id; // person who left or was removed
         title = `${group.name}`;
-        body = `{initiator} has left the group`;
+
+        // Fetch recent event_type from group_notifications table for this user & group
+        const { data: latestNotif } = await supabase
+          .from("group_notifications")
+          .select("event_type")
+          .eq("group_id", groupId)
+          .eq("user_id", record.user_id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const isRemoved = latestNotif?.event_type === "removed";
+        body = isRemoved
+          ? `{initiator} was removed from ${group.name}`
+          : `{initiator} has left the group`;
       }
     } else if (table === "requests") {
       initiatorId = record.user_id;

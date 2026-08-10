@@ -178,7 +178,6 @@ class _BillSplitterAppState extends ConsumerState<BillSplitterApp> {
   }
 
   void _handleIncomingLink(Uri uri) {
-    debugPrint('Received deep link: $uri');
     String? code;
 
     // Handle https://devorastudios.dev/join/CODE
@@ -200,7 +199,6 @@ class _BillSplitterAppState extends ConsumerState<BillSplitterApp> {
     }
 
     if (code != null && code.isNotEmpty) {
-      debugPrint('Deep link invite code: $code');
       AppRouter.router.push('/join/$code');
     }
   }
