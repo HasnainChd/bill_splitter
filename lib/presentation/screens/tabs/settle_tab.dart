@@ -13,8 +13,9 @@ import '../../../providers/group_provider.dart';
 import '../../../providers/expense_provider.dart';
 import '../../../providers/profile_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../core/utils/debt_calculator.dart';
 import '../../../core/utils/group_icon_helper.dart';
+import '../../../core/utils/debt_calculator.dart';
+import '../../../core/services/analytics_service.dart';
 import '../../../core/models/group.dart';
 
 class GlobalSettlement {
@@ -298,6 +299,10 @@ class SettleTab extends ConsumerWidget {
                                                 .handshake_rounded.codePoint,
                                             splitType: 'Equal',
                                           );
+                                      AnalyticsService.logSettleUpCompleted(
+                                        currency: gs.group.currency,
+                                        amount: gs.settlement.amount,
+                                      );
                                       if (context.mounted) {
                                         AppSnackBar.showSuccess(
                                           context,
@@ -417,6 +422,7 @@ class SettleTab extends ConsumerWidget {
                                         throw Exception(
                                             'Server returned status code ${response.status}');
                                       }
+                                      AnalyticsService.logRemindToSettleSent(reminderType: 'person');
 
                                       if (context.mounted) {
                                         AppSnackBar.showSuccess(

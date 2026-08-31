@@ -20,6 +20,7 @@ import '../../providers/profile_provider.dart';
 import '../providers/screen_providers.dart';
 import '../../core/utils/group_icon_helper.dart';
 import '../../core/utils/financial_calculator.dart';
+import '../../core/services/analytics_service.dart';
 import '../widgets/add_expense_form_elements.dart';
 
 class AddExpenseScreen extends ConsumerWidget {
@@ -1064,6 +1065,10 @@ class AddExpenseScreen extends ConsumerWidget {
           context.pop();
         }
       } else {
+        final bool hasReceipt = finalReceiptUrl != null ||
+            file != null ||
+            scannedImagePath != null;
+
         await ref.read(expenseProvider.notifier).addExpense(
               groupId: group.groupId,
               title: title,
@@ -1077,6 +1082,18 @@ class AddExpenseScreen extends ConsumerWidget {
               notes: notesOrNull,
               receiptUrl: finalReceiptUrl,
             );
+
+        AnalyticsService.logExpenseAdded(
+          splitType: splitType,
+          category: selectedCatLabel,
+          hasReceipt: hasReceipt,
+          userId: currentUserId,
+        );
+        if (scannedImagePath != null ||
+            scannedAmount != null ||
+            scannedTitle != null) {
+          AnalyticsService.logReceiptScanned();
+        }
         if (context.mounted) {
           AppSnackBar.showSuccess(context, 'Expense added!');
           context.pop();

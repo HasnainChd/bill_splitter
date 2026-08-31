@@ -15,6 +15,7 @@ import '../../providers/expense_provider.dart';
 import '../../core/models/group.dart';
 import '../../providers/profile_provider.dart';
 import '../../core/utils/group_icon_helper.dart';
+import '../../core/services/analytics_service.dart';
 
 class SettleUpScreen extends ConsumerStatefulWidget {
   final String groupId;
@@ -242,6 +243,10 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                                           Icons.handshake_rounded.codePoint,
                                       splitType: 'Equal',
                                     );
+                                 AnalyticsService.logSettleUpCompleted(
+                                   currency: group.currency,
+                                   amount: settlement.amount,
+                                 );
                                  if (context.mounted) {
                                    AppSnackBar.showSuccess(
                                        context, 'Payment recorded!');

@@ -23,6 +23,7 @@ import '../../../core/utils/error_handler.dart';
 import '../../../core/utils/financial_calculator.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/services/receipt_scanner_service.dart';
+import '../../../core/services/analytics_service.dart';
 
 class HomeTab extends ConsumerWidget {
   const HomeTab({super.key});
@@ -1207,6 +1208,7 @@ class HomeTab extends ConsumerWidget {
                               "group_id": group.groupId,
                               "user_id": currentUserId,
                             });
+                            AnalyticsService.logRemindToSettleSent(reminderType: 'group');
 
                             if (sheetContext.mounted) {
                               Navigator.pop(sheetContext);

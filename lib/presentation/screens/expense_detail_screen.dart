@@ -27,6 +27,7 @@ import '../../providers/settings_provider.dart';
 import '../../core/utils/group_icon_helper.dart';
 import '../../core/utils/app_date_formatter.dart';
 import '../../core/services/expense_pdf_service.dart';
+import '../../core/services/analytics_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/screen_providers.dart';
 
@@ -1094,6 +1095,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
 
       if (context.mounted) {
         if (savedPath != null && savedPath.isNotEmpty) {
+          AnalyticsService.logPdfDownloaded();
           AppSnackBar.showSuccess(
             context,
             'PDF saved to Downloads',
@@ -1386,6 +1388,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
 
                                         if (savedPath != null &&
                                             savedPath.isNotEmpty) {
+                                          AnalyticsService.logPdfDownloaded();
                                           AppSnackBar.showSuccess(
                                             context,
                                             'PDF saved to Downloads',

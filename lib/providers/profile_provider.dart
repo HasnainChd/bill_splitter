@@ -6,6 +6,7 @@ import '../core/utils/app_snackbar.dart';
 
 import 'package:hive_flutter/hive_flutter.dart';
 import '../core/utils/error_handler.dart';
+import '../core/services/analytics_service.dart';
 import 'auth_provider.dart';
 
 class UserProfile {
@@ -154,6 +155,8 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
         final profile = UserProfile.fromMap(response, user.email ?? '');
         debugPrint('👤 Parsed avatarUrl: ${profile.avatarUrl}');
+        AnalyticsService.setUserId(user.id);
+        AnalyticsService.setDefaultCurrency(profile.currency);
         if (mounted) {
           state = state.copyWith(
             profile: profile,
