@@ -10,6 +10,7 @@ import '../../core/router/app_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/models/group.dart';
 import '../../core/models/expense.dart';
+import '../../core/services/analytics_service.dart';
 import '../supabase_options.dart';
 
 // Auth State
@@ -62,16 +63,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       if (state.isLogin) {
         // Sign in
-        await supabase.auth.signInWithPassword(
+        final res = await supabase.auth.signInWithPassword(
           email: email.trim(),
           password: password.trim(),
         );
+        AnalyticsService.logLogin(method: 'email');
+        if (res.user != null) {
+          AnalyticsService.setUserId(res.user!.id);
+        }
       } else {
         // Sign up
-        await supabase.auth.signUp(
+        final res = await supabase.auth.signUp(
           email: email.trim(),
           password: password.trim(),
         );
+        AnalyticsService.logSignUp(method: 'email');
+        if (res.user != null) {
+          AnalyticsService.setUserId(res.user!.id);
+        }
       }
 
       if (!context.mounted) return;
@@ -85,12 +94,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } on AuthException catch (e) {
       final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
       state = state.copyWith(error: errorMessage);
+      AnalyticsService.logLoginFailed(errorReason: errorMessage);
       if (context.mounted) {
         AppSnackBar.showError(context, errorMessage);
       }
     } catch (e) {
       final msg = ErrorHandler.getUserFriendlyMessage(e);
       state = state.copyWith(error: msg);
+      AnalyticsService.logLoginFailed(errorReason: msg);
       if (context.mounted) {
         AppSnackBar.showError(context, msg);
       }
@@ -167,20 +178,27 @@ class AuthNotifier extends StateNotifier<AuthState> {
         throw 'Could not retrieve ID Token from Google';
       }
 
-      await Supabase.instance.client.auth.signInWithIdToken(
+      final res = await Supabase.instance.client.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,
         accessToken: accessToken,
       );
+
+      AnalyticsService.logLogin(method: 'google');
+      if (res.user != null) {
+        AnalyticsService.setUserId(res.user!.id);
+      }
     } on AuthException catch (e) {
       final msg = ErrorHandler.getUserFriendlyMessage(e);
       state = state.copyWith(error: msg);
+      AnalyticsService.logLoginFailed(errorReason: msg);
       if (context.mounted) {
         AppSnackBar.showError(context, msg);
       }
     } catch (e) {
       final msg = ErrorHandler.getUserFriendlyMessage(e);
       state = state.copyWith(error: msg);
+      AnalyticsService.logLoginFailed(errorReason: msg);
       if (context.mounted) {
         AppSnackBar.showError(context, msg);
       }

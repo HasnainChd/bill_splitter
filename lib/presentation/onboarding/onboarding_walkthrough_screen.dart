@@ -8,6 +8,7 @@ import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/router/app_router.dart';
 import '../../providers/onboarding_provider.dart';
+import '../../core/services/analytics_service.dart';
 
 class OnboardingWalkthroughScreen extends ConsumerWidget {
   const OnboardingWalkthroughScreen({super.key});
@@ -30,6 +31,7 @@ class OnboardingWalkthroughScreen extends ConsumerWidget {
                 children: [
                   GestureDetector(
                     onTap: () {
+                      AnalyticsService.logOnboardingCompleted();
                       context.go(AppRouter.login);
                     },
                     child: AppText(
@@ -203,6 +205,7 @@ class OnboardingWalkthroughScreen extends ConsumerWidget {
                       curve: Curves.easeInOut,
                     );
                   } else {
+                    AnalyticsService.logOnboardingCompleted();
                     context.go(AppRouter.login);
                   }
                 },

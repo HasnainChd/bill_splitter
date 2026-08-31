@@ -37,6 +37,7 @@ import '../../presentation/screens/lock_screen.dart';
 import '../../presentation/screens/join_group_screen.dart';
 
 import '../../presentation/screens/splash_screen.dart';
+import '../services/analytics_service.dart';
 
 class AppRouter {
   static const String splash = '/splash';
@@ -76,6 +77,9 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     navigatorKey: navigatorKey,
     initialLocation: splash,
+    observers: [
+      AnalyticsService.observer,
+    ],
     redirect: (context, state) {
       final auth = Supabase.instance.client.auth.currentUser;
       final isSplash = state.matchedLocation == splash;

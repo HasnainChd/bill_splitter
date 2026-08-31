@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/utils/app_snackbar.dart';
 import '../core/utils/error_handler.dart';
 import '../core/router/app_router.dart';
+import '../core/services/analytics_service.dart';
 import 'profile_provider.dart';
 
 // Registration State
@@ -71,6 +72,9 @@ class RegisterNotifier extends StateNotifier<RegisterState> {
 
       final user = response.user;
       if (user != null) {
+        AnalyticsService.logSignUp(method: 'email');
+        AnalyticsService.setUserId(user.id);
+
         // Initialize/update the user profile using the profile provider
         try {
           await _ref.read(profileProvider.notifier).updateProfile(
@@ -94,12 +98,14 @@ class RegisterNotifier extends StateNotifier<RegisterState> {
     } on AuthException catch (e) {
       final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
       state = state.copyWith(error: errorMessage);
+      AnalyticsService.logLoginFailed(errorReason: errorMessage);
       if (context.mounted) {
         AppSnackBar.showError(context, errorMessage);
       }
     } catch (e) {
       final msg = ErrorHandler.getUserFriendlyMessage(e);
       state = state.copyWith(error: msg);
+      AnalyticsService.logLoginFailed(errorReason: msg);
       if (context.mounted) {
         AppSnackBar.showError(context, msg);
       }

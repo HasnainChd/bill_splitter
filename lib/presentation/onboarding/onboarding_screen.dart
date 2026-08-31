@@ -6,9 +6,21 @@ import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_text.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/router/app_router.dart';
+import '../../core/services/analytics_service.dart';
 
-class OnboardingScreen extends StatelessWidget {
+class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
+
+  @override
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.logOnboardingStarted();
+  }
 
   @override
   Widget build(BuildContext context) {
