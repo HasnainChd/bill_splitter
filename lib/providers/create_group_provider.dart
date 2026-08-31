@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/services/analytics_service.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../core/utils/error_handler.dart';
 import 'group_provider.dart';
@@ -82,6 +83,7 @@ class CreateGroupNotifier extends StateNotifier<CreateGroupState> {
             iconFontFamily: iconFontFamily,
             currency: currencyCode,
           );
+      AnalyticsService.logGroupCreated(currency: currencyCode);
       if (context.mounted) {
         AppSnackBar.showSuccess(context, 'Group created successfully');
         context.pop();

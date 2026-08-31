@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/app_text.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/services/analytics_service.dart';
 import '../../../providers/group_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/expense_provider.dart';
@@ -656,6 +657,7 @@ class _JoinGroupBottomSheet extends ConsumerWidget {
     try {
       final group =
           await ref.read(groupProvider.notifier).joinGroupByInviteCode(code);
+      AnalyticsService.logGroupJoined(joinMethod: 'code');
       if (context.mounted) {
         Navigator.pop(context);
         AppSnackBar.showSuccess(

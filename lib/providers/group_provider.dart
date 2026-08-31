@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../core/models/group.dart';
+import '../core/services/analytics_service.dart';
 import '../core/utils/date_helper.dart';
 import '../core/utils/error_handler.dart';
 import 'auth_provider.dart';
@@ -285,6 +286,12 @@ class GroupNotifier extends StateNotifier<GroupState> {
       if (response.isEmpty) {
         throw Exception(
             'Failed to remove member. Permission denied by database policy or member not found.');
+      }
+
+      if (eventType == 'removed') {
+        AnalyticsService.logMemberRemoved();
+      } else {
+        AnalyticsService.logMemberLeft();
       }
 
       // 3. Reload groups to update local state and Hive cache

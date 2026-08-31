@@ -10,6 +10,7 @@ import '../../core/router/app_router.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_text.dart';
+import '../../core/services/analytics_service.dart';
 import '../../providers/group_provider.dart';
 
 class JoinGroupScreen extends ConsumerStatefulWidget {
@@ -56,9 +57,12 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
 
     // User is logged in: try joining group by invite code
     try {
+
       final Group group = await ref
           .read(groupProvider.notifier)
           .joinGroupByInviteCode(widget.inviteCode);
+
+      AnalyticsService.logGroupJoined(joinMethod: 'link');
 
       if (!mounted) return;
       AppSnackBar.showSuccess(
