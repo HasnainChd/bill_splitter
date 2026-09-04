@@ -240,9 +240,9 @@ class SettleTab extends ConsumerWidget {
                           _buildSectionLabel('YOU OWE OTHERS'),
                           ...myOwe.map((gs) {
                             final otherUserId = gs.settlement.toMember;
-                            final otherName =
-                                userProfiles[otherUserId]?.fullName ??
-                                    'Other User';
+                            final profile = userProfiles[otherUserId];
+                            final otherName = profile?.fullName ?? 'Other User';
+                            final avatarUrl = profile?.avatarUrl;
                             final key =
                                 '${gs.group.groupId}_${otherUserId}_${gs.settlement.amount}';
                             final isLoading = loadingSettlements.contains(key);
@@ -256,8 +256,12 @@ class SettleTab extends ConsumerWidget {
                                     gs.group.name),
                                 amount: (() {
                                   final rawCurrency = gs.group.currency;
-                                  final clean = rawCurrency.contains(' ') ? rawCurrency.split(' ')[0] : rawCurrency;
-                                  final clean3 = clean.length >= 3 ? clean.substring(0, 3) : clean;
+                                  final clean = rawCurrency.contains(' ')
+                                      ? rawCurrency.split(' ')[0]
+                                      : rawCurrency;
+                                  final clean3 = clean.length >= 3
+                                      ? clean.substring(0, 3)
+                                      : clean;
                                   return '-$clean3 ${_getSymbolForCurrency(rawCurrency)}${gs.settlement.amount.toStringAsFixed(0)}';
                                 })(),
                                 amountColor: AppColors.balanceOwed,
@@ -265,12 +269,18 @@ class SettleTab extends ConsumerWidget {
                                 isOwe: true,
                                 initials: _getInitials(otherName),
                                 avatarColor: _getAvatarColor(otherName),
+                                avatarUrl: avatarUrl,
                                 isLoading: isLoading,
                                 onTapButton: () async {
                                   final rawCurrency = gs.group.currency;
-                                  final clean = rawCurrency.contains(' ') ? rawCurrency.split(' ')[0] : rawCurrency;
-                                  final clean3 = clean.length >= 3 ? clean.substring(0, 3) : clean;
-                                  final grpSymbol = _getSymbolForCurrency(rawCurrency);
+                                  final clean = rawCurrency.contains(' ')
+                                      ? rawCurrency.split(' ')[0]
+                                      : rawCurrency;
+                                  final clean3 = clean.length >= 3
+                                      ? clean.substring(0, 3)
+                                      : clean;
+                                  final grpSymbol =
+                                      _getSymbolForCurrency(rawCurrency);
                                   final confirm = await AppDialog.showConfirm(
                                     context,
                                     title: 'Confirm Payment',
@@ -314,7 +324,8 @@ class SettleTab extends ConsumerWidget {
                                         AppDialog.showError(
                                           context,
                                           title: 'Payment Failed',
-                                          message: 'Failed to record payment: $e',
+                                          message:
+                                              'Failed to record payment: $e',
                                         );
                                       }
                                     } finally {
@@ -339,15 +350,16 @@ class SettleTab extends ConsumerWidget {
                           _buildSectionLabel('OTHERS OWE YOU'),
                           ...myOwed.map((gs) {
                             final otherUserId = gs.settlement.fromMember;
-                            final balances = groupBalances[gs.group.groupId] ?? {};
+                            final balances =
+                                groupBalances[gs.group.groupId] ?? {};
                             final otherBalance = balances[otherUserId] ?? 0.0;
                             if (otherBalance >= -0.01) {
                               return const SizedBox.shrink();
                             }
 
-                            final otherName =
-                                userProfiles[otherUserId]?.fullName ??
-                                    'Other User';
+                            final profile = userProfiles[otherUserId];
+                            final otherName = profile?.fullName ?? 'Other User';
+                            final avatarUrl = profile?.avatarUrl;
                             final remindKey =
                                 'remind_${gs.group.groupId}_${otherUserId}_${gs.settlement.amount}';
                             final isLoading =
@@ -362,8 +374,12 @@ class SettleTab extends ConsumerWidget {
                                     gs.group.name),
                                 amount: (() {
                                   final rawCurrency = gs.group.currency;
-                                  final clean = rawCurrency.contains(' ') ? rawCurrency.split(' ')[0] : rawCurrency;
-                                  final clean3 = clean.length >= 3 ? clean.substring(0, 3) : clean;
+                                  final clean = rawCurrency.contains(' ')
+                                      ? rawCurrency.split(' ')[0]
+                                      : rawCurrency;
+                                  final clean3 = clean.length >= 3
+                                      ? clean.substring(0, 3)
+                                      : clean;
                                   return '+$clean3 ${_getSymbolForCurrency(rawCurrency)}${gs.settlement.amount.toStringAsFixed(0)}';
                                 })(),
                                 amountColor: AppColors.balanceOwedTo,
@@ -371,10 +387,14 @@ class SettleTab extends ConsumerWidget {
                                 isOwe: false,
                                 initials: _getInitials(otherName),
                                 avatarColor: _getAvatarColor(otherName),
+                                avatarUrl: avatarUrl,
                                 isLoading: isLoading,
-                                onTapButton: () async {
-                                  final currentBalances = ref.read(balancesForGroupProvider(gs.group.groupId));
-                                  final currentOtherBalance = currentBalances[otherUserId] ?? 0.0;
+                                onTapButton: () {
+                                  final currentBalances = ref.read(
+                                      balancesForGroupProvider(
+                                          gs.group.groupId));
+                                  final currentOtherBalance =
+                                      currentBalances[otherUserId] ?? 0.0;
                                   if (currentOtherBalance >= -0.01) {
                                     AppSnackBar.showError(
                                       context,
@@ -383,71 +403,17 @@ class SettleTab extends ConsumerWidget {
                                     return;
                                   }
 
-                                  final rawCurrency = gs.group.currency;
-                                  final clean = rawCurrency.contains(' ') ? rawCurrency.split(' ')[0] : rawCurrency;
-                                  final clean3 = clean.length >= 3 ? clean.substring(0, 3) : clean;
-                                  final grpSymbol = _getSymbolForCurrency(rawCurrency);
-                                  final confirm = await AppDialog.showConfirm(
-                                    context,
-                                    title: 'Send Reminder',
-                                    message:
-                                        'Send a payment reminder to $otherName for $clean3 $grpSymbol${gs.settlement.amount.toStringAsFixed(0)}?',
-                                    confirmText: 'Send',
-                                    cancelText: 'Cancel',
+                                  _showRequestMoneyBottomSheet(
+                                    context: context,
+                                    group: gs.group,
+                                    targetUserId: otherUserId,
+                                    targetName: otherName,
+                                    initials: _getInitials(otherName),
+                                    avatarColor: _getAvatarColor(otherName),
+                                    avatarUrl: avatarUrl,
+                                    owedAmount: gs.settlement.amount,
+                                    currentUserId: currentUserId,
                                   );
-                                  if (confirm == true) {
-                                    ref
-                                        .read(settleLoadingProvider.notifier)
-                                        .update(
-                                            (state) => {...state, remindKey});
-                                    try {
-                                      final response = await Supabase
-                                          .instance.client.functions
-                                          .invoke(
-                                        'send-notification',
-                                        body: {
-                                          'table': 'payment_reminders',
-                                          'new_record': {
-                                            'group_id': gs.group.groupId,
-                                            'sender_id': currentUserId,
-                                            'target_user_id': otherUserId,
-                                            'amount': gs.settlement.amount,
-                                            'currency': gs.group.currency,
-                                          },
-                                        },
-                                      );
-
-                                      if (response.status != 200 &&
-                                          response.status != 204) {
-                                        throw Exception(
-                                            'Server returned status code ${response.status}');
-                                      }
-                                      AnalyticsService.logRemindToSettleSent(reminderType: 'person');
-
-                                      if (context.mounted) {
-                                        AppSnackBar.showSuccess(
-                                          context,
-                                          'Reminder sent to $otherName!',
-                                        );
-                                      }
-                                    } catch (e) {
-                                      if (context.mounted) {
-                                        AppDialog.showError(
-                                          context,
-                                          title: 'Reminder Failed',
-                                          message: 'Failed to send reminder: $e',
-                                        );
-                                      }
-                                    } finally {
-                                      ref
-                                          .read(settleLoadingProvider.notifier)
-                                          .update(
-                                            (state) => state
-                                                .where((k) => k != remindKey)
-                                                .toSet(),
-                                          );
-                                    }
-                                  }
                                 },
                               ),
                             );
@@ -654,6 +620,7 @@ class SettleTab extends ConsumerWidget {
     required bool isOwe,
     required String initials,
     required Color avatarColor,
+    String? avatarUrl,
     required bool isLoading,
     required VoidCallback onTapButton,
   }) {
@@ -669,13 +636,23 @@ class SettleTab extends ConsumerWidget {
           Container(
             width: 40.w,
             height: 40.w,
-            decoration:
-                BoxDecoration(color: avatarColor, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: avatarColor,
+              shape: BoxShape.circle,
+              image: avatarUrl != null && avatarUrl.isNotEmpty
+                  ? DecorationImage(
+                      image: NetworkImage(avatarUrl),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
             alignment: Alignment.center,
-            child: AppText(initials,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.white),
+            child: avatarUrl == null || avatarUrl.isEmpty
+                ? AppText(initials,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white)
+                : null,
           ),
           SizedBox(width: 14.w),
           Expanded(
@@ -784,5 +761,438 @@ class SettleTab extends ConsumerWidget {
       'NZD': 'NZ\$',
     };
     return symbols[code] ?? code;
+  }
+
+  void _showRequestMoneyBottomSheet({
+    required BuildContext context,
+    required Group group,
+    required String targetUserId,
+    required String targetName,
+    required String initials,
+    required Color avatarColor,
+    String? avatarUrl,
+    required double owedAmount,
+    required String currentUserId,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => SafeArea(
+        child: _RequestMoneyBottomSheet(
+          group: group,
+          targetUserId: targetUserId,
+          targetName: targetName,
+          initials: initials,
+          avatarColor: avatarColor,
+          avatarUrl: avatarUrl,
+          owedAmount: owedAmount,
+          currentUserId: currentUserId,
+        ),
+      ),
+    );
+  }
+}
+
+class _RequestMoneyBottomSheet extends StatefulWidget {
+  final Group group;
+  final String targetUserId;
+  final String targetName;
+  final String initials;
+  final Color avatarColor;
+  final String? avatarUrl;
+  final double owedAmount;
+  final String currentUserId;
+
+  const _RequestMoneyBottomSheet({
+    required this.group,
+    required this.targetUserId,
+    required this.targetName,
+    required this.initials,
+    required this.avatarColor,
+    this.avatarUrl,
+    required this.owedAmount,
+    required this.currentUserId,
+  });
+
+  @override
+  State<_RequestMoneyBottomSheet> createState() =>
+      __RequestMoneyBottomSheetState();
+}
+
+class __RequestMoneyBottomSheetState extends State<_RequestMoneyBottomSheet> {
+  late final TextEditingController _amountController;
+  late final TextEditingController _noteController;
+  bool _isSubmitting = false;
+  String? _amountError;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountController = TextEditingController(
+      text: widget.owedAmount.toStringAsFixed(0),
+    );
+    _noteController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitRequest() async {
+    final amountText = _amountController.text.trim();
+    final parsedAmount = double.tryParse(amountText);
+
+    if (parsedAmount == null || parsedAmount <= 0) {
+      setState(() {
+        _amountError = 'Please enter a valid positive amount';
+      });
+      return;
+    }
+
+    setState(() {
+      _amountError = null;
+      _isSubmitting = true;
+    });
+
+    try {
+      final noteText = _noteController.text.trim();
+      await Supabase.instance.client.from('requests').insert({
+        'group_id': widget.group.groupId,
+        'user_id': widget.currentUserId,
+        'target_user_id': widget.targetUserId,
+        'amount': parsedAmount,
+        'currency': widget.group.currency,
+        'note': noteText.isEmpty ? null : noteText,
+        'status': 'pending',
+      });
+
+      AnalyticsService.logRemindToSettleSent(reminderType: 'person');
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        AppSnackBar.showSuccess(
+          context,
+          'Request sent to ${widget.targetName}!',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+        AppDialog.showError(
+          context,
+          title: 'Request Failed',
+          message: 'Failed to send request: $e',
+        );
+      }
+    }
+  }
+
+  String _getSymbolForCurrency(String code) {
+    if (code.contains('(') && code.contains(')')) {
+      final open = code.indexOf('(');
+      final close = code.indexOf(')');
+      if (close > open) return code.substring(open + 1, close);
+    }
+    final Map<String, String> symbols = {
+      'USD': '\$',
+      'EUR': '€',
+      'GBP': '£',
+      'INR': '₹',
+      'PKR': 'Rs',
+      'JPY': '¥',
+      'AUD': 'A\$',
+      'CAD': 'C\$',
+      'CHF': 'CHF',
+      'CNY': '¥',
+      'SGD': 'S\$',
+      'NZD': 'NZ\$',
+    };
+    return symbols[code] ?? code;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currencySymbol = _getSymbolForCurrency(widget.group.currency);
+    final cleanGroupName = GroupIconHelper.getCleanGroupName(widget.group.name);
+
+    return SafeArea(
+        child: Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 20.h),
+        decoration: BoxDecoration(
+          color: AppColors.cardDark,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+          border: Border.all(
+            color: AppColors.white.withValues(alpha: 0.08),
+          ),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Drag handle
+              Center(
+                child: Container(
+                  width: 40.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: AppColors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16.h),
+
+              // Title
+              const AppText(
+                'Request Money',
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.white,
+              ),
+              SizedBox(height: 16.h),
+
+              // Target User Info Card
+              Container(
+                padding: EdgeInsets.all(14.w),
+                decoration: BoxDecoration(
+                  color: AppColors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(16.r),
+                  border: Border.all(
+                    color: AppColors.white.withValues(alpha: 0.06),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44.w,
+                      height: 44.w,
+                      decoration: BoxDecoration(
+                        color: widget.avatarColor,
+                        shape: BoxShape.circle,
+                        image: widget.avatarUrl != null &&
+                                widget.avatarUrl!.isNotEmpty
+                            ? DecorationImage(
+                                image: NetworkImage(widget.avatarUrl!),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      alignment: Alignment.center,
+                      child:
+                          widget.avatarUrl == null || widget.avatarUrl!.isEmpty
+                              ? AppText(
+                                  widget.initials,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.white,
+                                )
+                              : null,
+                    ),
+                    SizedBox(width: 14.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AppText(
+                            widget.targetName,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.white,
+                          ),
+                          SizedBox(height: 2.h),
+                          AppText(
+                            'Group: $cleanGroupName',
+                            fontSize: 12,
+                            color: AppColors.white.withValues(alpha: 0.5),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 20.h),
+
+              // Amount Field
+              AppText(
+                'Requested Amount',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.white.withValues(alpha: 0.8),
+              ),
+              SizedBox(height: 8.h),
+              TextField(
+                controller: _amountController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                style: TextStyle(
+                  color: AppColors.white,
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+                decoration: InputDecoration(
+                  prefixIcon: Padding(
+                    padding: EdgeInsets.only(left: 14.w, right: 8.w),
+                    child: Center(
+                      widthFactor: 1.0,
+                      child: AppText(
+                        currencySymbol,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.onboardingViolet,
+                      ),
+                    ),
+                  ),
+                  hintText: '0',
+                  hintStyle: TextStyle(
+                    color: AppColors.white.withValues(alpha: 0.3),
+                  ),
+                  errorText: _amountError,
+                  errorStyle: TextStyle(
+                    color: AppColors.avatarRose,
+                    fontSize: 11.sp,
+                  ),
+                  filled: true,
+                  fillColor: AppColors.white.withValues(alpha: 0.05),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 14.h,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: BorderSide(
+                      color: AppColors.white.withValues(alpha: 0.1),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: BorderSide(
+                      color: AppColors.white.withValues(alpha: 0.1),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: const BorderSide(
+                      color: AppColors.onboardingViolet,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+                onChanged: (_) {
+                  if (_amountError != null) {
+                    setState(() {
+                      _amountError = null;
+                    });
+                  }
+                },
+              ),
+              SizedBox(height: 16.h),
+
+              // Note Field
+              AppText(
+                'Note (Optional)',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.white.withValues(alpha: 0.8),
+              ),
+              SizedBox(height: 8.h),
+              TextField(
+                controller: _noteController,
+                maxLength: 100,
+                style: TextStyle(
+                  color: AppColors.white,
+                  fontSize: 14.sp,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'e.g. for dinner, groceries, etc.',
+                  hintStyle: TextStyle(
+                    color: AppColors.white.withValues(alpha: 0.3),
+                    fontSize: 13.sp,
+                  ),
+                  counterStyle: TextStyle(
+                    color: AppColors.white.withValues(alpha: 0.4),
+                    fontSize: 10.sp,
+                  ),
+                  filled: true,
+                  fillColor: AppColors.white.withValues(alpha: 0.05),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 14.h,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: BorderSide(
+                      color: AppColors.white.withValues(alpha: 0.1),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: BorderSide(
+                      color: AppColors.white.withValues(alpha: 0.1),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: const BorderSide(
+                      color: AppColors.onboardingViolet,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 20.h),
+
+              // Submit Button
+              SizedBox(
+                width: double.infinity,
+                height: 50.h,
+                child: ElevatedButton.icon(
+                  onPressed: _isSubmitting ? null : _submitRequest,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.onboardingViolet,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.r),
+                    ),
+                    elevation: 0,
+                  ),
+                  icon: _isSubmitting
+                      ? SizedBox(
+                          width: 20.w,
+                          height: 20.w,
+                          child: const CircularProgressIndicator(
+                            color: AppColors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Icon(
+                          Icons.send_rounded,
+                          color: AppColors.white,
+                          size: 18.sp,
+                        ),
+                  label: AppText(
+                    _isSubmitting ? 'Sending...' : 'Send Request',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.white,
+                  ),
+                ),
+              ),
+              SizedBox(height: 12.h),
+            ],
+          ),
+        ),
+      ),
+    ));
   }
 }

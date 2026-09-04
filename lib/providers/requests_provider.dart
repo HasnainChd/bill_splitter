@@ -8,15 +8,25 @@ class RequestItem {
   final String id;
   final String groupId;
   final String userId;
+  final String? targetUserId;
+  final double? amount;
+  final String? currency;
+  final String? note;
   final String status;
   final DateTime createdAt;
+  final DateTime? respondedAt;
 
   RequestItem({
     required this.id,
     required this.groupId,
     required this.userId,
+    this.targetUserId,
+    this.amount,
+    this.currency,
+    this.note,
     required this.status,
     required this.createdAt,
+    this.respondedAt,
   });
 
   factory RequestItem.fromMap(Map<String, dynamic> data) {
@@ -24,8 +34,15 @@ class RequestItem {
       id: data['id'],
       groupId: data['group_id'],
       userId: data['user_id'],
+      targetUserId: data['target_user_id'],
+      amount: data['amount'] != null ? (data['amount'] as num).toDouble() : null,
+      currency: data['currency'],
+      note: data['note'],
       status: data['status'] ?? 'pending',
       createdAt: DateTime.parse(data['created_at']).toLocal(),
+      respondedAt: data['responded_at'] != null
+          ? DateTime.parse(data['responded_at']).toLocal()
+          : null,
     );
   }
 
@@ -34,8 +51,13 @@ class RequestItem {
       'id': id,
       'group_id': groupId,
       'user_id': userId,
+      'target_user_id': targetUserId,
+      'amount': amount,
+      'currency': currency,
+      'note': note,
       'status': status,
       'created_at': createdAt.toIso8601String(),
+      'responded_at': respondedAt?.toIso8601String(),
     };
   }
 }

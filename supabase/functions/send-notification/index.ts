@@ -164,8 +164,16 @@ serve(async (req) => {
       }
     } else if (table === "requests") {
       initiatorId = record.user_id;
-      title = `Payment Request in ${group.name}`;
-      body = `{initiator} requested to settle up in ${group.name}`;
+      const currency = record.currency || group.currency || "PKR";
+      if (record.amount) {
+        const amountStr = Number(record.amount).toFixed(0);
+        title = `💰 Request from {initiator}`;
+        const noteStr = record.note ? ` ("${record.note}")` : "";
+        body = `{initiator} requested ${currency} ${amountStr} from you in ${group.name}${noteStr}`;
+      } else {
+        title = `Payment Request in ${group.name}`;
+        body = `{initiator} requested to settle up in ${group.name}`;
+      }
     } else if (table === "payment_reminders") {
       initiatorId = record.sender_id;
       const amount = Number(record.amount || 0).toFixed(0);
